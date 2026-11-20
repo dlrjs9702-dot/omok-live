@@ -3864,7 +3864,7 @@
       plaza.controller?.mineResult?.(r); /* (1.10.355: the ore off the rock into the bag, a rare one's light) */
       if (!r.ore) { showToast(`💥 ${r.hits ?? 0}/${r.rounds ?? 3}번 맞혔어요 · 두 번 맞혀야 광석이 나와요${r.itemId ? ' · 🪨 작은 돌 +1' : ''}`, 3500); return; } /* (1.10.342 98B: a missed set -- rubble, the rock and the day's count as they were) */
       if (r.firstGem) { lastGemCardAt = Date.now(); gemCardShow(r); return; } /* (366: the first of a gem -- its card) */
-      showToast(`${r.gem ? '✨ ' : ''}${r.icon || '🪨'} ${r.name || '광석'} +1${r.wall ? '' : ` · 오늘 ${r.daily?.n ?? '-'}/${r.daily?.max ?? '-'}`}${r.stage === 'mined' ? ' · 이 바위는 다 캤어요' : ''}`, r.gem ? 4500 : 3200); /* (1.10.355: 「구리 광석 +1 · 오늘 23/60」) */
+      showToast(`${r.gem ? '✨ ' : ''}${r.icon || '🪨'} ${r.name || '광석'} +1${r.stage === 'mined' ? ' · 이 바위는 다 캤어요' : ''}`, r.gem ? 4500 : 3200); /* (1.10.355: 「구리 광석 +1 · 오늘 23/60」; 379 사용자 「광석 캐기 제한을 없애고」: no day's count) */
     } catch (error) { if (started) api('/api/island/quarry/cancel', { method: 'POST', body: '{}' }).catch(() => {}); showToast(error.message, 3500); }
     finally { mining = false; }
   }
@@ -4424,7 +4424,8 @@
         catch (error) { showToast(error.message, 4000); } finally { goodBusy = false; }
       }); row.append(b); }
     goodCard.replaceChildren(img, name, what, row);
-    if (once) api('/api/island/bag').then((b) => { const kind = { fishing_rod: 1, fishing_rod_sturdy: 1, bugnet: 2, bugnet_sturdy: 2 }[id]; if (kind ? (b.items || []).filter((e) => ({ fishing_rod: 1, bugnet: 2 })[e.tool] === kind).length >= 3 : (b.items || []).some((e) => e.itemId === id && e.qty > 0)) { const own = row.querySelector('button'); own.disabled = true; own.textContent = '가지고 있어요'; } }).catch(() => {});
+    /* (379 곡괭이 하나만 사지는 버그: a tool by its kind -- the 곡괭이 too -- up to three, as the server's TOOL_MAX; counted as toolCount, by qty) */
+    if (once) api('/api/island/bag').then((b) => { const kind = { fishing_rod: 'fishing_rod', fishing_rod_sturdy: 'fishing_rod', bugnet: 'bugnet', bugnet_sturdy: 'bugnet', pickaxe: 'pickaxe' }[id]; if (kind ? (b.items || []).filter((e) => e.tool === kind).reduce((n, e) => n + (e.qty || 1), 0) >= 3 : (b.items || []).some((e) => e.itemId === id && e.qty > 0)) { const own = row.querySelector('button'); own.disabled = true; own.textContent = '가지고 있어요'; } }).catch(() => {});
     openPlazaWindow('잡화점', [goodCard]); plazaDialog.classList.add('shopMode');
   }
   // v1.10.84 관공서 실내: the server takes me in (at the hall's door, past the mayor) or out (at the room's door) and says

@@ -7,8 +7,8 @@ import * as THREE from '/vendor/three/three.module.js';
 // Near one that is awake: its warning -- 우레 from 25 m 「어흥!」 loud, 안개 only from 12 m a low 「그르릉」 -- a sound (the game's sound
 // on) and the screen's edges going red. `debug()` for the tests and photos.
 const DEFS = {
-  ure: { name: '우레', model: 'byeolmaru.tiger', walk: 2.5, run: 10.92, stalk: 0.89, warn: 25, say: '어흥!' }, /* (377: the clips' no-slide paces at 2.4x) */
-  angae: { name: '안개', model: 'byeolmaru.tiger_angae', walk: 1.99, run: 8.74, stalk: 0.7, warn: 12, say: '그르릉…' },
+  ure: { name: '우레', model: 'byeolmaru.tiger', speed: 12, walk: 2.5, run: 10.92, stalk: 0.89, warn: 25, say: '어흥!' }, /* (377: the clips' no-slide paces at 2.4x; 379 speed: the server's run -- the Run played at speed/run) */
+  angae: { name: '안개', model: 'byeolmaru.tiger_angae', speed: 11, walk: 1.99, run: 8.74, stalk: 0.7, warn: 12, say: '그르릉…' },
 };
 const PAW_S = 0.84; const RESTING = new Set(['Nap', 'Doze']);
 const leapAt = (s, len) => (s <= 0 ? 0 : s >= PAW_S ? len : (len * s) / PAW_S); /* (377: on from the run, as lib/island-tigers.js) */
@@ -21,7 +21,7 @@ export function createTigerView({ scene, assets, heightAt, serverNow, lowFiles =
   const near = (me) => Boolean(I) && Math.hypot(me.x - I.x, me.z - I.z) < I.r + 120;
   function holder(id) {
     const def = DEFS[id]; const c = { root: new THREE.Group(), mixer: null, actions: {}, want: 'Idle', now: null, gone: false, low: lowFiles(),
-      play(name) { c.want = name; if (!c.mixer) return; inPlace(c); if (c.now === name) return; const next = c.actions[name] || c.actions.Idle; if (!next) return; const once = name === 'Pounce'; next.reset(); next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity); next.clampWhenFinished = once; next.fadeIn(name === 'Run' && c.now === 'Stalk' ? 0.35 : 0.2).play(); c.actions[c.now]?.fadeOut(0.2); c.now = name; } };
+      play(name) { c.want = name; if (!c.mixer) return; inPlace(c); if (c.now === name) return; const next = c.actions[name] || c.actions.Idle; if (!next) return; const once = name === 'Pounce'; next.reset(); next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity); next.clampWhenFinished = once; next.fadeIn(name === 'Run' && c.now === 'Stalk' ? 0.35 : name === 'Pounce' ? 0.1 : 0.2).play(); /* (379 assets 158: into the Pounce in 0.1 s) */ c.actions[c.now]?.fadeOut(0.2); c.now = name; } };
     scene.add(c.root); assets.creature([def.model], c); return c;
   }
   // the Pounce clip's forward root motion out (the server's leap moves the tiger) -- once a clip
@@ -53,7 +53,10 @@ export function createTigerView({ scene, assets, heightAt, serverNow, lowFiles =
       }
       h.c.root.position.set(h.x, heightAt(h.x, h.z) + (st.lift || 0), h.z); h.c.root.rotation.y = h.yaw;
       h.c.play(st.clip);
-      const a = h.c.actions[st.clip]; if (a) a.timeScale = st.clip === 'Run' ? Math.max(0.7, Math.min(1.4, (st.sp || def.run) / def.run)) : st.clip === 'Walk' ? Math.max(0.6, Math.min(1.5, (st.sp || def.walk) / def.walk)) : st.clip === 'Stalk' ? Math.max(0.6, Math.min(1.6, (st.sp || def.stalk) / def.stalk)) : 1;
+      const a = h.c.actions[st.clip];
+      /* (379: the Run at the server's pace from the server's start -- its stride where the server reads it, so a pounce leaves it at 0.40~0.55 s) */
+      if (a && st.clip === 'Run' && h.runAt !== st.at) { h.runAt = st.at; const d = a.getClip().duration || 0.6; a.time = ((((tNow - st.at) / 1000) * (def.speed / def.run)) % d + d) % d; }
+      if (a) a.timeScale = st.clip === 'Run' ? def.speed / def.run : st.clip === 'Walk' ? Math.max(0.6, Math.min(1.5, (st.sp || def.walk) / def.walk)) : st.clip === 'Stalk' ? Math.max(0.6, Math.min(1.6, (st.sp || def.stalk) / def.stalk)) : 1;
     }
     for (const [id, h] of shown) if (!list.some((s) => s.id === id)) h.c.root.visible = false;
     shareNormal();
