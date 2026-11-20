@@ -2211,7 +2211,7 @@ const tigerSpot = () => { const TH = IslandTerrain.TOWNHALL; const p = IslandTer
 const tigerCaughtAt = new Map(); const TIGER_CATCH_GAP_MS = 8000;
 async function tigerCatch(token, def) {
   const session = sessions.get(token); const at = plazaPresence.get(token); if (!session || !at) return;
-  const account = pointAccountForSession(session); const spot = tigerSpot(); const now = nowMs();
+  const account = pointAccountForSession(session); const spot = tigerSpot(); const now = nowMs(); const wasAway = plazaAway(at, now); /* (사용자 결정 27 A: caught while 자리 비움 too -- the page shows it again once they are back) */
   const who = account || token; if (now - (tigerCaughtAt.get(who) || 0) < TIGER_CATCH_GAP_MS) return;
   for (const [k, at] of tigerCaughtAt) if (now - at >= TIGER_CATCH_GAP_MS) tigerCaughtAt.delete(k); tigerCaughtAt.set(who, now); /* (tiger review #8: the old ones out) */
   resourcePulls.delete(token); weedPulls.delete(token); quarryPulls.delete(token); fishCasts.delete(token); freeSeat(token);
@@ -2226,7 +2226,7 @@ async function tigerCatch(token, def) {
      'tigerLost'. #6: `who` -- only the screen caught goes to the mayor; the account's other screens have the bag and the word) */
   const out = account ? await once() : null;
   console.log(`[tiger] caught by=${def.id} lost=${out?.lost?.length ?? 0}${account && !out ? ' retrying' : ''}`); /* (no account in the log) */
-  notifyAccount(account, 'tigerCaught', { id, who: session.plazaId, by: def.name, lost: out?.lost || [], x: spot.x, z: spot.z, ...(out?.bag ? { bag: out.bag } : {}), ...(account && !out ? { pending: true } : {}) });
+  notifyAccount(account, 'tigerCaught', { id, who: session.plazaId, ...(wasAway ? { away: true } : {}), by: def.name, lost: out?.lost || [], x: spot.x, z: spot.z, ...(out?.bag ? { bag: out.bag } : {}), ...(account && !out ? { pending: true } : {}) });
   if (account && !out) (async () => { let late = null; for (let k = 1; k < 5 && !late; k += 1) { await new Promise((r) => { setTimeout(r, 2000 * k); }); late = await once(); }
     console.log(`[tiger] caught by=${def.id} lost=${late?.lost?.length ?? 0}${late ? ' late' : ' unsaved'}`); notifyAccount(account, 'tigerLost', { id, by: def.name, lost: late?.lost || [], ...(late?.bag ? { bag: late.bag } : {}), ...(late ? {} : { unsaved: true }) }); })();
 }

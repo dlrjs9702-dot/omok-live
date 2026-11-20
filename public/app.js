@@ -9229,7 +9229,14 @@
       /* (377 사용자 「5초 로딩창을 띄우고 이송중[빨간 깜빡임] 후 시장 앞에서 리스폰」: five seconds covered, then in front of 마루 시장님 with his word) */
       let cover = byId('tigerTransfer'); if (!cover) { cover = document.createElement('div'); cover.id = 'tigerTransfer'; cover.setAttribute('role', 'status'); cover.innerHTML = '<p class="tigerTransferWho"></p><p class="tigerTransferGo">이송 중</p>'; document.body.appendChild(cover); }
       cover.querySelector('.tigerTransferWho').textContent = `${parsed.by || '호랑이'}에게 잡혔어요!`; cover.classList.add('on'); clearTimeout(cover.timer);
-      cover.timer = setTimeout(() => { cover.classList.remove('on'); showToast(`${parsed.by || '호랑이'}에게 잡혔어요! 마루 시장님: 「큰일 날 뻔했어요!」 ${lost}`, 9000); plazaStage.focus({ preventScroll: true }); seen(); }, 5000); return; }
+      /* (사용자 결정 27 A: caught while 자리 비움 (the server's word) or with the page hidden -- the word kept till they are back: shown again at their first
+         key, tap or click, and only then told to the server as seen) */
+      const word = () => `${parsed.by || '호랑이'}에게 잡혔어요! 마루 시장님: 「큰일 날 뻔했어요!」 ${lost}`;
+      const later = parsed.away || document.hidden;
+      cover.timer = setTimeout(() => { cover.classList.remove('on'); showToast(word(), 9000); plazaStage.focus({ preventScroll: true });
+        if (!later) { seen(); return; }
+        const back = () => { for (const ty of ['keydown', 'pointerdown', 'touchstart']) window.removeEventListener(ty, back, true); showToast(`자리를 비운 사이 ${word()}`, 9000); seen(); };
+        for (const ty of ['keydown', 'pointerdown', 'touchstart']) window.addEventListener(ty, back, { capture: true }); }, 5000); return; }
     if (event === 'denCaught') { showToast(`단속에 걸렸어요! 칩 ${Number(parsed.chips || 0).toLocaleString('ko-KR')}개를 빼앗기고 구치소로 가요.`, 7000); return; }
     if (event === 'flea') { if (parsed.owed) refreshFleaBadge(); if (fleaShown && fleaTab !== 'sell' && plazaDialog.open && document.querySelector('.fleaCard')) openFlea(fleaTab); return; } // (1.10.339 섬 벼룩시장: mine sold -- the badge; anything up or gone -- the open window)
     if (event === 'plants') { refreshPlants(); return; } // B 45 (someone planted or fertilized)
