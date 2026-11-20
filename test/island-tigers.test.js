@@ -77,8 +77,30 @@ test('381 쫓기·협공: 둘이 같은 사람을 쫓으면 가까운 쪽이 몰
   assert.ok(seen.includes('search'), seen.join(',')); assert.ok(!g.huntable(I.camp.x, I.camp.z));
 });
 
+// 382 공격 패턴 (사용자 결정 12, assets 159 attack-timing.json): right ahead a swipe, at its side a turning swipe (right / left), a near stand a
+// lunge, the pounce only on the run 4.5 m and more; each judged at its own hit time, the turn and the lunge on the clips' own curves
+test('382 공격 고르기: 바로 앞 앞발치기·옆 돌며 치기(오른쪽/왼쪽)·멈춰 3~5 m 물기 돌진, 판정 시각에 잡힘', () => {
+  assert.deepEqual(Object.fromEntries(Object.entries(Tg.ATTACKS).map(([k, a]) => [k, [a.len, a.hit]])), { Swipe: [1, 0.4333], TurnSwipe: [1.1, 0.5667], TurnSwipeL: [1.1, 0.5667], Lunge: [1.1, 0.5] });
+  assert.ok(Math.abs(Tg.turnAt('TurnSwipe', 1) + Math.PI / 2) < 1e-9); assert.ok(Math.abs(Tg.turnAt('TurnSwipeL', 0.5) - Math.PI / 2) < 1e-9); assert.equal(Tg.turnAt('Swipe', 0.5), 0);
+  assert.ok(Math.abs(Tg.lungeAt('ure', 1) - 1.21) < 1e-9); assert.ok(Math.abs(Tg.lungeAt('angae', 0.52) - 0.97) < 1e-9); assert.equal(Tg.lungeAt('ure', 0.1), 0);
+  let seed = 5; const rand = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const g = Tg.createTigers({ T, P, rand }); g.warm(); g.setClockShift(0); const I = T.dalmaru.NEW_ISLE; const now0 = Date.UTC(2026, 10, 20, 0, 0, 0);
+  let spot = null; for (let x = 330; x <= 460 && !spot; x += 3) for (let z = 140; z <= 320 && !spot; z += 3) if (g.huntable(x, z) && [[0, 0], [-3, 0], [3, 0], [0, -3], [0, 3]].every(([dx, dz]) => g.open(x + dx, z + dz))) spot = { x, z };
+  assert.ok(spot);
+  // one standing still: 우레 placed (facing +z) 2.5 m from them -- behind them: ahead of him, a swipe; at +x / -x of him: his left / right
+  const firstAttack = (tx, tz) => { g.place('ure', tx, tz, now0, 0); g.place('angae', I.x + 300, I.z, now0); const kinds = [];
+    for (let k = 0; k < 60; k += 1) { const ev = g.tick(now0 + k * 100, [{ token: 'p', x: spot.x, z: spot.z }]); const v = g.view()[0]; if (v.attack && !kinds.includes(v.attack.kind)) kinds.push(v.attack.kind); if (ev.some((e) => e.type === 'catch')) return { kinds, caught: ev.find((e) => e.type === 'catch').attack, at: k / 10 }; }
+    return { kinds, caught: null };
+  };
+  const ahead = firstAttack(spot.x, spot.z - 2.5); assert.equal(ahead.kinds[0], 'Swipe', JSON.stringify(ahead)); assert.equal(ahead.caught, 'Swipe'); assert.ok(ahead.at < 3, `${ahead.at}`);
+  assert.equal(g.view()[0].clip, 'Swipe'); /* (caught at its hit -- the swipe plays on to its end, then the Growl) */
+  const left = firstAttack(spot.x - 2.5, spot.z); assert.equal(left.kinds[0], 'TurnSwipeL', JSON.stringify(left)); assert.equal(left.caught, 'TurnSwipeL');
+  assert.ok(Math.abs(g.state()[0].yaw - Math.PI / 2) < 0.4, `${g.state()[0].yaw}`); /* (turned +90° toward them, kept -- a stalk's step may have turned it a little first) */
+  const right = firstAttack(spot.x + 2.5, spot.z); assert.equal(right.kinds[0], 'TurnSwipe', JSON.stringify(right)); assert.equal(right.caught, 'TurnSwipe');
+});
+
 test('덮치기: 달리던 그대로 앞으로 곧게, 0.84초에 앞발이 닿을 거리, 그 뒤는 그대로; 포기 25초, 크기 2.4배', () => {
   assert.equal(Tg.leapAt(0, 9), 0); assert.ok(Math.abs(Tg.leapAt(0.42, 9) - 4.5) < 1e-9); assert.equal(Tg.leapAt(0.84, 9), 9); assert.equal(Tg.leapAt(1.2, 9), 9);
-  assert.equal(Tg.GIVE_UP_S, 25); assert.equal(Tg.SCALE, 2.4); assert.deepEqual(Tg.TIGERS.map((t) => t.speed), [12, 11]); /* (우레 「속도 1 업」) */
+  assert.equal(Tg.GIVE_UP_S, 25); assert.equal(Tg.SCALE, 2.4); assert.deepEqual(Tg.TIGERS.map((t) => t.speed), [13, 12]); /* (우레 「속도 1 업」; 382 결정 16 A 쫓을 때 +1) */
   assert.equal(Tg.restingAt(Tg.TIGERS[0], Date.UTC(2026, 10, 20, 3, 0, 0)), true); assert.equal(Tg.restingAt(Tg.TIGERS[1], Date.UTC(2026, 10, 19, 19, 30, 0)), true); assert.equal(Tg.restingAt(Tg.TIGERS[1], Date.UTC(2026, 10, 20, 3, 0, 0)), false);
 });
