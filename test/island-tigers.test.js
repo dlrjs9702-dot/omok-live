@@ -99,6 +99,17 @@ test('382 공격 고르기: 바로 앞 앞발치기·옆 돌며 치기(오른쪽
   const right = firstAttack(spot.x + 2.5, spot.z); assert.equal(right.kinds[0], 'TurnSwipe', JSON.stringify(right)); assert.equal(right.caught, 'TurnSwipe');
 });
 
+// tiger review #2: one's pace by their poses' own times -- a bike on a path (13.8 m/s, poses 8 a second against ticks 10 a second) read as it goes,
+// never 「standing」 on a tick with no new pose; a jump of 8 m (moved by the server) no pace
+test('사람 속도: 자세 시각으로 — 길 위 자전거 13.8 m/s를 0으로 읽지 않음, 8 m 넘게 옮겨지면 속도 없음', () => {
+  const g = Tg.createTigers({ T, P, rand: () => 0.5 }); g.warm(); g.setOn(true); const I = T.dalmaru.NEW_ISLE; const now0 = Date.UTC(2026, 10, 20, 0, 0, 0);
+  g.place('ure', I.x + 300, I.z, now0); g.place('angae', I.x + 300, I.z + 10, now0);
+  const s = P.SWAMPS[1]; let pose = { x: s[0], z: s[1], t: now0 }; const speeds = [];
+  for (let k = 1; k <= 40; k += 1) { const now = now0 + k * 100; while (pose.t + 125 <= now) pose = { x: pose.x + 13.8 * 0.125, z: pose.z, t: pose.t + 125 }; g.tick(now, [{ token: 'p', ...pose }]); if (k > 5) speeds.push(Math.hypot(g.seen('p').vx, g.seen('p').vz)); }
+  assert.ok(speeds.every((v) => v > 10 && v < 17), speeds.map((v) => v.toFixed(1)).join(','));
+  g.tick(now0 + 4100, [{ token: 'p', x: pose.x + 30, z: pose.z, t: pose.t + 125 }]); assert.equal(Math.hypot(g.seen('p').vx, g.seen('p').vz), 0, '서버가 옮김: 속도 없음');
+});
+
 test('덮치기: 달리던 그대로 앞으로 곧게, 0.84초에 앞발이 닿을 거리, 그 뒤는 그대로; 포기 25초, 크기 2.4배', () => {
   assert.equal(Tg.leapAt(0, 9), 0); assert.ok(Math.abs(Tg.leapAt(0.42, 9) - 4.5) < 1e-9); assert.equal(Tg.leapAt(0.84, 9), 9); assert.equal(Tg.leapAt(1.2, 9), 9);
   assert.equal(Tg.GIVE_UP_S, 25); assert.equal(Tg.SCALE, 2.4); assert.deepEqual(Tg.TIGERS.map((t) => t.speed), [13, 12]); /* (우레 「속도 1 업」; 382 결정 16 A 쫓을 때 +1) */
