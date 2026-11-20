@@ -15519,6 +15519,38 @@
       "lowSrc": "newisle136:02. Low/newisle-v1/mushroom_lionsmane_low.glb",
       "lowSha256": "051145c66925943e5ada40b2162531a0f23eb30932df3604e64d46295ebf8c30",
       "precompressed": true
+    },
+    {
+      "out": "yard-v1/storehouse_1.glb",
+      "src": "storehouse160:01. High/storehouse_1.glb",
+      "sha256": "f5f29d129a8e1b3c396c65e00ef5d1b895e4cc71c9055a200ec598850e1279fc",
+      "lowSrc": "storehouse160:02. Low/storehouse_1_low.glb",
+      "lowSha256": "cf969a1a8624d2004284752e5badfdb6824bb9146ed9a960052673ec3ea5623f",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/storehouse_2.glb",
+      "src": "storehouse160:01. High/storehouse_2.glb",
+      "sha256": "01fa778d854f9b2eb0e334a46c7ab053383a58a4b46e32c7bad46f89567d9b9f",
+      "lowSrc": "storehouse160:02. Low/storehouse_2_low.glb",
+      "lowSha256": "7a4c28938ef424645d9f56ea7c42a639ee62649e1a052ecea3b3f833ee8aaac0",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/storehouse_3.glb",
+      "src": "storehouse160:01. High/storehouse_3.glb",
+      "sha256": "38e62551a2dc6e4d6f295470cc3accac9c343756dabc12333dbdb99f1df4ce29",
+      "lowSrc": "storehouse160:02. Low/storehouse_3_low.glb",
+      "lowSha256": "fe744c70e86341f344db98938661e86252d927e5d9955965b0170814a14b7acc",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/storehouse_4.glb",
+      "src": "storehouse160:01. High/storehouse_4.glb",
+      "sha256": "137975b50aef158f8a6216997ec015353879fd60810b45b031e406624068fcdc",
+      "lowSrc": "storehouse160:02. Low/storehouse_4_low.glb",
+      "lowSha256": "89d7e7635e63a85f5fcb3bcef868f1bb32a6cbefeebcd3b90bc3732b8ecdd35a",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -15644,6 +15676,7 @@
     "insect131": "131. Game Island rare insects new isle 2026-11-15",
     "fish132": "132. Game Island new isle fish 3 2026-11-15",
     "tiger158": "158. Game Island tiger running pounce 2026-11-20",
-    "tiger159": "159. Game Island tiger attacks 2026-11-20"
+    "tiger159": "159. Game Island tiger attacks 2026-11-20",
+    "storehouse160": "160. Game Island yard storehouse 2026-11-20"
   }
 }

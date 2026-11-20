@@ -130,6 +130,20 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
   const track = (await get(request, '/api/island/errands', token)).data.track;
   expect(track).toHaveLength(1);
   await expect(page.locator('#questTracker')).toContainText('심부름');
+  { // 1.10.386 문제 기록 5e510d4d·d783b6d1 (notes issue-quest-mark-20261120): a walker with a 심부름 mark (✓ on every one here) taken for an island
+    // event -- a lost thing's owner -- the old mark let go, not left with no owner; the event over and the errand done: none left over a head
+    await page.evaluate(() => { const d = window.PlazaDebug(); d.setMarks(Object.fromEntries(d.wanderers.map((w) => [w.n, 'ready']))); });
+    const lost = (await post(request, '/api/test/island/lost', token, {})).data.event;
+    if (lost?.resident != null) {
+      await page.evaluate(async ([x, z]) => { await window.PlazaWarp(x + 1.5, z); }, [lost.npc.x, lost.npc.z]);
+      await expect.poll(() => page.evaluate((n) => window.PlazaDebug().headMarks().find((h) => h.n === n)?.tag, lost.resident), { timeout: 30000 }).toBe('star');
+      expect(await page.evaluate(() => window.PlazaDebug().headMarks().filter((h) => h.orphans).map((h) => h.n))).toEqual([]);
+      await post(request, '/api/test/island/free-residents', token, {}); await page.evaluate(() => window.PlazaDebug().setMarks({}));
+      const real = (await get(request, '/api/island/errands', token)).data.marks?.[lost.resident] || null; /* (that islander may be my errand's own: its mark comes back with the page's next look) */
+      await expect.poll(() => page.evaluate((n) => window.PlazaDebug().headMarks().find((h) => h.n === n)?.tag ?? null, lost.resident), { timeout: 30000 }).toBe(real ? (real === 'ready' ? 'check' : 'star') : null);
+      expect(await page.evaluate(() => window.PlazaDebug().headMarks().reduce((s, h) => s + h.orphans, 0))).toBe(0);
+    }
+  }
   if (track[0].to === askers[0]) { await expectNoScriptError(page); return; } // (a store errand: the good is general-store's test)
   // the one it is for (and, for someone to find, back to the asker): paid once -- 「부탁 완료!」 with its stamp
   await page.evaluate(() => { window.__doneSeen = false; new MutationObserver(() => { if (document.querySelector('.questDone .questStamp')) window.__doneSeen = true; }).observe(document.body, { childList: true, subtree: true }); });

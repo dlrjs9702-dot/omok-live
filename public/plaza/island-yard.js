@@ -45,10 +45,24 @@
     greenhouse_small: { foot: [2.75, 4.5], solids: [[0, -1.65, 0.5], [0, -0.55, 0.5], [0, 0.55, 0.5], [0, 1.65, 0.5]] }, pebbles: { foot: [1, 1], solids: [] }, duck: { foot: [0.25, 0.5], solids: [[0, 0, 0.1]] },
     // v1.10.251 기록의 탑 트로피 (assets 98): 1 m square, its base the 0.45 m round that blocks
     ...Object.fromEntries(['mole', 'reaction', 'color', 'numbers', 'beat', 'sky', 'mines', 'sudoku', 'nonogram', 'bridges', 'circuit', 'klondike', 'freecell', 'spider', 'star'].map((sym) => [`trophy_${sym}`, { foot: [1, 1], solids: [[0, 0, 0.45]], trophy: true, glow: true }])),
+    // 1.10.386 마당 창고 (사용자 결정 19~21·24·32, assets 160 storehouse.json): its four stages, the doors at its -z with a 0.75 m apron in the
+    // footprint; two rows of blocking rounds over the body; `door`: where one stands to open it (0.6 m before the doors). One a house, built
+    // and grown at the 관공서, never among the yard's counted pieces (STORE.uid)
+    storehouse_1: { foot: [2.5, 2.5], solids: [[-0.667, -0.125, 0.507], [0, -0.125, 0.507], [0.667, -0.125, 0.507], [-0.667, 0.625, 0.507], [0, 0.625, 0.507], [0.667, 0.625, 0.507]], door: [0, -1.1], store: 1 },
+    storehouse_2: { foot: [3.5, 3], solids: [[-1, -0.25, 0.712], [0, -0.25, 0.712], [1, -0.25, 0.712], [-1, 0.75, 0.712], [0, 0.75, 0.712], [1, 0.75, 0.712]], door: [-0.35, -1.35], store: 2 },
+    storehouse_3: { foot: [5, 3], solids: [-1.8, -0.9, 0, 0.9, 1.8].flatMap((x) => [[x, -0.25, 0.678], [x, 0.75, 0.678]]), door: [0, -1.35], store: 3 },
+    storehouse_4: { foot: [6.5, 3], solids: [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5].flatMap((x) => [[x, -0.25, 0.712], [x, 0.75, 0.712]]), door: [-0.75, -1.35], store: 4, glow: true },
   });
+  // 1.10.386 마당 창고: its slots by stage (each up to 99 of a thing), the piece's uid in the yard, its id at a stage
+  const STORE = Object.freeze({ uid: 'storehouse', SLOTS: Object.freeze([20, 40, 60, 100]), STAGES: 4, STACK: 99, idOf: (stage) => `yard_storehouse_${stage}__plain`, NAMES: Object.freeze(['작은 나무 창고', '헛간', '큰 헛간', '큰 곳간']) });
+  const isStore = (p) => Boolean(p) && p.uid === STORE.uid;
+  // where one stands to open it (world) -- its door's spot turned with it -- or null
+  const storeDoor = (lot, p) => { const it = ITEMS[shapeOf(p?.id)]; if (!it?.door) return null; const [lx, lz] = turn(p, it.door[0], it.door[1]); return world(lot, lx, lz); };
+  // the pieces that count toward the yard's limit (not its storehouse)
+  const counted = (items) => (items || []).filter((p) => !isStore(p));
   const SHAPES = Object.freeze(Object.keys(ITEMS));
   const goodId = (shape) => `yard_${shape}__plain`; // (in the 가구 창고 with the furniture: island-furniture's YARD_GOODS)
-  const shapeOf = (id) => { const m = /^yard_([a-z_]+)__(plain|gold|silver|bronze)$/.exec(String(id || '')); return m && ITEMS[m[1]] && (m[2] === 'plain') !== Boolean(ITEMS[m[1]].trophy) ? m[1] : null; }; // (a trophy's: its metal)
+  const shapeOf = (id) => { const m = /^yard_([a-z0-9_]+?)__(plain|gold|silver|bronze)$/.exec(String(id || '')); /* (386: a storehouse's stage digit) */ return m && ITEMS[m[1]] && (m[2] === 'plain') !== Boolean(ITEMS[m[1]].trophy) ? m[1] : null; }; // (a trophy's: its metal)
   const isYard = (id) => shapeOf(id) !== null;
   const LIMIT = Object.freeze([24, 40, 60]); // pieces a yard holds, by its level (1 at first, 2 and 3 made bigger)
   const LEVELS = LIMIT.length;
@@ -134,5 +148,5 @@
   const pieceAt = (items, lx, lz) => items.find((p) => { if (!ITEMS[shapeOf(p.id)]) return false; const [x0, x1, z0, z1] = footBox(p); return lx >= x0 - 1e-6 && lx <= x1 + 1e-6 && lz >= z0 - 1e-6 && lz <= z1 + 1e-6; }) || null;
   // is this spot (world) in the yard of that lot (its box at that level, a little round it): where 「마당 꾸미기」 shows
   function inYard(lot, stage, level, x, z, pad = 0.5) { const { lx, lz } = local(lot, x, z); const b = boxOf(lot, stage, level); return lx > b[0] - pad && lx < b[1] + pad && lz > b[2] - pad && lz < b[3] + pad && !inHouse(stage, lx, lz); }
-  return { ITEMS, SHAPES, LIMIT, LEVELS, FENCE, fenceOf, GATE, fencePieces, fenceSolids, FOOT, PATH, STEP, LOTS, lotById, goodId, shapeOf, isYard, world, local, inHouse, inPath, boxOf, usable, areaOf, footBox, solidsOf, seatsOf, placeError, misfits, limitOf, snap, inYard, aimAt, pieceAt, turnBy, FINE, onTurn };
+  return { STORE, isStore, storeDoor, counted, ITEMS, SHAPES, LIMIT, LEVELS, FENCE, fenceOf, GATE, fencePieces, fenceSolids, FOOT, PATH, STEP, LOTS, lotById, goodId, shapeOf, isYard, world, local, inHouse, inPath, boxOf, usable, areaOf, footBox, solidsOf, seatsOf, placeError, misfits, limitOf, snap, inYard, aimAt, pieceAt, turnBy, FINE, onTurn };
 }));
