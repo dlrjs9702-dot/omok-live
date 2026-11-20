@@ -13,6 +13,12 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.380 자리 비움(총괄 결정 11 「A, 1분으로」)·해변 절벽 가려도 보이기(사용자 「건물, 절벽 등에만」)
+
+- 자리 비움: 화면이 마지막 입력(키·누르기·움직이기·휠·터치)부터 지난 시간을 포즈마다 보냄(idle), 서버가 activeAt을 두고(걷기·자리 바뀜·idle 없는 옛 화면은 지금) 1분 지나면 away. 스냅숏 away, 150 ms 틱에서 바뀌면 바로 알림. 서버 plazaSeparate는 away인 사람을 건너뜀, away인 사람이 그대로 서 있으면 밀지 않음. 화면: 이름표에 회색 「자리 비움」 알약, 몸은 반투명(재질마다 사본 하나, 다시 입힌 것도 다음 스냅숏에), otherCircles·주민 걷기 사람 목록에서 빠짐. 시험용 /api/test/away {ms}.
+- 해변 절벽: 달마루섬 해변 angular.cliff_a/b(약 4 m)가 카메라-나 선 위에 있으면 SEE.cliff로 그 모델만 내 둘레 구멍(나무 구멍은 그대로 별마루섬만). 땅 절벽은 카메라가 절벽 안에 남아 밖이 보이는 방식(문제 기록 7, camFloor)이라 따로 안 함.
+- 시험: e2e general-store 「자리 비움」(두 사람, 4초, 같은 미끼 그 자리에서 사기, 돌아오면 원래대로), island-view-modes 가려도(해변 절벽 cliff 1, 나무 on 0) PC·폰. 단위 native-transformations·skirt-arms의 import 치환 갱신.
+
 ## v1.10.379 채석장(사용자 「제한 없애고 바위마다 고르게」·결정 8 A)·곡괭이·158 Pounce·가려도 보이기 별마루섬만
 
 - 곡괭이: 잡화점 줄 kind 표에 곡괭이(e.tool 'pickaxe', qty 합)로 3개까지, TOOL_MAX 안내 「곡괭이는 3개까지」(결정 6 A).
@@ -30,11 +36,3 @@
 - 박물관: 곤충관 양쪽 벽 상자 2(26), 바다 수조 22번째 돌돔, 새 물 「별마루섬 개울」 벽 수조(앞벽 동쪽 x 8·10, 여분 12).
 - 도감 글(79종), 가방 탭·설명.
 - 행사 창(사용자 「잘 안읽혀」): .festivalCard 크림 바탕·진한 글씨(보드 투명 카드 위로), 할 일 줄 이름·도장 배지·오늘 n/m 배지·방법 줄, 재료 고르기 크림 칸, 못 바꾸는 단추도 읽히게. 대비 8.4:1 이상(PC·폰 사진 확인).
-
-## v1.10.377 N2a 남은 것 (총괄: 동굴 물 재질, 글자 안내판, 다리 문 열림)
-
-- 동굴 물: asset-loader `swap` 항목 + setSwapMaterials -- island.js가 157 파일 재질 water/water_fall/water_foam을 개울 물(water clone, vertexColors)·폭포(fallMat)·거품(foam)으로 바꿔 줌. spring.cave에 `swap: true`.
-- 안내판: 136 sign_reserve·sign_trail(+_low) 다시 넣음(sha256 확인). 자리는 tools/isle2-props.cjs(SIGN_RESERVE 문 안쪽 길 옆, SIGN_TRAIL 캠핑장 가장자리 길 옆, 화살 셋을 캠핑장·전망대·별마루다리에 가장 가깝게 돌림), 막힘 원 추가(땅 지도 그대로). 글자는 plaza-scene boardText로 FACE 자리 1.5 mm 앞(「별마루섬 자연 구역」, 화살마다 갈 곳).
-- 다리 문: fence_gate를 묶음에서 빼고 plaza-scene에서 따로 붙임(keepNodes), 사람(나·다른 사람)이 2.6 m 안이면 leaf가 +Y로 1.45 rad 열림.
-- 호랑이 조정(사용자 직접): 달리기 우레 12(「우레 속도 1 업」)·안개 11 m/s, 포기 25초, 크기 1.6→2.4배(걷기·달리기·Stalk 재생 속도, 앞발 거리 2.1/1.73, 잡힘 반지름 2.4/2.1, 몸 여유 0.9 m), 덮치기는 멈추지 않고 달리던 대로 앞으로 곧게(0.84 s에 앞발, 도약 = 예상 자리까지, 최대 달리기 0.84 s + 클립 도약), 잡히면 5초 #tigerTransfer 「이송 중」(빨간 깜빡임) 뒤 시장님 말. 15 m/s 넘는 순간 이동은 속도 0. 시뮬레이션(25초 안 잡힘): 뛰기 6.2는 둘 다 15/20/25 m 거의 다 잡힘(2.7~14 s), 자전거 9는 우레 1/15·안개 9/15, Shift 12는 0.
-- 시험: island-tigers.spec에 문 열림·안내판 글자 확인 추가.
