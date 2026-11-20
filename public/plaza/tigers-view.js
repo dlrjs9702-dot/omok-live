@@ -28,7 +28,9 @@ export function createTigerView({ scene, assets, heightAt, serverNow, lowFiles =
   const near = (me) => Boolean(I) && Math.hypot(me.x - I.x, me.z - I.z) < I.r + 120;
   function holder(id) {
     const def = DEFS[id]; const c = { root: new THREE.Group(), mixer: null, actions: {}, want: 'Idle', now: null, gone: false, low: lowFiles(), pauseHidden: true /* (383 Codex #18: no mixer work while hidden) */,
-      play(name, again = false) { c.want = name; if (!c.mixer) return; inPlace(c); if (c.now === name && !again) return; const next = c.actions[name] || c.actions.Idle; if (!next) return; const once = ONCE.has(name); if (c.now === name) next.stop(); next.reset(); next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity); next.clampWhenFinished = once; next.fadeIn(name === 'Run' && c.now === 'Stalk' ? 0.35 : once ? 0.1 : 0.2).play(); /* (379 assets 158: into the Pounce in 0.1 s; 382 the attacks too) */ if (c.now !== name) c.actions[c.now]?.fadeOut(0.2); c.now = name; } };
+      play(name, again = false) { c.want = name; if (!c.mixer) return; inPlace(c); if (c.now === name && !again) return; const next = c.actions[name] || c.actions.Idle; if (!next) return; const once = ONCE.has(name);
+        if (c.now === name) { next.stop(); next.reset(); next.setEffectiveWeight(1); next.play(); return; } /* (tiger review #7: the same attack again from its start at full weight -- no 0.1 s of the bind pose between) */
+        next.reset(); next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity); next.clampWhenFinished = once; next.fadeIn(name === 'Run' && c.now === 'Stalk' ? 0.35 : once ? 0.1 : 0.2).play(); /* (379 assets 158: into the Pounce in 0.1 s; 382 the attacks too) */ if (c.now !== name) c.actions[c.now]?.fadeOut(0.2); c.now = name; } };
     scene.add(c.root); assets.creature([def.model], c); return c;
   }
   // the Pounce's and the Lunge's forward root motion out (the server's leap and lunge move the tiger); 382 the turning swipes' root turn out (the

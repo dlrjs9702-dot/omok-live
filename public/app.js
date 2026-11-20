@@ -9175,6 +9175,8 @@
   }
   // (the sell window: the events that raise what this place buys, 「…적용 중」)
   const islandSellEventNote = () => { const run = islandEventsRunning().filter((e) => e.kind === 'sell'); return run.length ? `🎉 ${run.map((e) => e.label).join(' · ')} 적용 중 (잡화점에서 산 것은 원래 값)` : ''; };
+  const tigerShown = new Set(); /* (tiger review #4: the catches this page has shown) */
+  const tigerLostText = (p) => (p.unsaved ? '가방은 그대로예요.' : Array.isArray(p.lost) && p.lost.length ? `호랑이에게 ${p.lost.join(', ')}을(를) 잃었어요.` : '다행히 잃은 물건은 없어요.');
   function handleLobbySseBlock(block) {
     if (!block || block.startsWith(':')) return;
     let event = 'message';
@@ -9214,13 +9216,20 @@
     if (event === 'contest') { refreshContest(); return; } // A4 섬 대회, every day (soon, start, end)
     if (event === 'den') { denRaidEvents += 1; denRaidSeen(parsed.raid || null); return; } // (1.10.341: a raid begun or over)
     if (event === 'townhallOut') { if (plaza.controller?.space?.() === 'townhall') { closeIslandWindows(); plaza.controller?.setSpace?.('island', parsed.x, parsed.z); document.body.classList.remove('townhallRoom'); } showToast('관공서가 갑자기 문을 닫았어요. 「잠시 자리 비움」', 5000); return; }
+    if (event === 'tigerLost') { if (parsed.bag) drawIslandBag(parsed.bag); showToast(`${parsed.by || '호랑이'}에게 잡혔을 때: ${tigerLostText(parsed)}`, 7000); return; } /* (tiger review #4: the bag's loss saved late) */
     if (event === 'tigerCaught') { /* (1.10.376 N2a-2 잡히면, 사용자 「집이 있든 없든 시장님앞으로」: whatever I was doing ends, in front of 마루 시장님 at the 관공서 -- his word and what the tiger took) */
-      closeIslandWindows(); plaza.controller?.tigerCaught?.(Number(parsed.x), Number(parsed.z)); plazaLastSent = null; if (parsed.bag) drawIslandBag(parsed.bag); /* (383 Codex #6: `unsaved` -- the bag could not be saved: never 「잃은 물건은 없어요」) */
-      const lost = parsed.unsaved ? '가방은 그대로예요.' : Array.isArray(parsed.lost) && parsed.lost.length ? `호랑이에게 ${parsed.lost.join(', ')}을(를) 잃었어요.` : '다행히 잃은 물건은 없어요.';
+      /* (tiger review #4·#6: once a catch (its id) a page; `who` -- only the screen caught is moved, the account's other screens are told; `again` -- one the
+         page was shut for, told when it came back; the server told it was seen) */
+      if (parsed.id && tigerShown.has(parsed.id)) return; if (parsed.id) tigerShown.add(parsed.id);
+      const seen = () => { if (parsed.id) api('/api/island/tiger/seen', { method: 'POST', body: JSON.stringify({ id: parsed.id }) }).catch(() => {}); };
+      if (parsed.bag) drawIslandBag(parsed.bag);
+      if (parsed.again || (parsed.who && plazaMyId && parsed.who !== plazaMyId)) { showToast(parsed.again ? `${parsed.by || '호랑이'}에게 잡혀서 마루 시장님 앞으로 옮겨졌었어요. ${tigerLostText(parsed)}` : `다른 화면의 내가 ${parsed.by || '호랑이'}에게 잡혔어요. ${tigerLostText(parsed)}`, 9000); seen(); return; }
+      closeIslandWindows(); plaza.controller?.tigerCaught?.(Number(parsed.x), Number(parsed.z)); plazaLastSent = null;
+      const lost = parsed.pending ? '가방은 정리하고 있어요.' : tigerLostText(parsed);
       /* (377 사용자 「5초 로딩창을 띄우고 이송중[빨간 깜빡임] 후 시장 앞에서 리스폰」: five seconds covered, then in front of 마루 시장님 with his word) */
       let cover = byId('tigerTransfer'); if (!cover) { cover = document.createElement('div'); cover.id = 'tigerTransfer'; cover.setAttribute('role', 'status'); cover.innerHTML = '<p class="tigerTransferWho"></p><p class="tigerTransferGo">이송 중</p>'; document.body.appendChild(cover); }
       cover.querySelector('.tigerTransferWho').textContent = `${parsed.by || '호랑이'}에게 잡혔어요!`; cover.classList.add('on'); clearTimeout(cover.timer);
-      cover.timer = setTimeout(() => { cover.classList.remove('on'); showToast(`${parsed.by || '호랑이'}에게 잡혔어요! 마루 시장님: 「큰일 날 뻔했어요!」 ${lost}`, 9000); plazaStage.focus({ preventScroll: true }); }, 5000); return; }
+      cover.timer = setTimeout(() => { cover.classList.remove('on'); showToast(`${parsed.by || '호랑이'}에게 잡혔어요! 마루 시장님: 「큰일 날 뻔했어요!」 ${lost}`, 9000); plazaStage.focus({ preventScroll: true }); seen(); }, 5000); return; }
     if (event === 'denCaught') { showToast(`단속에 걸렸어요! 칩 ${Number(parsed.chips || 0).toLocaleString('ko-KR')}개를 빼앗기고 구치소로 가요.`, 7000); return; }
     if (event === 'flea') { if (parsed.owed) refreshFleaBadge(); if (fleaShown && fleaTab !== 'sell' && plazaDialog.open && document.querySelector('.fleaCard')) openFlea(fleaTab); return; } // (1.10.339 섬 벼룩시장: mine sold -- the badge; anything up or gone -- the open window)
     if (event === 'plants') { refreshPlants(); return; } // B 45 (someone planted or fertilized)

@@ -2198,7 +2198,7 @@ const tigerTicker = setInterval(() => {
   const I = IslandTerrain.dalmaru?.NEW_ISLE; if (!I) return; const people = []; let near = false;
   for (const [token, p] of plazaPresence) {
     if ((p.space || 'island') !== 'island' || p.ride || p.platform || p.taxi || trainRiders.has(token) || taxiRides.has(token) || !Number.isFinite(p.x) || !Number.isFinite(p.z)) continue;
-    if (Math.hypot(p.x - I.x, p.z - I.z) < I.r + 160) near = true; if (IslandTerrain.onIsle2(p.x, p.z)) people.push({ token, x: p.x, z: p.z });
+    if (Math.hypot(p.x - I.x, p.z - I.z) < I.r + 160) near = true; if (IslandTerrain.onIsle2(p.x, p.z)) people.push({ token, x: p.x, z: p.z, t: p.poseAt || p.at }); /* (tiger review #2: the pose's own time -- their pace by it) */
   }
   const events = tigerFrozen ? [] : tigerSim.tick(nowMs(), people); /* (tests' photos: held where they were put) */
   /* (383 Codex 371~380 #15: the two tigers' places only to those near 별마루섬, in their own small frame -- not the whole plaza to everyone ten times a second) */
@@ -2212,7 +2212,8 @@ const tigerCaughtAt = new Map(); const TIGER_CATCH_GAP_MS = 8000;
 async function tigerCatch(token, def) {
   const session = sessions.get(token); const at = plazaPresence.get(token); if (!session || !at) return;
   const account = pointAccountForSession(session); const spot = tigerSpot(); const now = nowMs();
-  const who = account || token; if (now - (tigerCaughtAt.get(who) || 0) < TIGER_CATCH_GAP_MS) return; tigerCaughtAt.set(who, now);
+  const who = account || token; if (now - (tigerCaughtAt.get(who) || 0) < TIGER_CATCH_GAP_MS) return;
+  for (const [k, at] of tigerCaughtAt) if (now - at >= TIGER_CATCH_GAP_MS) tigerCaughtAt.delete(k); tigerCaughtAt.set(who, now); /* (tiger review #8: the old ones out) */
   resourcePulls.delete(token); weedPulls.delete(token); quarryPulls.delete(token); fishCasts.delete(token); freeSeat(token);
   /* (383 #5: the move kept as the account's spot for a reconnect, and a pose sent before it (its time older) no longer puts them back in the wood) */
   plazaPresence.set(token, { ...at, x: spot.x, z: spot.z, moving: false, at: now, sentT: now, act: null, seat: null }); plazaLastPos.set(token, { x: spot.x, z: spot.z }); notePlazaSpot(account, spot.x, spot.z, now); plazaDirty = true;
@@ -2220,10 +2221,20 @@ async function tigerCatch(token, def) {
   const id = `${now}:${def.id}`;
   const take = () => pointStore.questApply(account, 'tiger', (doc, bag) => { if (doc.lastId === id) return { error: 'DONE' }; const pick = IslandTigers.losePick(bag, IslandItems); const lost = pick.map((e) => IslandItems.itemDef(e.itemId)?.name || e.itemId);
     return { doc: { caught: (doc.caught || 0) + 1, at: now, by: def.id, lastId: id, lastLost: lost }, take: pick.map((e) => ({ entryId: e.entryId, qty: 1 })), lost }; });
-  let out = null;
-  for (let k = 0; account && k < 5 && !out; k += 1) { out = await take().catch((error) => { console.error('호랑이 물건 잃기 실패:', error.message); return null; }); if (out?.error === 'DONE') out = { lost: (await pointStore.questDoc(account, 'tiger')).doc?.lastLost || [] }; else if (out?.error) out = { lost: [] }; /* (a try that had saved before its answer was lost: what it took) */ if (!out) await new Promise((r) => { setTimeout(r, 2000 * (k + 1)); }); }
-  console.log(`[tiger] caught by=${def.id} lost=${out?.lost?.length ?? 0}${account && !out ? ' unsaved' : ''}`); /* (no account in the log) */
-  notifyAccount(account, 'tigerCaught', { by: def.name, lost: out?.lost || [], x: spot.x, z: spot.z, ...(out?.bag ? { bag: out.bag } : {}), ...(account && !out ? { unsaved: true } : {}) });
+  const once = async () => { const r = await take().catch((error) => { console.error('호랑이 물건 잃기 실패:', error.message); return null; }); if (r?.error === 'DONE') return { lost: (await pointStore.questDoc(account, 'tiger')).doc?.lastLost || [] }; return r?.error ? { lost: [] } : r; }; /* (a try that had saved before its answer was lost: what it took) */
+  /* (tiger review #4: the move told at once -- the first try's loss with it; a try that failed goes on behind (up to five) and its loss follows as
+     'tigerLost'. #6: `who` -- only the screen caught goes to the mayor; the account's other screens have the bag and the word) */
+  const out = account ? await once() : null;
+  console.log(`[tiger] caught by=${def.id} lost=${out?.lost?.length ?? 0}${account && !out ? ' retrying' : ''}`); /* (no account in the log) */
+  notifyAccount(account, 'tigerCaught', { id, who: session.plazaId, by: def.name, lost: out?.lost || [], x: spot.x, z: spot.z, ...(out?.bag ? { bag: out.bag } : {}), ...(account && !out ? { pending: true } : {}) });
+  if (account && !out) (async () => { let late = null; for (let k = 1; k < 5 && !late; k += 1) { await new Promise((r) => { setTimeout(r, 2000 * k); }); late = await once(); }
+    console.log(`[tiger] caught by=${def.id} lost=${late?.lost?.length ?? 0}${late ? ' late' : ' unsaved'}`); notifyAccount(account, 'tigerLost', { id, by: def.name, lost: late?.lost || [], ...(late?.bag ? { bag: late.bag } : {}), ...(late ? {} : { unsaved: true }) }); })();
+}
+/* (tiger review #4: a screen that was shut or away when it was caught -- told once it is back (its lobby stream opens), till it says it saw it) */
+async function tigerCaughtReplay(account) {
+  if (!account) return; const doc = (await pointStore.questDoc(account, 'tiger').catch(() => ({ doc: null }))).doc;
+  if (!doc?.lastId || doc.seenId === doc.lastId || nowMs() - (doc.at || 0) > 24 * 3600000) return;
+  const def = IslandTigers.TIGERS.find((d) => d.id === doc.by); notifyAccount(account, 'tigerCaught', { id: doc.lastId, again: true, by: def?.name || '호랑이', lost: doc.lastLost || [] });
 }
 
 // v1.10.11 서버 공용 랜덤 이벤트 (lib/island-events.js): 15 out on the island for everyone. A player hears only of
@@ -6158,6 +6169,7 @@ async function requestHandler(req, res) {
     broadcastLobby();
     sseWrite(res, 'announcements', { items: await announcementStore.list() });
     sseWrite(res, 'plaza', plazaSnapshot()); // who is already in the plaza (v1.9.3)
+    tigerCaughtReplay(pointAccountForSession(session)).catch(() => {}); /* (tiger review #4: a catch this account has not seen yet) */
     sseWrite(res, 'statues', statueSnapshot()); // v1.10.5: the donation statues on show
     sseWrite(res, 'islandEvents', { list: adminEventsView(), at: nowMs(), entry: true }); // (364 섬 이벤트: those running, told on entry)
 
@@ -9221,6 +9233,11 @@ async function requestHandler(req, res) {
   }
   // (1.10.376 별마루섬 호랑이, tests: on or off, one put somewhere, their rest hours' clock shifted; the state read back)
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/tigers' && req.method === 'POST') { const body = await parseJson(req); if (typeof body.on === 'boolean') tigerSim.setOn(body.on); if (typeof body.freeze === 'boolean') tigerFrozen = body.freeze; /* (383 photos: held where put, facing place.yaw) */ if (Number.isFinite(body.clockShift)) tigerSim.setClockShift(body.clockShift); if (body.place && Number.isFinite(body.place.x) && Number.isFinite(body.place.z)) tigerSim.place(String(body.place.id), body.place.x, body.place.z, nowMs(), Number.isFinite(body.place.yaw) ? body.place.yaw : undefined); plazaDirty = true; return sendJson(res, 200, { ok: true, on: tigerSim.isOn(), tigers: tigerSim.state(), ready: tigerSim.ready() }); }
+  if (pathname === '/api/island/tiger/seen' && req.method === 'POST') { /* (tiger review #4: the page showed this catch -- not told again) */
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req); const id = String(body.id || '');
+    if (account && id) await pointStore.questApply(account, 'tiger', (doc) => (doc.lastId === id && doc.seenId !== id ? { doc: { ...doc, seenId: id } } : { error: 'NONE' })).catch(() => null);
+    return sendJson(res, 200, { ok: true });
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/tigers/catch' && req.method === 'POST') { /* (383 tests: both tigers' paws in one tick on me -- Codex 371~380 #2·#5·#6) */
     const session = requireSession(req, res); if (!session) return; const body = await parseJson(req);
     await Promise.all(IslandTigers.TIGERS.filter((d) => (body.both ? true : d.id === body.id)).map((d) => tigerCatch(session.token, d)));
