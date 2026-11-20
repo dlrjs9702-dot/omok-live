@@ -3014,7 +3014,9 @@ async function contestNote(account, session, contestId, kind, value) {
   const row = contestBoard.rows.get(account) || { account, name: String(session.label || '게스트'), score: null, at: 0 };
   const score = IslandContest.merge(kind, row.score, value); if (score !== row.score) { row.score = score; row.at = contestNow(); }
   contestBoard.rows.set(account, row);
-  return { score: row.score, rank: IslandContest.rank([...contestBoard.rows.values()], c.kind).indexOf(row) + 1 };
+  /* (381 사용자 결정 14 「A, 매일 하는 대회 섬대회로」: a festival on -- a record in the day's 섬 대회 is its 「섬 대회 참가」 stamp, once a day) */
+  let stamp = null; try { const now = festivalNow(); const fest = IslandCalendar.festivalAt(now, await calendarOverride()); if (fest?.tasks.islandContest) { const out = await pointStore.questApply(account, `fest:${fest.id}`, (doc) => { const a = IslandFestival.award(fest, doc, 'islandContest', now); return a.error ? { error: a.error } : { doc: a.doc, added: a.added }; }); if (!out?.error) stamp = out.added; } } catch (error) { console.error('섬 대회 도장 실패:', error.message); }
+  return { score: row.score, rank: IslandContest.rank([...contestBoard.rows.values()], c.kind).indexOf(row) + 1, ...(stamp ? { stamp } : {}) };
 }
 // (v1.10.238 대회 천막: 「참가하기」 at the tent's keeper -- by the tent, the contest live -- gives this account a pass for the
 // contest; a contest round then opens on it (its game, its level), 「다시 하기」 too, from the game screen off the island)
@@ -9004,7 +9006,7 @@ async function requestHandler(req, res) {
     const account = pointAccountForSession(session); const now = festivalNow(); const override = await calendarOverride();
     const fest = IslandCalendar.festivalAt(now, override); const next = fest ? null : IslandCalendar.nextFestival(now, override);
     const snowmen = fest?.tasks.snowman ? snowmenFor(account, await pointStore.worldValue(`snowmen:${fest.id}:${IslandCalendar.dayOf(now)}`)) : null; // (X2: the day's snowmen on the field)
-    return sendJson(res, 200, { ok: true, festival: fest ? IslandFestival.view(fest, (await pointStore.questDoc(account, `fest:${fest.id}`)).doc, now) : null, snowmen, next: next ? { id: next.id, name: next.name, start: next.start, end: next.end } : null, place: IslandCalendar.PLACES, now }); // (X2 카운트다운: the board's seconds by the server's clock)
+    return sendJson(res, 200, { ok: true, festival: fest ? IslandFestival.view(fest, (await pointStore.questDoc(account, `fest:${fest.id}`)).doc, now) : null, snowmen, next: next ? { id: next.id, name: next.name, start: next.start, end: next.end } : null, place: IslandCalendar.PLACES, now, contestTime: ((c) => `${c.hour}:${String(c.minute).padStart(2, '0')}`)(IslandContest.config((await pointStore.worldValue('contest'))?.config)) /* (381: the 섬 대회's time, in its line's hint) */ }); // (X2 카운트다운: the board's seconds by the server's clock)
   }
   if (pathname.startsWith('/api/island/festival/') && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;

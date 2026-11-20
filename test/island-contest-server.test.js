@@ -19,7 +19,9 @@ test('섬 대회 천막 서버: 천막에서 연 판만 대회 기록, 대회 �
   const K = Calendar.PLACES.keeper; const stand = (s, x, z) => req('/api/plaza/state', s, { x, z, yaw: 0, moving: false });
   const start = (s, game, extra = {}) => req('/api/solo/reflex/start', s, { game, level: 'easy', ...extra });
   const round = async (s, game, score, extra) => { const r = await start(s, game, extra); assert.equal(r.status, 200, JSON.stringify(r.data)); await req('/api/test/reflex/age', s, { id: r.data.id, ageMs: 31000 }); return (await req('/api/solo/reflex/finish', s, { id: r.data.id, score })).data; };
+  const noFestival = () => req('/api/test/festival/clock', null, { at: Date.parse('2026-11-10T15:00:00+09:00'), tick: true }); /* (381: no festival's stamp in the records, whatever today is) */
   try {
+    await noFestival();
     assert.equal((await req('/api/test/contest/clock', a, { to: 'live', kind: 'whack' })).data.phase, 'live');
     const view = (await req('/api/island/contest', a)).data;
     assert.equal(view.contest.tent, true); assert.equal(view.contest.game, 'whack'); assert.equal(view.contest.level, 'normal');
@@ -32,9 +34,13 @@ test('섬 대회 천막 서버: 천막에서 연 판만 대회 기록, 대회 �
     await stand(a, K.x, K.z); await stand(b, K.x + 1, K.z);
     for (const s of [a, b]) assert.equal((await req('/api/island/contest/join', s, {})).data.game, 'whack'); // (「참가하기」 by the tent: the pass)
     assert.equal((await start(a, 'colorfind', { contest: true })).data.error, 'BAD_LEVEL'); // (not this week's game)
-    assert.deepEqual((await round(a, 'whack', 260, { contest: true })).contest, { score: 260, rank: 1 });
-    assert.deepEqual((await round(b, 'whack', 280, { contest: true })).contest, { score: 280, rank: 1 });
-    assert.deepEqual((await round(a, 'whack', 240, { contest: true })).contest, { score: 260, rank: 2 }); // (my best kept)
+    /* (381 사용자 결정 14: in a festival the day's first record is its 「섬 대회 참가」 stamp -- once a day) */
+    await req('/api/test/festival/clock', null, { at: Date.parse('2026-11-21T15:00:00+09:00'), tick: true });
+    assert.deepEqual((await round(a, 'whack', 260, { contest: true })).contest, { score: 260, rank: 1, stamp: 1 });
+    assert.deepEqual((await round(b, 'whack', 280, { contest: true })).contest, { score: 280, rank: 1, stamp: 1 });
+    assert.deepEqual((await round(a, 'whack', 240, { contest: true })).contest, { score: 260, rank: 2 }); // (my best kept; the stamp once)
+    assert.equal((await req('/api/island/festival', a)).data.festival.tasks.find((x) => x.id === 'islandContest').today, 1);
+    await noFestival();
     const live = (await req('/api/island/contest', a)).data;
     assert.deepEqual(live.top.map((r) => [r.name, r.score]), [['대회이웃', 280], ['대회손님', 260]]); assert.deepEqual(live.mine, { score: 260, rank: 2 });
     // 대회 순위 (notes docs/contest-results-20261110.md): the open contest's whole board, mine marked, no accounts out; the tent
@@ -68,7 +74,7 @@ test('섬 대회 천막 서버: 천막에서 연 판만 대회 기록, 대회 �
     assert.deepEqual(kept.history[0].ranks, [{ rank: 1, name: '대회이웃', score: 250 }, { rank: 2, name: '대회손님', score: 320, mine: true }]); assert.equal(kept.history[0].entrants, 2);
     await req('/api/test/contest/clock', a, { to: 'after' }); const home = await held(); assert.equal(home?.eventId, 'contest:back', JSON.stringify(home));
     assert.ok(Math.hypot(home.from.x - K.x, home.from.z - K.z) < 2);
-  } finally { await req('/api/test/contest/clock', a, { to: 'reset' }); }
+  } finally { await req('/api/test/contest/clock', a, { to: 'reset' }); await req('/api/test/festival/clock', null, { at: 0 }); }
   // the contest over (the real clock, unless it is 14:00 now): no contest round
   const off = (await req('/api/island/contest', a)).data.contest;
   if (off.phase !== 'live') assert.equal((await start(a, off.game, { contest: true })).data.error, 'CONTEST_CLOSED');

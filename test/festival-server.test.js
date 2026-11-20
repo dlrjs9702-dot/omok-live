@@ -132,7 +132,7 @@ test('크리스마스: 선물 배달(받는 이웃 곁에서만), 눈사람(서�
   const P = C.PLACES; const S = P.snow; const wait = (ms) => new Promise((r) => { setTimeout(r, ms); });
   await clock('2026-12-19T12:00:00');
   const v = (await req('/api/island/festival', a)).data; assert.equal(v.festival.id, 'christmas-2026'); assert.deepEqual(v.snowmen, []);
-  assert.deepEqual(v.festival.tasks.map((x) => [x.id, x.stamps, x.perDay]), [['gift', 1, 3], ['snowman', 3, 1], ['gather', 6, 1], ['market', 1, 1] /* (1.10.325 크리스마스 마켓) */, ['snowfight', 1, 1] /* (1.10.334 눈싸움) */, ['contest', 1, 1]]);
+  assert.deepEqual(v.festival.tasks.map((x) => [x.id, x.stamps, x.perDay]), [['gift', 1, 3], ['snowman', 3, 1], ['gather', 6, 1], ['market', 1, 1] /* (1.10.325 크리스마스 마켓) */, ['snowfight', 1, 1] /* (1.10.334 눈싸움) */, ['islandContest', 1, 1] /* (381: the daily 섬 대회 -- the weekend contests' line hidden while they are off) */]);
   // 선물 배달: from the sack by the host; held till handed to them (a second one not before)
   assert.equal((await req('/api/island/festival/gift', a, { step: 'take' })).data.error, 'TOO_FAR');
   await stand(P.host); const took = await req('/api/island/festival/gift', a, { step: 'take' }); assert.equal(took.status, 200, JSON.stringify(took.data));

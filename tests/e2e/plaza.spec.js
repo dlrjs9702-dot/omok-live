@@ -1873,6 +1873,7 @@ test('계절 행사: 수확제 기간에 대청마당 가판대·행사 주민, 
     // (a new account's guide, or another test's player left standing there, may be nearer: round the host's front until it is the one SPACE is for)
     let turn = 0; await expect.poll(async () => { const a2 = P.host.yaw + [0, 0.5, -0.5, 0.9, -0.9][turn++ % 5]; await page.evaluate(([x, z, a]) => window.PlazaWarp(x + Math.sin(a) * 1.0, z + Math.cos(a) * 1.0), [P.host.x, P.host.z, a2]); await page.waitForTimeout(300); return spaceOn(page, 'fest:host', isMobile); }, { timeout: 20000 }).toBe(true);
     const card = page.locator('#festivalCard'); await expect(card).toContainText('수확제'); await expect(card).toContainText('밭 수확'); await expect(card.locator('.festivalStamps')).toHaveText('도장 0개');
+    await expect(card).toContainText('섬 대회 참가'); await expect(card).toContainText('매일 14:00 섬 대회'); await expect(card).not.toContainText('매주 대회 참가'); /* (381 사용자 결정 14: the daily 섬 대회 in the weekend contests' place) */
     await page.locator('#plazaCloseBtn').click();
     // the farm: the festival's harvest, a stamp
     const F = T.FARM; await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [F.x, F.z - 1]);
