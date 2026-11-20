@@ -146,7 +146,7 @@ test('마당 꾸미기: 3층 마당 진열대 → 내 마당(울타리 잇기·�
     expect(await page.evaluate(() => window.IslandAssets.REGISTRY['yard.lantern_stone'].nightGlow)).toBe(true);
     // filled to 60 (level 3): the frame line against the empty yard
     await post(request, '/api/test/yard', a.token, { level: 3 });
-    const more = (await post(request, '/api/test/home/furniture', a.token, { ids: [...Array(51)].map(/* (v1.10.251: 9 placed with the trophy; trophies have no plain good) */(_, i, all, s = Y.SHAPES.filter((k) => !Y.ITEMS[k].trophy)) => Y.goodId(s[i % s.length])) })).data.pieces;
+    const more = (await post(request, '/api/test/home/furniture', a.token, { ids: [...Array(51)].map(/* (v1.10.251: 9 placed with the trophy; trophies have no plain good) */(_, i, all, s = Y.SHAPES.filter((k) => !Y.ITEMS[k].trophy && !Y.ITEMS[k].store /* (386: the storehouse is built, not a good) */)) => Y.goodId(s[i % s.length])) })).data.pieces;
     let yard = (await get(request, '/api/home', a.token)).data.lots.find((l) => l.id === lot).yard; const box = Y.boxOf(L, 1, 3);
     await stand(-4.75, -2.25); await page.waitForTimeout(800);
     for (const p of more) {
@@ -252,6 +252,41 @@ test('마당 농사·집 손보기: 텃밭 칸 SPACE → 심기 → 다 자라�
     await expect(page.locator('#plazaDialog .todayNotice')).toContainText('내 집 · 부서짐', { timeout: 20000 }); await expect(page.locator('#plazaDialog .todayNotice')).toContainText('수리비 20,000P'); await shot('today-notice', 800);
     await page.locator('#plazaDialog .todayNotice button', { hasText: '닫기' }).click();
     await expect.poll(() => page.evaluate((k) => window.PlazaDebug().bugs().find((s) => s.key === k)?.n, `yard:${lot}`), { timeout: 20000 }).toBe(15);
+    await expectNoScriptError(page);
+  } finally { if (lot) await post(request, '/api/test/home/release', token, { lot }).catch(() => {}); await a.context.close(); }
+});
+
+// 1.10.386 마당 창고 (사용자 결정 19~21·24·32, assets 160): built at the 관공서 (its button), placed in my yard, its door's SPACE opens it -- my bag's
+// carrots in, some back out, a tool not offered; everyone's screen draws it (its roof the house's colour)
+test('마당 창고: 관공서에서 짓기 → 마당에 놓기 → 문 앞 SPACE → 넣기·하나만 꺼내기 · 도구는 안 보임', async ({ browser, request, isMobile }) => {
+  test.setTimeout(300000);
+  const T = require('../../public/plaza/island-terrain.js');
+  const tag = isMobile ? 'm' : 'p'; const a = await shopper(browser, request, `창고${tag}`, 300000, 'female'); const { page, token } = a;
+  await page.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.view.out', 'third'); });
+  await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 90000 }).toBe(true);
+  const press = async () => { if (isMobile) await page.locator('#plazaHint').tap(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('Space'); } };
+  let lot = null;
+  try {
+    const th = await page.evaluate(() => window.PlazaDebug().doors.townhall); await standAt(request, a, th.x, th.z); expect((await post(request, '/api/island/townhall/enter', token, {})).status).toBe(200);
+    lot = (await get(request, '/api/home', token)).data.lots.find((l) => l.owner === null).id; expect((await post(request, '/api/home/apply', token, { lot, roof: 'green' })).status).toBe(200);
+    const before = (await get(request, '/api/points', token)).data.balance;
+    const built = await post(request, '/api/home/storehouse/build', token, {}); expect(built.status).toBe(200); expect(built.data.slots).toBe(20);
+    expect(before - (await get(request, '/api/points', token)).data.balance).toBe(100000); /* (10만, 결정 19) */
+    const ex = T.roomWorld(T.TOWNHALL_ROOM.exit.lx, T.TOWNHALL_ROOM.exit.lz); await standAt(request, a, ex.x, ex.z); await post(request, '/api/island/townhall/leave', token, {});
+    const L = Y.lotById(lot); let spot = null; const b = Y.boxOf(L, 1, 1);
+    for (let lz = b[2] + 2; lz < b[3] - 1.5 && !spot; lz += 0.5) for (let lx = b[0] + 2; lx < b[1] - 2 && !spot; lx += 0.5) { const p = { uid: 'storehouse', id: Y.STORE.idOf(1), x: Y.snap(lx), z: Y.snap(lz), rot: 0 }; if (!Y.placeError(p, [], L, 1, 1) && lz > 3) spot = p; }
+    const near = Y.world(L, spot.x, spot.z - 2.4); await standAt(request, a, near.x, near.z);
+    expect((await post(request, '/api/home/yard', token, { uid: 'storehouse', x: spot.x, z: spot.z, rot: 0 })).status).toBe(200);
+    await post(request, '/api/test/island/give', token, { itemId: 'crop_carrot', qty: 7 }); await post(request, '/api/test/island/give', token, { itemId: 'bread', qty: 1 });
+    // its door: SPACE -> the window
+    await expect.poll(async () => { await page.evaluate(() => { const d = window.PlazaDebug(); d.yardFarm(); const w = d.doors['storehouse:door']; if (w) d.teleport(w.x, w.z); }); await page.waitForTimeout(500); return page.locator('#plazaHint').textContent(); }, { timeout: 30000 }).toContain('마당 창고 열기');
+    await press(); const dialog = page.locator('#plazaDialog'); await expect(dialog).toContainText('작은 나무 창고 · 0/20칸');
+    await expect(dialog.locator('.storeCan button[data-dir="put"]', { hasText: '빵' })).toHaveCount(0); /* (an errand thing not offered) */
+    await dialog.locator('.storeCan button[data-dir="put"]', { hasText: '당근' }).click(); await expect(dialog).toContainText('1/20칸');
+    await dialog.locator('.storeIn .storeRow', { hasText: '당근' }).locator('button', { hasText: '하나만' }).click(); await expect(dialog.locator('.storeIn')).toContainText('×6');
+    const s = (await get(request, '/api/home/storehouse', token)).data.storehouse; expect(s.items.map((e) => [e.itemId, e.qty])).toEqual([['crop_carrot', 6]]);
+    expect(((await get(request, '/api/island/bag', token)).data.items || []).filter((e) => e.itemId === 'crop_carrot').reduce((n, e) => n + e.qty, 0)).toBe(1);
+    await expect.poll(() => page.evaluate(() => window.PlazaDebug().storehouses?.() || []), { timeout: 20000 }).toContainEqual(expect.objectContaining({ lot, model: `yard.storehouse_1.green` }));
     await expectNoScriptError(page);
   } finally { if (lot) await post(request, '/api/test/home/release', token, { lot }).catch(() => {}); await a.context.close(); }
 });

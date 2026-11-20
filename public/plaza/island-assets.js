@@ -425,6 +425,11 @@
   // v1.10.225 마당 꾸미기 (assets 70 yard-v1): the yard's twelve, yard.<shape> (instanced over the lots, Low far off; the two
   // lamps' glow lit at night only)
   for (const f of ['fence_wood', 'fence_stone', 'fence_flower', 'stepping_stones', 'garden_light', 'birdhouse', 'flowerbed', 'planter_box', 'mailbox', 'bench', 'lantern_stone', 'arch']) REGISTRY[`yard.${f}`] = { url: `/assets/island/yard-v1/${f}.glb`, low: { url: `/assets/island/yard-v1/${f}_low.glb` }, near: 30, nightGlow: true };
+  // 1.10.386 마당 창고 (assets 160 storehouse.json, 사용자 결정 32 「A」 붉은 헛간): yard.storehouse_<stage>.<roof> -- each lot's own model, its
+  // `roof` material painted the house's roof colour as linear values (setRGB r/255.. as the houses' roof vertex colours -- a hex `color.set`
+  // made only this roof darker), the winter snow on its gable, stage 4's lamp lit at night
+  const STORE_ROOF = { red: [0.788, 0.416, 0.29], blue: [0.353, 0.498, 0.682], green: [0.435, 0.604, 0.353], brown: [0.541, 0.373, 0.243] };
+  for (let s = 1; s <= 4; s += 1) for (const [roof, rgb] of Object.entries(STORE_ROOF)) REGISTRY[`yard.storehouse_${s}.${roof}`] = { url: `/assets/island/yard-v1/storehouse_${s}.glb`, low: { url: `/assets/island/yard-v1/storehouse_${s}_low.glb` }, near: 45, snow: true, nightGlow: true, paint: { roof: rgb } };
   // v1.10.251 기록의 탑 트로피 (assets 98): yard.trophy_<sym>, one a game and 「게임관의 별」 -- each drawn on its own (its metal and
   // plate are the piece's), keepNodes for those two, its symbol's glow lit at night
   for (const s of ['mole', 'reaction', 'color', 'numbers', 'beat', 'sky', 'mines', 'sudoku', 'nonogram', 'bridges', 'circuit', 'klondike', 'freecell', 'spider', 'star']) REGISTRY[`yard.trophy_${s}`] = { url: `/assets/island/yard-v1/trophy_${s}.glb`, low: { url: `/assets/island/yard-v1/trophy_${s}_low.glb` }, near: 30, keepNodes: true };

@@ -2169,6 +2169,54 @@
     "together-v1/insect_stag_giant.glb": {
       "nodes": 2,
       "reason": "1.10.378 N2b 131: the still one (as 105)"
+    },
+    "yard-v1/storehouse_1.glb": {
+      "meshes": 2,
+      "nodes": 4,
+      "textures": 2,
+      "reason": "1.10.386 assets 160 마당 창고: its door (door) a node and mesh of its own to open, the body one mesh; one 512 picture (yard_atlas) as the 111 yard pieces"
+    },
+    "yard-v1/storehouse_1_low.glb": {
+      "meshes": 2,
+      "nodes": 4,
+      "textures": 2,
+      "reason": "1.10.386 assets 160 마당 창고: its door (door) a node and mesh of its own to open, the body one mesh; one 512 picture (yard_atlas) as the 111 yard pieces"
+    },
+    "yard-v1/storehouse_2.glb": {
+      "meshes": 2,
+      "nodes": 4,
+      "textures": 2,
+      "reason": "1.10.386 assets 160 마당 창고: its door (door) a node and mesh of its own to open, the body one mesh; one 512 picture (yard_atlas) as the 111 yard pieces"
+    },
+    "yard-v1/storehouse_2_low.glb": {
+      "meshes": 2,
+      "nodes": 4,
+      "textures": 2,
+      "reason": "1.10.386 assets 160 마당 창고: its door (door) a node and mesh of its own to open, the body one mesh; one 512 picture (yard_atlas) as the 111 yard pieces"
+    },
+    "yard-v1/storehouse_3.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "textures": 2,
+      "reason": "1.10.386 assets 160 마당 창고: its doors (door_l, door_r) a node and mesh of their own to open, the body one mesh; one 512 picture (yard_atlas) as the 111 yard pieces"
+    },
+    "yard-v1/storehouse_3_low.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "textures": 2,
+      "reason": "1.10.386 assets 160 마당 창고: its doors (door_l, door_r) a node and mesh of their own to open, the body one mesh; one 512 picture (yard_atlas) as the 111 yard pieces"
+    },
+    "yard-v1/storehouse_4.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "textures": 2,
+      "reason": "1.10.386 assets 160 마당 창고: its doors (door_l, door_r) a node and mesh of their own to open, the body one mesh; one 512 picture (yard_atlas) as the 111 yard pieces"
+    },
+    "yard-v1/storehouse_4_low.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "textures": 2,
+      "reason": "1.10.386 assets 160 마당 창고: its doors (door_l, door_r) a node and mesh of their own to open, the body one mesh; one 512 picture (yard_atlas) as the 111 yard pieces"
     }
   },
   "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files.",

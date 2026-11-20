@@ -3515,7 +3515,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if(c?.residentKey===key) {
         delete c.residentKey; delete c.returnYaw; delete c.talkYaw; c.waving=false; c.lookAt=null;
         delete c.root.userData.facility; const index=facilityRoots.indexOf(c.root); if(index>=0) facilityRoots.splice(index,1);
-        disposeTag(c.tag); c.tag=null; assets.letGo(c,'cameraBag'); assets.letGo(c,'carry');
+        disposeTag(c.tag); c.tag=null; fitQuestTag(c); /* (386) */ assets.letGo(c,'cameraBag'); assets.letGo(c,'carry');
         o.receivedStand?.removeFromParent(); c.anim?.release?.();
       }
     } else if (o.npc) { const index=npcs.indexOf(o.npc); if(index>=0) npcs.splice(index,1); disposeCharacter(o.npc); }
@@ -4366,8 +4366,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const yardsShown = new Map(); let yardCells = []; const yardStandIns = new Map(); let yardGhostV = null; let yardHere = null;
   function noteYard(l) {
     const lot = YARD.lotById(l.id); const items = l.owner !== null ? l.yard || [] : []; const stage = l.owner !== null ? HOME.stageOf(l.stage).n : 1; const level = l.yardLevel || 1;
-    const key = JSON.stringify([items, stage, level]); if (yardsShown.get(l.id)?.key === key) return false;
-    yardsShown.set(l.id, { key, lot, stage, level, items });
+    const roof = HOME.ROOFS?.includes(l.roof) ? l.roof : 'red'; /* (1.10.386 마당 창고: its roof the house's colour) */
+    const key = JSON.stringify([items, stage, level, roof]); if (yardsShown.get(l.id)?.key === key) return false;
+    yardsShown.set(l.id, { key, lot, stage, level, items, roof });
     setGridSolids(`yard:${l.id}`, [...items.flatMap((p) => YARD.solidsOf(lot, p)), ...YARD.fenceSolids(lot, level)]); // (v1.10.230: its fence -- in only by the gate)
     for (let i = SEATS.length - 1; i >= 0; i -= 1) if (String(SEATS[i].id).startsWith(`yard:${l.id}:`)) SEATS.splice(i, 1);
     SEATS.push(...items.flatMap((p) => YARD.seatsOf(lot, p)));
@@ -4384,13 +4385,28 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // (v1.10.230 울타리 마을: each lot's own fence at its level, the same pieces as a yard's wooden fence, stretched to fit)
     for (const y of yardsShown.values()) for (const p of YARD.fencePieces(y.level)) { if (!by.has('fence_wood')) by.set('fence_wood', new Map()); const per = by.get('fence_wood'); if (!per.has(y.lot.id)) per.set(y.lot.id, []); per.get(y.lot.id).push(yardMatrix(y.lot, p).multiply(new THREE.Matrix4().makeScale(p.len, 1, 1))); }
     drawYardTrophies();
-    for (const y of yardsShown.values()) for (const p of y.items) { const shape = YARD.shapeOf(p.id); if (!shape || YARD.ITEMS[shape].trophy) continue; if (!by.has(shape)) by.set(shape, new Map()); const per = by.get(shape); if (!per.has(y.lot.id)) per.set(y.lot.id, []); per.get(y.lot.id).push(yardMatrix(y.lot, p)); }
+    for (const y of yardsShown.values()) for (const p of y.items) { const shape = YARD.shapeOf(p.id); if (!shape || YARD.ITEMS[shape].trophy || YARD.ITEMS[shape].store) continue; if (!by.has(shape)) by.set(shape, new Map()); const per = by.get(shape); if (!per.has(y.lot.id)) per.set(y.lot.id, []); per.get(y.lot.id).push(yardMatrix(y.lot, p)); }
+    drawStorehouses();
     for (const [shape, per] of by) {
       const [geo, m] = yardStandIn(shape);
       /* (314 렉 줄이기 ㄱ, 검토 render-scale-and-house-lag 4절: the lots' fences cast no shadow -- 41만~65만 triangles off the shadow pass on 집 거리 (10.5 → 9.7 ms); the yard's other pieces keep theirs) */
       const shadow = shape !== 'fence_wood';
       const cells = [...per].map(([id, matrices]) => { const lot = YARD.lotById(id); const im = new THREE.InstancedMesh(geo, m, matrices.length); matrices.forEach((x, i) => im.setMatrixAt(i, x)); im.castShadow = shadow; yardGroup.add(im); return { x: lot.x, z: lot.z, parent: yardGroup, procedural: [im], matrices, colors: null, shadow }; });
       assets.batch(`yard.${shape}`, cells); yardCells.push(cells);
+    }
+  }
+  // 1.10.386 마당 창고 (assets 160): each lot's own, a model of its own (not batched) -- its roof the house's colour (yard.storehouse_N.<roof>,
+  // the `roof` material painted) and its winter snow, as the houses'
+  const storeHolds = new Map();
+  function drawStorehouses() {
+    const want = new Map();
+    for (const y of yardsShown.values()) { const p = y.items.find(YARD.isStore); const shape = p && YARD.shapeOf(p.id); if (shape) want.set(y.lot.id, { y, p, shape, key: `${p.id}|${p.x}|${p.z}|${p.rot}|${y.roof}` }); }
+    for (const [id, s] of storeHolds) if (want.get(id)?.key !== s.key) { s.h.removeFromParent(); assets.detach(s.h); disposeOwn(s.f); storeHolds.delete(id); }
+    for (const [id, w] of want) {
+      if (storeHolds.has(id)) continue;
+      const h = new THREE.Group(); yardMatrix(w.y.lot, w.p).decompose(h.position, h.quaternion, h.scale); yardGroup.add(h);
+      const f = new THREE.Group(); const [geo, m] = yardStandIn(w.shape); const box = new THREE.Mesh(geo.clone(), m); box.scale.y = 4; f.add(box); h.add(f);
+      assets.attach(`yard.${w.shape}.${w.y.roof}`, h, f); storeHolds.set(id, { key: w.key, h, f });
     }
   }
   // v1.10.318 마당 농사 F1 + 집 손보기 (IslandFarm, assets 115): on each lot's beds what grows in each cell (its stage by the server
@@ -4410,7 +4426,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   function drawFarm(lots = farmLots, force = false) {
     farmLots = lots || []; const now = viewNow();
-    for (const k of Object.keys(doors)) if (/^(bed|yardweed):|^upkeep:box$/.test(k)) delete doors[k];
+    for (const k of Object.keys(doors)) if (/^(bed|yardweed):|^upkeep:box$|^storehouse:door$/.test(k)) delete doors[k];
     for (const l of farmLots) {
       const lot = YARD.lotById(l.id); if (!lot) continue; const owned = l.owner !== null; const stage = owned ? HOME.stageOf(l.stage).n : 1;
       const beds = owned ? (l.yard || []).filter((p) => YARD.shapeOf(p.id) === 'farm_bed') : [];
@@ -4431,6 +4447,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (!l.mine) continue;
       beds.forEach((p, b) => FARM.SLOTS.forEach((s, i) => { const at = cellPlace(lot, p, i, 0.85); doors[`bed:${p.uid}:${i}`] = { x: at.x, z: at.z, name: `텃밭 · ${cellWord((l.farm?.[p.uid] || [])[i] || null, now)}` }; }));
       const bx = HOME.upkeepBoxOf(lot, stage); doors['upkeep:box'] = { x: bx.x, z: bx.z, name: l.wear >= 1 ? `손보기 상자 · 집이 「${FARM.WEAR[l.wear]}」이에요` : l.shabby ? '손보기 상자 · 집이 허름해졌어요' : '손보기 상자' };
+      /* (1.10.386 마당 창고: at its door, mine only -- its things in and out) */
+      const store = (l.yard || []).find(YARD.isStore); const sd = store && YARD.storeDoor(lot, store); if (sd) doors['storehouse:door'] = { x: sd.x, z: sd.z, name: '마당 창고 열기' };
     }
   }
   // 1.10.348 4b 바퀴벌레 (assets 145; notes gather-must-ideas 104A~107A, 125B): a worn house's bugs -- 허름함 3, 낡음 8, 부서짐 15
@@ -4692,7 +4710,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     { const w = YARD.world(y.lot, p.x, p.z); editFocus = { x: w.x, y: heightAt(w.x, w.z) + 0.3, z: w.z }; } /* (v1.10.315: the camera zooms in to it) */
     const why = YARD.placeError(p, y.items.filter((x) => x.uid !== p.uid), y.lot, y.stage, y.level); const shape = YARD.shapeOf(p.id); if (!shape) return why;
     const root = new THREE.Group(); root.matrixAutoUpdate = false; root.matrix.copy(yardMatrix(y.lot, p)); yardGroup.add(root);
-    const fallback = new THREE.Group(); root.add(fallback); const [geo, m] = yardStandIn(shape); fallback.add(new THREE.Mesh(geo, m)); assets.attach(`yard.${shape}`, root, fallback);
+    const fallback = new THREE.Group(); root.add(fallback); const [geo, m] = yardStandIn(shape); fallback.add(new THREE.Mesh(geo, m)); assets.attach(YARD.ITEMS[shape].store ? `yard.${shape}.${y.roof}` : `yard.${shape}`, root, fallback); /* (386: the storehouse in its roof's colour) */
     const [w, d] = YARD.ITEMS[shape].foot; const mark = mesh(new THREE.BoxGeometry(w, 0.03, d), mat(why ? 0xe05050 : 0x4fbf6f, { transparent: true, opacity: 0.55 }), 0, 0.06, 0, root); mark.castShadow = false;
     yardGhostV = { root }; return why;
   }
@@ -5547,7 +5565,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
           if (ev.kind === 'photo' && !borrowed) { const cam = mesh(new THREE.BoxGeometry(0.26, 0.18, 0.12), mat(0x2b2b2b), 0.32, 1.05, 0.28, root); const h = new THREE.Group(); h.position.copy(cam.position); root.add(h); assets.attach('prop.event.camera', h, cam); } // the tourist's camera
           if (ev.kind === 'photo' && !borrowed) assets.hold(npc, 'quest.camera_bag', 0, { key: 'cameraBag', bone: 'Chest', at: [0.28, -0.5, -0.12], proc: [0.28, 0.65, 0.1] });
           // what they want, at a glance: the tourist's camera; the owner of a lost thing a yellow star 「!」 (v1.10.34)
-          if (ev.kind !== 'photo') { npc.tag = makeStarMark(); npc.root.add(npc.tag); } else { npc.tag = makeTag('📷', null); npc.tag.scale.multiplyScalar(0.7); npc.root.add(npc.tag); } fitTag(npc);
+          /* (386 문제 기록 5e510d4d·d783b6d1, notes issue-quest-mark-20261120: a borrowed walker's 심부름 mark let go first -- it stayed over them with no owner) */
+          if (borrowed) { disposeTag(npc.tag); npc.tag = null; npc.errandMark = null; }
+          if (ev.kind !== 'photo') { npc.tag = makeStarMark(); npc.root.add(npc.tag); } else { npc.tag = makeTag('📷', null); npc.tag.scale.multiplyScalar(0.7); npc.root.add(npc.tag); } fitTag(npc); if (borrowed) fitQuestTag(npc);
           if (!borrowed) npcs.push(npc);
         } else if (ev.kind === 'berry' && ev.tree) { root.position.set(ev.tree.x,heightAt(ev.tree.x,ev.tree.z),ev.tree.z); root.rotation.y=ev.tree.yaw; const h=new THREE.Group(); root.add(h); const fallback=new THREE.Group(); for(const a of [[.74,1.3,0],[.37,1.42,.64086],[-.37,1.3,.64086],[-.74,1.42,0],[-.37,1.3,-.64086],[.37,1.42,-.64086]]) mesh(new THREE.SphereGeometry(.09,6,4),mat(0xfbbf24),...a,fallback); h.add(fallback); assets.attach('tree.fruitLayer',h,fallback); root.userData.fruit=h; } else { eventModel(ev.kind, root, ev.id); root.traverse((m) => { if (m.isMesh) m.castShadow = false; }); } // small props: no shadow to draw
         root.userData.facility = key; facilityRoots.push(root);
@@ -5712,11 +5732,14 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function questMarks() {
     for (const { n, c } of wanderers) {
       const o = [...eventObjs].find(([k, x]) => k.startsWith('ev:quest_npc:') && x.walker === n)?.[1]; const want = o?.mark || null;
-      if ((c.questMark ?? null) === want) continue;
+      if ((c.questMark ?? null) === want) { fitQuestTag(c); continue; }
       c.questMark = want; disposeTag(c.questTag); c.questTag = null; // (its own mark -- a walker borrowed for a lost thing keeps that star on c.tag)
-      if (want) { c.questTag = want === 'ready' ? makeCheckMark() : makeStarMark(); c.questTag.position.y = (c.headTop || 2) + TAG_GAP + (c.tag ? 0.5 : 0); c.root.add(c.questTag); }
+      if (want) { c.questTag = want === 'ready' ? makeCheckMark() : makeStarMark(); c.root.add(c.questTag); fitQuestTag(c); }
     }
   }
+  /* (386 문제 기록 5e510d4d: the 부탁 mark's height again whenever the other mark (c.tag) comes or goes -- set once, ✓ and ★ were drawn on each
+     other, or the 부탁 one left 0.5 m up) */
+  function fitQuestTag(c) { if (c?.questTag) c.questTag.position.y = (c.headTop || 2) + TAG_GAP + (c.tag ? 0.5 : 0); }
   function stepWanderers(dt) {
     if (!walkers) { startWanderers(); return; }
     const m = me.root.position;
@@ -6888,7 +6911,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         return { id, angle: Math.round(THREE.MathUtils.radToDeg(Math.acos(THREE.MathUtils.clamp((f.x * (s.x - p.x) + f.z * (s.z - p.z)) / (Math.hypot(f.x, f.z) * Math.hypot(s.x - p.x, s.z - p.z) || 1), -1, 1)))), home: Math.round(THREE.MathUtils.radToDeg(Math.abs(Math.atan2(Math.sin(off), Math.cos(off))))) }; }); },
 
     beams: (on) => { for (const x of uplightBeams) x.visible = Boolean(on); }, /* (v1.10.224: the before/after photos) */
-    yards: () => ({ lots: [...yardsShown].filter(([, y]) => y.items.length).map(([id, y]) => ({ id, n: y.items.length, level: y.level })), batches: yardCells.length, trophies: yardTrophyRoots.map((r) => { let model = false; let metal = null; let plateDrawn = false; r.traverse((o) => { const m = o.isMesh && [].concat(o.material)[0]; if (m?.name === 'trophy_metal') { model = true; metal = m.color.getHexString(); } if (o.isMesh && o.material?.map?.isCanvasTexture) plateDrawn = true; }); return { ...r.userData.trophy, model, metal, plateDrawn }; }), /* (v1.10.251) */ seats: SEATS.filter((x) => String(x.id).startsWith('yard:')).map((x) => ({ id: x.id, x: x.x, z: x.z })), solids: [...gridTagged.values()].reduce((n, l) => n + new Set(l.map((e) => e.s)).size, 0), ghost: Boolean(yardGhostV), editing: yardHere }), /* (v1.10.225) */ solidAt: (x, z, r = 0.3) => solidsNear(x, z).some((o) => Math.hypot(x - o.x, z - o.z) < o.r + r), /* (v1.10.225: what blocks there, a character's width round it) */
+    headMarks: () => wanderers.map(({ n, c }) => { const all = c.root.children.filter((o) => o.userData?.mark); return { n, marks: all.length, orphans: all.filter((o) => o !== c.tag && o !== c.questTag).length, tag: c.tag?.userData?.mark || (c.tag ? 'other' : null), quest: c.questTag?.userData?.mark || null, tagY: c.tag ? +c.tag.position.y.toFixed(2) : null, questY: c.questTag ? +c.questTag.position.y.toFixed(2) : null }; }), setMarks: (m) => setResidentMarks(m || {}) /* (386 문제 기록 5e510d4d: tests -- every walker's marks over its head, none without an owner; 심부름 marks as the errands' answer would set them) */, storehouses: () => [...storeHolds].map(([lot, s]) => { const w = [...yardsShown.values()].find((y) => y.lot.id === lot); const p = w?.items.find(YARD.isStore); let model = false; s.h.traverse((o) => { if (o.isMesh && !s.f.children.includes(o) && o.parent !== s.f) model = true; }); return { lot, model: p ? `yard.${YARD.shapeOf(p.id)}.${w.roof}` : null, drawn: model }; }) /* (1.10.386 마당 창고: tests) */, yards: () => ({ lots: [...yardsShown].filter(([, y]) => y.items.length).map(([id, y]) => ({ id, n: y.items.length, level: y.level })), batches: yardCells.length, trophies: yardTrophyRoots.map((r) => { let model = false; let metal = null; let plateDrawn = false; r.traverse((o) => { const m = o.isMesh && [].concat(o.material)[0]; if (m?.name === 'trophy_metal') { model = true; metal = m.color.getHexString(); } if (o.isMesh && o.material?.map?.isCanvasTexture) plateDrawn = true; }); return { ...r.userData.trophy, model, metal, plateDrawn }; }), /* (v1.10.251) */ seats: SEATS.filter((x) => String(x.id).startsWith('yard:')).map((x) => ({ id: x.id, x: x.x, z: x.z })), solids: [...gridTagged.values()].reduce((n, l) => n + new Set(l.map((e) => e.s)).size, 0), ghost: Boolean(yardGhostV), editing: yardHere }), /* (v1.10.225) */ solidAt: (x, z, r = 0.3) => solidsNear(x, z).some((o) => Math.hypot(x - o.x, z - o.z) < o.r + r), /* (v1.10.225: what blocks there, a character's width round it) */
     projects: () => ({ scope: Boolean(scope), beams: uplightBeams.filter((b) => b.visible).length, bridge: Boolean(globalThis.IslandTerrain.bridges.some((b) => b.project === 'bridge')), night: Boolean(night), seats: SEATS.filter((s) => String(s.id).startsWith('pm-')).length, bits: [...projectBits.keys()].sort(), keeper: Boolean(worksKeeper?.root.visible), dropTop, plaques: Object.keys(doors).filter((k) => k.startsWith('plaque:')) }), /* (v1.10.222) */
     whatAt: (nx, ny) => { /* (v1.10.239: what the house's room shows at a screen point -- its layer, the mesh, where in the room) */ const R = homeRoomV; if (!R) return []; raycaster.setFromCamera(new THREE.Vector2(nx, ny), camera); return raycaster.intersectObject(R.group, true).filter((h) => h.object.visible).slice(0, 4).map((h) => { const layer = Object.entries(R.layers).find(([, l]) => { let o = h.object; while (o) { if (o === l.root) return true; o = o.parent; } return false; })?.[0] || (R.lid && (() => { let o = h.object; while (o) { if (o === R.lid) return true; o = o.parent; } return false; })() ? 'lid' : 'other'); const p = R.group.worldToLocal(h.point.clone()); const names = []; for (let o = h.object; o && o !== R.group && names.length < 3; o = o.parent) if (o.name) names.push(o.name); return { layer, names, x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), d: +h.distance.toFixed(2) }; }); },
     contestTent: () => (contestTent ? { shown: contestTent.root.visible, keeper: contestTent.keeper.root.visible, resident: contestTent.keeper.resident || null, name: contestTent.name, sign: contestTent.sign?.userData.boardText || null, plate: Boolean(contestTent.plate()), flags: contestTent.flags().length, door: eventDoors['contest:tent'] || null, buskerShown: Boolean(eventObjs.get('ev:quest_npc:busker')?.npc?.root.visible) } : null), /* (v1.10.238) */
@@ -7287,6 +7310,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (c.tag?.userData.errand) { disposeTag(c.tag); c.tag = null; }
       c.errandMark = want;
       if (want) { c.tag = want === 'ready' ? makeCheckMark() : makeStarMark(); c.tag.userData.errand = true; c.root.add(c.tag); fitTag(c); }
+      fitQuestTag(c); /* (386) */
     }
   }
   return { readiness /* (368 로딩 안정화) */, seeThrough: () => ({ on: +SEE.on.value.toFixed(2), want: seeWant, radius: Math.round(SEE.radius.value), depth: +SEE.depth.value.toFixed(1), blocked: seeBlocked(me.root.position), cliff: +SEE.cliff.value.toFixed(2), cliffBlocked: cliffBlocked(me.root.position), cliffs: (island.seeCliffs || []).map((k) => [+k.x.toFixed(1), +k.z.toFixed(1)]) }) /* (1.10.369 §6: tests; 380 the ground's) */, setQuarry, mineRock /* (1.10.323 채석장) */, mineResult, fishFeel /* (1.10.355 타격감) */, setMySnack /* (1.10.325 크리스마스 마켓) */, sledRide, snowThrow, setSnowRound: (k) => { snowRound.n = Math.max(0, Number(k) || 0); } /* (1.10.334 썰매 언덕·눈싸움) */, setXmasPreview /* (1.10.332 관리자 미리 보기) */, setStory: (st) => { beacon.story = { hatch: Boolean(st?.hatch), final: Boolean(st?.final) }; applyStoryScene(); } /* (S2: the little door, the lamp's beat) */, setInsects, insectsGone, insectSwing, setAffinity, setHeldTool, heldTool: () => heldTool, netSwing, residentHit, onInsectScare: (fn) => { onInsectScare = fn; }, setHomes, setHome, homeGhost, yardGhost, yardStep, yardEdit: (lotId) => { yardHere = lotId || null; if (!lotId || !editView) { setEditZoom(0); if (lotId) editOpen(); } editView = Boolean(lotId); if (!lotId) yardGhost(null); } /* (v1.10.315: each time from the whole yard) */, setBikes, toggleBike: (color) => { const r = toggleBike(color); onBike?.(r === 'on', r === 'on' || r === 'off' ? null : r); return r; }, onBike: (fn) => { onBike = fn; }, cycling: () => cycling, setSpace, space: () => mySpace, setGoodsPrices, setJail, wardenSay, setMuseum, setFurniture, setPetshop, furniture: () => (furniture ? Object.fromEntries(Object.entries(furniture.shown).map(([k, v]) => [k, v.key])) : null), useShow, shows: () => shows.map((s) => s.kind), setFarm, toggleView: () => toggleView(), viewMode: () => (fpNow() ? 'first' : 'third'), onViewChange: (fn) => { onView = fn; }, countdownState: () => countdownState(), placeInset: (px) => { placeInsetPx = Math.max(0, Number(px) || 0); }, /* (v1.10.239) */ setFestival, setContestTent, /* (v1.10.238 대회 천막) */ contestKeeperHere: () => Boolean(contestTent?.keeper.root.visible), /* (대회 순위: 가락 at it, or its sign's window) */ setRecordBoard, /* (v1.10.250 기록의 탑) */ recordRibbon, /* (v1.10.251) */ trophyLine: (id) => doors[id]?.line || null, /* (v1.10.251 §3-1: a yard trophy pressed) */ setVisitTasks: (list) => setVisitTasks(list), visitRun: (story) => visitRun(story), visitPress: () => visitPress(), visitBusy: () => visitBusy(), photoAsk: (id, data) => photoAsk(id, data), photoMiss: (id) => photoMiss(id), photoThanks: (id, photo) => photoThanks(id, photo), photoTarget: () => photoTarget(), snowDress: (parts) => snowDress(parts), setResidentMarks, residentMarks: () => ({ ...residentMarks }), setStick: (x, y) => { stick = x || y ? { x, y } : null; }, setTaxiStops: (s) => { taxiStops = s && typeof s === 'object' ? s : {}; }, setTaxiRide /* (317) */,

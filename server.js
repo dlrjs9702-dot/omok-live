@@ -232,6 +232,7 @@ const IslandTigers = require('./lib/island-tigers'); // 1.10.376 N2a-2 별마루
 const BootCache = require('./lib/boot-cache');
 const bootCache = (process.env.BOOT_CACHE_ONLY && !process.env.BOOT_CACHE_READ) || process.env.BOOT_CACHE === 'off' ? null : BootCache.read(); /* (BOOT_CACHE_READ: test/boot-cache.test.js -- what a read start holds, written out) */
 if (bootCache) { IslandTerrain.presetNature?.(bootCache.nature, bootCache.natureBlocks); IslandNpcs.useGrid(bootCache.grid); }
+const IslandStorehouse = require('./lib/island-storehouse'); // 1.10.386 마당 창고
 const { createIslandEvents } = require('./lib/island-events'); // v1.10.11 서버 공용 랜덤 이벤트 // v1.10.7: the island's shape, shared with the browser
 const { competitionRanking, climbWeekOf, previousWeek } = require('./lib/climb');
 const nextWeekOf = (week) => new Date(Date.parse(`${week}T00:00:00Z`) + 7 * 86400000).toISOString().slice(0, 10); // v1.10.89
@@ -1823,7 +1824,9 @@ async function homeOf(account) {
     // (v1.10.225: the yard's pieces the bigger house now stands on go back to the 가구 창고, and a note from the 관공서 says so)
     const lot = IslandHome.lotById(h.lot); const off = lot ? IslandYard.misfits(h.yard || [], lot, to, await yardLevelOf(account)) : []; const gone = new Set(off.map((p) => p.uid));
     const next = { ...h, stage: to, roomV: 2, upgradeDay: null, pieces: g.pieces, tanks: Object.fromEntries(Object.entries(h.tanks || {}).filter(([uid]) => keep.has(uid))), yard: (h.yard || []).filter((p) => !gone.has(p.uid)) }; homeCache.set(account, next);
-    if (off.length) { const now = nowMs(); const id = `yard-grow-${h.upgradeDay}`; await pointStore.questApply(account, 'mail', (d) => ((d.letters || []).some((l) => l.id === id) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, { id, from: 'office', fromName: '관공서', text: `집이 커져서 마당 물건 ${off.length}개를 창고에 넣었어요. 가구 창고 「마당」 칸에 있어요.`, itemId: null, itemName: null, at: now, read: false }, now) } })).catch(() => {}); }
+    if (off.length) { const now = nowMs(); const id = `yard-grow-${h.upgradeDay}`; const n = IslandYard.counted(off).length; const store = off.some(IslandYard.isStore); /* (386: the storehouse is only put away -- its things stay in it) */
+      const text = [n ? `집이 커져서 마당 물건 ${n}개를 창고에 넣었어요. 가구 창고 「마당」 칸에 있어요.` : '', store ? '마당 창고는 자리가 맞지 않아 접어 두었어요. 안의 물건은 그대로예요. 마당 꾸미기에서 다시 놓아 주세요.' : ''].filter(Boolean).join(' ');
+      await pointStore.questApply(account, 'mail', (d) => ((d.letters || []).some((l) => l.id === id) ? null : { doc: { ...d, letters: Together.withLetter(d.letters, { id, from: 'office', fromName: '관공서', text, itemId: null, itemName: null, at: now, read: false }, now) } })).catch(() => {}); }
     return next;
   }
   return h;
@@ -1845,6 +1848,9 @@ function weeklyView(owned) {
 const yardLevels = new Map();
 async function yardLevelOf(account) { if (!yardLevels.has(account)) yardLevels.set(account, Number((await pointStore.worldValue(`yard:${account}`))?.level) || 1); return yardLevels.get(account); }
 async function setYardLevel(account, level) { await pointStore.setWorldValue(`yard:${account}`, { level }); yardLevels.set(account, level); }
+// 1.10.386 마당 창고: its stage (0 none, 1~4) and its things -- the account's quest doc 'storehouse' { stage, items }, kept if the lot is given up
+const storehouseStageOf = (doc) => Math.max(0, Math.min(IslandYard.STORE.STAGES, Number(doc?.stage) || 0));
+async function storehouseStage(account) { return storehouseStageOf((await pointStore.questDoc(account, 'storehouse')).doc); }
 // v1.10.318 마당 농사 F1 + 집 손보기 (public/plaza/island-farm.js): an owner's beds' cells (quest doc 'farm': { beds: { uid: [cell
 // x6] } }) and the upkeep record (quest doc 'upkeep': { since, week, given, done: [weeks], weeds: { day, list } }) -- read once,
 // kept with each change; every change through questApply (what it takes from the bag in the same step)
@@ -6650,7 +6656,7 @@ async function requestHandler(req, res) {
     const mine = await homeOf(account); const grow = Math.min(IslandHome.TOP_STAGE, mine ? homeStage(mine).n + 1 : 2); // (the next stage's price)
     const yardLevel = await yardLevelOf(account);
     const upkeep = mine ? IslandFarm.upkeepState(await upkeepDocOf(account), homeStage(mine).n, nowMs()) : null; /* (318: this week's owing, given, 허름함) */
-    return sendJson(res, 200, { ok: true, lots: out, mine, price: Economy.value('home:price_1'), grow: Economy.value(`home:price_${grow}`), style: Economy.value('home:style'), yardLevel, yardGrow: yardLevel < IslandYard.LEVELS ? Economy.value(`yard:price_${yardLevel + 1}`) : null, upkeep, upkeepReward: Economy.value('upkeep:reward'), now: nowMs() });
+    return sendJson(res, 200, { ok: true, lots: out, mine, price: Economy.value('home:price_1'), grow: Economy.value(`home:price_${grow}`), style: Economy.value('home:style'), yardLevel, yardGrow: yardLevel < IslandYard.LEVELS ? Economy.value(`yard:price_${yardLevel + 1}`) : null, storehouse: await storehouseStage(account) /* (1.10.386 마당 창고: its stage, 0 none) */, upkeep, upkeepReward: Economy.value('upkeep:reward'), now: nowMs() });
   }
   // a house: at the 관공서 (in the 민원실), one an account, a free lot, paid at once
   if (pathname === '/api/home/apply' && req.method === 'POST') {
@@ -6787,14 +6793,16 @@ async function requestHandler(req, res) {
       const stage = homeStage(h).n; const level = await yardLevelOf(account);
       if (!at || (at.space && at.space !== 'island') || homeInside.has(session.token) || !IslandYard.inYard(lot, stage, level, at.x, at.z, 2)) return sendError(res, 409, 'TOO_FAR', '내 마당에서 다시 시도해 주세요.');
       const owned = (await pointStore.worldValue(`furniture:${account}`)) || [];
-      const piece = owned.find((p) => p.uid === String(body.uid)); if (!piece) return sendError(res, 404, 'NOT_MINE', '내 물건이 아니에요.');
+      const store = String(body.uid) === IslandYard.STORE.uid ? await storehouseStage(account) : 0; /* (1.10.386 마당 창고: its one piece, at its stage -- built at the 관공서) */
+      if (String(body.uid) === IslandYard.STORE.uid && !store) return sendError(res, 404, 'NO_STOREHOUSE', '마당 창고는 관공서 민원실에서 먼저 지어 주세요.');
+      const piece = store ? { uid: IslandYard.STORE.uid, id: IslandYard.STORE.idOf(store) } : owned.find((p) => p.uid === String(body.uid)); if (!piece) return sendError(res, 404, 'NOT_MINE', '내 물건이 아니에요.');
       if (!IslandYard.isYard(piece.id)) return sendError(res, 409, 'NOT_YARD', '집 안 가구는 집 안에 놓아요.');
       const yard = h.yard || []; const others = yard.filter((p) => p.uid !== piece.uid);
       const bed = IslandYard.shapeOf(piece.id) === 'farm_bed'; /* (318 마당 농사: a 텃밭 with something growing stays till it is picked; the yard's level says how many) */
       if (body.remove && bed && ((await farmDocOf(account)).beds?.[piece.uid] || []).some(Boolean)) return sendError(res, 409, 'BED_GROWING', '심은 작물을 먼저 거둬 주세요.');
       if (body.remove) { const next = { ...h, yard: others }; await saveHome(account, next); broadcastIsland('homes', { lot: lot.id }); return sendJson(res, 200, { ok: true, yard: others }); }
       const cap = IslandYard.limitOf(level);
-      if (!yard.some((p) => p.uid === piece.uid) && yard.length >= cap) return sendError(res, 409, 'TOO_MANY', `마당에는 ${cap}개까지 놓을 수 있어요.`);
+      if (!store && !yard.some((p) => p.uid === piece.uid) && IslandYard.counted(yard).length >= cap) return sendError(res, 409, 'TOO_MANY', `마당에는 ${cap}개까지 놓을 수 있어요.`); /* (386: the storehouse not counted) */
       if (bed && !yard.some((p) => p.uid === piece.uid) && others.filter((p) => IslandYard.shapeOf(p.id) === 'farm_bed').length >= IslandFarm.bedsFor(level)) return sendError(res, 409, 'TOO_MANY_BEDS', `텃밭은 이 마당에 ${IslandFarm.bedsFor(level)}개까지 놓을 수 있어요. 마당을 넓히면 더 놓을 수 있어요.`);
       const p = { uid: piece.uid, id: piece.id, x: placeNum(body.x), z: placeNum(body.z), rot: placeTurn(body.rot), ...(piece.plate ? { plate: piece.plate, line: piece.line || piece.plate } : {}) }; // (v1.10.251: a trophy's name plate, its line pressed)
       const why = IslandYard.placeError(p, others, lot, stage, level); if (why) return sendError(res, 409, 'BAD_PLACE', why);
@@ -6816,6 +6824,59 @@ async function requestHandler(req, res) {
       await setYardLevel(account, level + 1); notifyPointsChanged([account]); broadcastIsland('homes', { lot: h.lot });
       return sendJson(res, 200, { ok: true, yardLevel: level + 1, limit: IslandYard.limitOf(level + 1) });
     });
+  }
+  // 1.10.386 마당 창고 (사용자 결정 19~21·24·32, lib/island-storehouse.js): what it is (stage, slots, its things, where it stands, the next stage's
+  // price) -- for its owner
+  const storehouseView = async (account, doc = null) => {
+    const q = await pointStore.questDoc(account, 'storehouse'); const d = doc || q.doc; const stage = storehouseStageOf(d); const S = IslandYard.STORE; const h = await homeOf(account).catch(() => null);
+    /* (what of my bag may go in: the window's 넣기 rows) */
+    const keeps = IslandItems.bagView(q.bag.filter((e) => IslandStorehouse.canKeep(e.itemId)), nowMs(), null, IslandItems.capOf(account)).items.map(({ entryId, itemId, qty, name, icon, sizes, bought }) => ({ entryId, itemId, qty, name, icon, ...(sizes ? { sizes } : {}), ...(bought ? { bought } : {}) }));
+    return { stage, name: stage ? S.NAMES[stage - 1] : null, ...IslandStorehouse.view(d.items || [], stage ? S.SLOTS[stage - 1] : 0), keeps, placed: (h?.yard || []).find(IslandYard.isStore) || null,
+      next: stage < S.STAGES ? { stage: stage + 1, name: S.NAMES[stage], slots: S.SLOTS[stage], price: Economy.value(`storehouse:price_${stage + 1}`) } : null };
+  };
+  if (pathname === '/api/home/storehouse' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return;
+    return sendJson(res, 200, { ok: true, storehouse: await storehouseView(pointAccountForSession(session)) });
+  }
+  // built or grown: at the 관공서 (in the 민원실, with a house), paid in the same step as its stage (once a stage -- a retry pays nothing more).
+  // Grown where it stands, about the same middle (결정 24 A); one that no longer fits there is put away -- 「마당 꾸미기에서 다시 놓아 주세요」
+  if (pathname === '/api/home/storehouse/build' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    if (!townhallInside.has(session.token)) return sendError(res, 409, 'TOO_FAR', '관공서 민원실에서 신청해 주세요.');
+    return worldEdit(async () => {
+      const h = await homeOf(account); const lot = h && IslandYard.lotById(h.lot); if (!lot) return sendError(res, 404, 'NO_HOME', '집이 있어야 마당 창고를 지을 수 있어요.');
+      const S = IslandYard.STORE;
+      const out = await pointStore.questApply(account, 'storehouse', (doc) => { const stage = storehouseStageOf(doc); if (stage >= S.STAGES) return { error: 'TOP_STAGE' }; return { doc: { ...doc, stage: stage + 1, items: doc.items || [] }, cost: Economy.value(`storehouse:price_${stage + 1}`), payKey: `home:storehouse:${account}:${stage}`, reason: stage ? 'storehouse_grow' : 'storehouse_build', stage: stage + 1 }; }).catch(() => null);
+      if (!out) return sendError(res, 503, 'RETRY', '잠시 후 다시 해 주세요.');
+      if (out.error === 'TOP_STAGE') return sendError(res, 409, 'TOP_STAGE', '마당 창고를 다 넓혔어요.');
+      if (out.error === 'POINTS') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
+      if (out.error) return sendError(res, 409, 'RETRY', '다시 시도해 주세요.');
+      let putAway = false; const was = (h.yard || []).find(IslandYard.isStore);
+      if (was) { /* (the bigger one where the smaller stood -- else put away) */
+        const grown = { ...was, id: S.idOf(out.stage) }; const others = (h.yard || []).filter((p) => !IslandYard.isStore(p));
+        putAway = Boolean(IslandYard.placeError(grown, others, lot, homeStage(h).n, await yardLevelOf(account)));
+        await saveHome(account, { ...h, yard: putAway ? others : [...others, grown] }); broadcastIsland('homes', { lot: lot.id });
+      }
+      notifyPointsChanged([account]);
+      return sendJson(res, 200, { ok: true, stage: out.stage, slots: S.SLOTS[out.stage - 1], putAway, storehouse: await storehouseView(account, out.doc) });
+    });
+  }
+  // things in and out: its owner at its door (on the island, 1.6 m of the spot before it), the bag and the storehouse in one step
+  if (pathname === '/api/home/storehouse/move' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    const body = await parseJson(req); const dir = body.dir === 'take' ? 'take' : body.dir === 'put' ? 'put' : null; if (!dir) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+    const h = await homeOf(account); const lot = h && IslandYard.lotById(h.lot); const piece = (h?.yard || []).find(IslandYard.isStore); const door = piece && IslandYard.storeDoor(lot, piece);
+    const at = plazaPresence.get(session.token);
+    if (!door || !at || (at.space && at.space !== 'island') || homeInside.has(session.token) || Math.hypot(at.x - door.x, at.z - door.z) > 1.6) return sendError(res, 409, 'TOO_FAR', '마당 창고 문 앞에서 다시 시도해 주세요.');
+    const out = await pointStore.questApply(account, 'storehouse', (doc, bag) => {
+      const stage = storehouseStageOf(doc); if (!stage) return { error: 'NO_STOREHOUSE' };
+      const r = dir === 'put' ? IslandStorehouse.put(doc.items || [], bag, String(body.entryId || ''), Number(body.qty), IslandYard.STORE.SLOTS[stage - 1]) : IslandStorehouse.take(doc.items || [], bag, String(body.entryId || ''), Number(body.qty), IslandItems.capOf(account));
+      return r.error ? { error: r.error } : { doc: { ...doc, items: r.items }, bagNext: r.bag };
+    }).catch(() => null);
+    if (!out) return sendError(res, 503, 'RETRY', '잠시 후 다시 해 주세요.');
+    const SAY = { NO_STOREHOUSE: '마당 창고가 없어요.', MISSING: '그 물건이 없어요. 다시 열어 주세요.', NOT_KEPT: '도구·자전거·펫·심부름 물건은 창고에 넣지 않아요.', FULL: '마당 창고가 가득 찼어요.', BAG_FULL: '가방이 가득 찼어요.' };
+    if (out.error) return sendError(res, 409, out.error, SAY[out.error] || '다시 시도해 주세요.');
+    return sendJson(res, 200, { ok: true, bag: out.bag, storehouse: await storehouseView(account, out.doc) });
   }
   // 1.10.325 크리스마스 마켓 (IslandCalendar.PLACES.market, assets 124): while the winter decor is up, a snack bought at a stall's
   // front -- its price taken once a request -- and held SNACK_MS (everyone sees it in my hand)
