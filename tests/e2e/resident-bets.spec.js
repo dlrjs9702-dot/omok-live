@@ -13,7 +13,7 @@ test('주민 내기: 제안 말풍선 → 「내기해요」 → 점수 내기 �
   const day = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10); const fixed = new Set(Object.values(R.FIXED));
   const asking = new Set(require('../../lib/island-errands.js').errandsOf(day).map((e) => e.from)); /* (1.10.325: today's errand askers offer 「할게요!」 in place of the topics -- 2026-11-16 봄이; CI #476) */
   const walkers = [...Array(10).keys()].filter((n) => !fixed.has(n) && !asking.has(n)); // (the ten who walk with the roster off -- the tests' server)
-  const sn = walkers.find((n) => B.kindOf(B.gameOf(n, day)) === 'score'); const mn = walkers.find((n) => B.kindOf(B.gameOf(n, day)) === 'match');
+  const sn = walkers.find((n) => B.kindOf(B.gameOf(n, day)) === 'score'); const mn = walkers.find((n) => B.kindOf(B.gameOf(n, day)) === 'match') ?? [...Array(10).keys()].filter((n) => !fixed.has(n)).find((n) => B.kindOf(B.gameOf(n, day)) === 'match'); /* (386 CI: 2026-11-21's only match bets were today's errand askers -- started by the request below, not their bubble, so one of them does) */
   for (const n of [sn, mn]) expect((await post(request, '/api/test/affinity', token, { n, delta: 5 })).status).toBe(200); // (아는 사이)
   await post(request, '/api/test/bet', token, { reset: true });
   const goals = (await post(request, '/api/test/bet/goals', token, {})).data.goals; /* (v1.10.291: today's marks from 기록의 탑, worked out now) */
