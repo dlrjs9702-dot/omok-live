@@ -266,6 +266,10 @@ test('가려도 내 캐릭터 보이기: 숲속에서 나무가 가리면 내 �
   const air = await page.evaluate(() => ({ ...window.PlazaDebug().forestAir(), phase: window.PlazaDebug().time().phase }));
   expect(air.fogFar, JSON.stringify(air)).toBeLessThan(165); expect(air.fogNear).toBeLessThan(65); expect(air.leaves).toBeGreaterThan(0);
   if (air.phase === 'night') expect(air.fireflies).toBeGreaterThan(0); else expect(air.shafts).toBeGreaterThan(0);
+  /* (379 사용자 「별마루에서만 사용하고 달마루섬에서는 해당 기법을 건물에만」: on 달마루섬 a tree on the line leaves the trees whole -- no hole) */
+  { const main = []; for (let x = -170; x <= -70; x += 10) for (let z = -40; z <= 60; z += 10) if (T.walkable(x, z) && !T.onIsle2?.(x, z)) main.push([x, z]);
+    let mainFound = null; for (const [x, z] of main.slice(0, 60)) { await page.evaluate(async ([x, z]) => { await window.PlazaWarp(x, z); }, [x, z]); await page.waitForTimeout(500); if ((await page.evaluate(() => window.PlazaSee()))?.blocked) { mainFound = [x, z]; break; } }
+    if (mainFound) { await page.waitForTimeout(600); expect(await page.evaluate(() => window.PlazaSee().on), `달마루섬 ${mainFound}`).toBe(0); } }
   const toggle = async () => { if (isMobile) await page.locator('#islandViewTab').click(); else { await page.locator('#plazaStage').focus(); await page.keyboard.press('KeyV'); } };
   await toggle(); await expect.poll(() => page.evaluate(() => window.PlazaDebug().view().mode)).toBe('first');
   await expect.poll(() => page.evaluate(() => window.PlazaSee().on), { timeout: 5000 }).toBe(0);

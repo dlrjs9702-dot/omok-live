@@ -13,6 +13,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.379 채석장(사용자 「제한 없애고 바위마다 고르게」·결정 8 A)·곡괭이·158 Pounce·가려도 보이기 별마루섬만
+
+- 곡괭이: 잡화점 줄 kind 표에 곡괭이(e.tool 'pickaxe', qty 합)로 3개까지, TOOL_MAX 안내 「곡괭이는 3개까지」(결정 6 A).
+- 채석장: 하루 60번 한도 없음(셈은 남김), 바위는 비지 않음(늘 가득, 캐기마다 자기 claim, quarryKept 안 씀). 화강암 벽 그대로. 곡괭이 닳기 40번 그대로.
+- 광석 표(lib/island-ores): 모든 바위 한 조각 기대값 같게 -- 제 광석 몫 흔함 34 %·보통 30 %·드묾 12 %·아주 드묾 7 %, 나머지 12종은 price^beta(목표값에 맞춰 풂), 각 광석은 제 바위에서 가장 많이(흔함·보통 바위는 그 바위에서도 가장 많이), 모든 바위에 네 등급. 보너스·「채석 위 단계」 비율 옛 그대로. 보석 모든 바위 같게: 달빛석 5‰(보너스 15‰), 루비·사파이어·에메랄드 5‱(14‱, 경제 키 단위 ‱).
+- 값(결정 8 A): 상인 값 ×0.46 -- 화강암 20·점토·사암 370·석탄·철·구리·주석 550·은 1,380·수정·옥 1,610·금·흑요석 3,680, 달빛석 23,000·루비 등 46,000. 맞힌 한 조각 725P, 못 맞힘(20 %) 작은 돌 100P -> 캐기 한 번 600P, 약 7.5초 -> 시간당 약 480번·288,000P. 잡화점은 상인 값 ×3 그대로.
+- 호랑이(에셋 158): 새 Pounce(달리며 뛰어오름), 서버는 Run 0.40~0.55초 위상에서만 덮치기 시작, 화면은 Run을 서버 시작 시각·speed/run으로 재생, Pounce fadeIn 0.1초. 우레 12 m/s가 선 사람 둘레를 돌던 것: 4.5 m 안이면 어느 방향이든 덮치기, 잡기는 몸 중심에서 0.84초 앞발 자리까지의 선분 거리, yaw 감김 고침. 선 사람 18 m에서 약 4초에 잡힘(시뮬).
+- 가려도 보이기(사용자 「별마루에서만… 달마루섬은 건물에만」): plaza-scene seeStep의 나무 구멍·가까운 흐림은 IslandTerrain.onIsle2일 때만, 달마루섬 건물은 occlusion.js 그대로. e2e island-view-modes(달마루섬 구멍 없음) + 사진 PC·폰(달마루 숲·광장 나무·별마루 숲·건물 옆).
+
 ## v1.10.378 N2b 별마루섬 곤충 131·물고기 132·버섯 136 (notes island-expansion 46A·47A·E14)
 
 - 곤충: lib/island-insects SPECIES moth_longtail(희귀, 밤·여름, 나무·풀)·stag_giant(희귀, 밤·여름~가을, 나무), `isle2: true` -- spotsOf가 별마루섬 자리에 isle2 표시, layout은 그 자리에서만. INSECT_LONG 0.268·0.24, together.insect_ 정지 모델, 도감 아이콘 SVG.
@@ -29,11 +38,3 @@
 - 다리 문: fence_gate를 묶음에서 빼고 plaza-scene에서 따로 붙임(keepNodes), 사람(나·다른 사람)이 2.6 m 안이면 leaf가 +Y로 1.45 rad 열림.
 - 호랑이 조정(사용자 직접): 달리기 우레 12(「우레 속도 1 업」)·안개 11 m/s, 포기 25초, 크기 1.6→2.4배(걷기·달리기·Stalk 재생 속도, 앞발 거리 2.1/1.73, 잡힘 반지름 2.4/2.1, 몸 여유 0.9 m), 덮치기는 멈추지 않고 달리던 대로 앞으로 곧게(0.84 s에 앞발, 도약 = 예상 자리까지, 최대 달리기 0.84 s + 클립 도약), 잡히면 5초 #tigerTransfer 「이송 중」(빨간 깜빡임) 뒤 시장님 말. 15 m/s 넘는 순간 이동은 속도 0. 시뮬레이션(25초 안 잡힘): 뛰기 6.2는 둘 다 15/20/25 m 거의 다 잡힘(2.7~14 s), 자전거 9는 우레 1/15·안개 9/15, Shift 12는 0.
 - 시험: island-tigers.spec에 문 열림·안내판 글자 확인 추가.
-
-## v1.10.376 N2a-2 별마루섬 호랑이 (152e, notes island-expansion 「별마루섬 호랑이」~「잡히면 가는 곳 바꿈」)
-
-- 서버: lib/island-tigers.js -- 1 m 땅 칸(목책 2 m 안, 막힘 0.7 m 밖, 캠핑장·전망대·문 12 m 빼고, 가장 큰 덩어리), 별마루섬 사람 따라 흐름 길찾기, 0.1 s마다. 우레 8.0 m/s(크게 돎)·볼 25 m, 안개 7.0 m/s(바짝 꺾음)·볼 18 m. Stalk(1.8 s, 뛰거나 8 m 안이면 바로 Run) → Run → Pounce(앞발 0.84 s, 맞을 곳 예측, 길 막히면 안 덮침) → 10 s 포기. 쉬는 때 KST 우레 12~14 바위 위 Nap(1.44 m 위), 안개 4~6 늪가 Doze, 갈대 옆 Crouch.
-- 잡히면: questApply 'tiger'로 가방 물건 칸 무작위 2개(도구·자전거·펫·심부름·주인 물건·지갑·이벤트·상자 속 빼고) 한 개씩, 하던 채집·낚시·앉기 끝, 관공서 마루 시장님 앞(townhallWorld(0, z1+3.2)), [tiger] 로그(계정 없이), 화면 「○○에게 잡혔어요! 마루 시장님: 「큰일 날 뻔했어요!」 호랑이에게 ○○, △△을(를) 잃었어요.」
-- 화면: public/plaza/tigers-view.js -- 별마루섬 근처에서만 불러옴(파일 island.later 묶음, 가장 낮은 화질은 Low), 1.6배, 서버 자세로 따라감, Pounce 앞으로 가는 뿌리 움직임 빼고 서버 도약 곡선, 안개 노멀 그림은 우레 것 공유, 경고(#tigerWarn 빨간 가장자리 + WebAudio 소리).
-- 에셋 152e: tiger/tiger_angae(+_low), sign_tiger(+_low) 152e로 바꿈; budgets EXT_texture_webp 허용·파일별 예외; asset-loader creature c.low.
-- 시험: test/island-tigers.test.js, tests/e2e/island-tigers.spec.js(경고·잡힘·물건 2개·시장님 앞). 테스트 서버에서는 /api/test/tigers로만 켬.
