@@ -7336,12 +7336,16 @@ async function requestHandler(req, res) {
         if (total >= homeStage(h).fish) return sendError(res, 409, 'TOO_MANY', `물고기는 집 전체에 ${homeStage(h).fish}마리까지예요.`);
         const out = await pointStore.islandUse({ userId: account, requestId: `hometank-${body.requestId}`, itemId, keep: true });
         if (!out.applied && !out.already) return sendError(res, 409, 'NOT_IN_BAG', '가방에 없는 물고기예요.');
-        const next = { ...h, tanks: { ...h.tanks, [tank.uid]: [...fishes, { fid: crypto.randomUUID(), itemId, claim, ...(out.bought ? { bought: true } : {}), ...(Number.isFinite(out.size) ? { size: out.size } : {}) }] } }; await saveHome(account, next); /* (1.10.344 P2-6: a 「산 것」 stays one in the tank; Codex 361~370 #1: and its length) */
+        const next = { ...h, tanks: { ...h.tanks, [tank.uid]: [...fishes, { fid: crypto.randomUUID(), itemId, claim, ...(out.bought ? { bought: true } : {}), ...(Number.isFinite(out.size) ? { size: out.size } : {}) }] } }; /* (1.10.344 P2-6: a 「산 것」 stays one in the tank; Codex 361~370 #1: and its length) */
+        /* (383 Codex 371~380 #3: the tank not saved -- the fish back in the bag (its own claim), never gone between the two) */
+        try { await saveHome(account, next); } catch (error) { if (out.applied) await pointStore.islandGive({ userId: account, claimId: `hometank-back-${body.requestId}`, itemId, qty: 1, quiet: true, ...((out.bought || Number.isFinite(out.size)) ? { meta: { ...(out.bought ? { bought: true } : {}), ...(Number.isFinite(out.size) ? { size: out.size } : {}) } } : {}) }, nowMs()).catch((e) => console.error('수조 되돌리기 실패:', e.message)); throw error; }
         return sendJson(res, 200, { ok: true, home: homeAs(session.token, next) });
       }
       const f = fishes.find((x) => x.fid === String(body.take)); if (!f) return sendJson(res, 200, { ok: true, home: homeAs(session.token, h) }); // (already taken out)
       const meta = { ...(f.bought ? { bought: true } : {}), ...(Number.isFinite(f.size) ? { size: f.size } : {}) }; /* (Codex 361~370 #1: the 120 cm carp back as 120 cm, not the kind's middle) */
-      const out = await pointStore.islandGive({ userId: account, claimId: claim, itemId: f.itemId, qty: 1, quiet: true, ...(Object.keys(meta).length ? { meta } : {}) }, nowMs());
+      /* (383 Codex 371~380 #3: the bag's claim by the fish itself -- a tank save that failed after it, pressed again (a new request), gives no second fish
+         and takes this one out of the tank) */
+      const out = await pointStore.islandGive({ userId: account, claimId: `home_tank_take_${f.fid}`, itemId: f.itemId, qty: 1, quiet: true, ...(Object.keys(meta).length ? { meta } : {}) }, nowMs());
       if (!out.applied && out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요. 잡화점에서 가방을 늘릴 수 있어요.');
       /* (Codex 361~370 #13: a mixed tank stays mixed -- take-out only -- till its last fish is out, not as soon as one kind is gone) */
       const rest = fishes.filter((x) => x.fid !== f.fid); const mixed = !T.insects && rest.length > 0 && (Boolean(h.tankMixed?.[tank.uid]) || IslandHome.tankWater(fishes) === 'mixed');

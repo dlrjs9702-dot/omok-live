@@ -51,4 +51,14 @@ test('수조 물 서버: 민물 붕어를 넣은 수조에 망둑어는 TANK_WAT
   /* (Codex 361~370 #1: out of the tank at its own length -- 41.5 cm, not the kind's middle) */
   const back = JSON.stringify((await req('/api/island/bag', a)).data.items.filter((e) => e.itemId === 'fish_crucian_carp')); assert.match(back, /41\.5/, back);
   r = await put('fish_goby', 4); assert.equal(r.status, 200, JSON.stringify(r.data)); assert.equal(H.tankWater(r.data.home.tanks[tank.uid]), 'sea');
+  /* (383 Codex 371~380 #3: the tank's save failing between the bag and the tank -- taking out: pressed again (a new request), one goby, the tank empty;
+     putting in: the fish back in the bag) */
+  const bagCount = async (id) => (await req('/api/island/bag', a)).data.items.filter((e) => e.itemId === id).reduce((n, e) => n + e.qty, 0);
+  const gfid = (await req('/api/home/inside', a)).data.home.tanks[tank.uid][0].fid;
+  await req('/api/test/store/fail', null, { method: 'setWorldValue' });
+  assert.notEqual((await req('/api/home/tank', a, { tank: tank.uid, take: gfid, requestId: 'tank-water-5-0001' })).status, 200);
+  assert.equal((await req('/api/home/tank', a, { tank: tank.uid, take: gfid, requestId: 'tank-water-6-0001' })).status, 200);
+  assert.equal(await bagCount('fish_goby'), 1, '두 번 눌러도 망둑어 하나'); assert.deepEqual((await req('/api/home/inside', a)).data.home.tanks[tank.uid], [], '수조는 비었음');
+  await req('/api/test/store/fail', null, { method: 'setWorldValue' });
+  assert.notEqual((await put('fish_goby', 7)).status, 200); assert.equal(await bagCount('fish_goby'), 1, '못 넣었으면 가방에 그대로');
 });
