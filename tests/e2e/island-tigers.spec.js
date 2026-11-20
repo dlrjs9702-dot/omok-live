@@ -38,10 +38,11 @@ test('별마루섬 호랑이: 경고, 잡히면 물건 2개를 잃고 시장님 
     await expect.poll(() => page.evaluate(() => document.getElementById('tigerTransfer')?.classList.contains('on') ?? false), { timeout: 60000 }).toBe(true);
     expect(await page.evaluate(() => document.querySelector('#tigerTransfer .tigerTransferGo')?.textContent)).toBe('이송 중');
     await caught;
-    /* (382 사용자 결정 12, assets 159: one standing still -- caught by a near attack (a swipe, a turning swipe or a lunge), not the running pounce; the
-       Growl after it) */
+    /* (382 사용자 결정 12, assets 159: one standing still -- caught by one of the attacks the server picks) */
     const clips = await page.evaluate(() => { clearInterval(window.__zzClipWatch); return window.__zzClips; });
-    expect(clips.some((c) => ['Swipe', 'TurnSwipe', 'TurnSwipeL', 'Lunge'].includes(c)), clips.join(',')).toBe(true); expect(clips, clips.join(',')).toContain('Growl');
+    /* (a run's pounce from 4.5 m is one of the patterns too; the Growl after it is not seen here -- caught, I am at the mayor, out of the tigers' frames
+       (383 Codex #15); which near attack comes when: test/island-tigers.test.js 「382 공격 고르기」) */
+    expect(clips.some((c) => ['Pounce', 'Swipe', 'TurnSwipe', 'TurnSwipeL', 'Lunge'].includes(c)), clips.join(',')).toBe(true);
     expect(await page.evaluate(() => document.getElementById('tigerTransfer').classList.contains('on'))).toBe(false);
     const toast = await page.evaluate(() => document.getElementById('toast').textContent);
     expect(toast).toContain('우레에게 잡혔어요'); expect(toast).toContain('큰일 날 뻔했어요'); expect(toast).toContain('잡초'); expect(toast).toContain('나뭇가지'); expect(toast).not.toContain('낚싯대');
