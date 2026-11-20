@@ -2192,15 +2192,15 @@ const Isle2Props = require('./public/plaza/isle2-props.js');
 const SWAMP_BIKE_MAX = 4.3 * 1.3; /* (383 Codex #7: the screen's 늪 자전거 4.3 m/s (plaza-scene SWAMP_BIKE), a third more for the poses' timing) */
 const tigerSim = IslandTigers.createTigers({ T: IslandTerrain, P: Isle2Props });
 tigerSim.setOn(process.env.NODE_ENV !== 'test');
-const TIGER_TICK_MS = 100;
+const TIGER_TICK_MS = 100; let tigerFrozen = false; /* (tests: /api/test/tigers { freeze }) */
 const tigerTicker = setInterval(() => {
   if (!tigerSim.isOn()) return;
   const I = IslandTerrain.dalmaru?.NEW_ISLE; if (!I) return; const people = []; let near = false;
   for (const [token, p] of plazaPresence) {
     if ((p.space || 'island') !== 'island' || p.ride || p.platform || p.taxi || trainRiders.has(token) || taxiRides.has(token) || !Number.isFinite(p.x) || !Number.isFinite(p.z)) continue;
-    if (Math.hypot(p.x - I.x, p.z - I.z) < I.r + 160) near = true; if (IslandTerrain.onIsle2(p.x, p.z)) people.push({ token, x: p.x, z: p.z });
+    if (Math.hypot(p.x - I.x, p.z - I.z) < I.r + 160) near = true; if (IslandTerrain.onIsle2(p.x, p.z)) people.push({ token, x: p.x, z: p.z, t: p.poseAt || p.at }); /* (tiger review #2: the pose's own time -- their pace by it) */
   }
-  const events = tigerSim.tick(nowMs(), people);
+  const events = tigerFrozen ? [] : tigerSim.tick(nowMs(), people); /* (tests' photos: held where they were put) */
   /* (383 Codex 371~380 #15: the two tigers' places only to those near 별마루섬, in their own small frame -- not the whole plaza to everyone ten times a second) */
   if (near) { const frame = sseFrame('tigers', { list: tigerSim.view() }); for (const entry of [...lobbyStreams]) { const p = plazaPresence.get(entry.sessionToken); if (!p || (p.space || 'island') !== 'island' || !Number.isFinite(p.x) || Math.hypot(p.x - I.x, p.z - I.z) >= I.r + 160) continue; try { sseSend(entry.res, frame, { skipIfBehind: true }); } catch { lobbyStreams.delete(entry); } } }
   for (const e of events) if (e.type === 'catch') tigerCatch(e.token, e.tiger).catch((error) => console.error('호랑이 잡기 실패:', error.message));
@@ -2211,8 +2211,9 @@ const tigerSpot = () => { const TH = IslandTerrain.TOWNHALL; const p = IslandTer
 const tigerCaughtAt = new Map(); const TIGER_CATCH_GAP_MS = 8000;
 async function tigerCatch(token, def) {
   const session = sessions.get(token); const at = plazaPresence.get(token); if (!session || !at) return;
-  const account = pointAccountForSession(session); const spot = tigerSpot(); const now = nowMs();
-  const who = account || token; if (now - (tigerCaughtAt.get(who) || 0) < TIGER_CATCH_GAP_MS) return; tigerCaughtAt.set(who, now);
+  const account = pointAccountForSession(session); const spot = tigerSpot(); const now = nowMs(); const wasAway = plazaAway(at, now); /* (사용자 결정 27 A: caught while 자리 비움 too -- the page shows it again once they are back) */
+  const who = account || token; if (now - (tigerCaughtAt.get(who) || 0) < TIGER_CATCH_GAP_MS) return;
+  for (const [k, at] of tigerCaughtAt) if (now - at >= TIGER_CATCH_GAP_MS) tigerCaughtAt.delete(k); tigerCaughtAt.set(who, now); /* (tiger review #8: the old ones out) */
   resourcePulls.delete(token); weedPulls.delete(token); quarryPulls.delete(token); fishCasts.delete(token); freeSeat(token);
   /* (383 #5: the move kept as the account's spot for a reconnect, and a pose sent before it (its time older) no longer puts them back in the wood) */
   plazaPresence.set(token, { ...at, x: spot.x, z: spot.z, moving: false, at: now, sentT: now, act: null, seat: null }); plazaLastPos.set(token, { x: spot.x, z: spot.z }); notePlazaSpot(account, spot.x, spot.z, now); plazaDirty = true;
@@ -2220,10 +2221,20 @@ async function tigerCatch(token, def) {
   const id = `${now}:${def.id}`;
   const take = () => pointStore.questApply(account, 'tiger', (doc, bag) => { if (doc.lastId === id) return { error: 'DONE' }; const pick = IslandTigers.losePick(bag, IslandItems); const lost = pick.map((e) => IslandItems.itemDef(e.itemId)?.name || e.itemId);
     return { doc: { caught: (doc.caught || 0) + 1, at: now, by: def.id, lastId: id, lastLost: lost }, take: pick.map((e) => ({ entryId: e.entryId, qty: 1 })), lost }; });
-  let out = null;
-  for (let k = 0; account && k < 5 && !out; k += 1) { out = await take().catch((error) => { console.error('호랑이 물건 잃기 실패:', error.message); return null; }); if (out?.error === 'DONE') out = { lost: (await pointStore.questDoc(account, 'tiger')).doc?.lastLost || [] }; else if (out?.error) out = { lost: [] }; /* (a try that had saved before its answer was lost: what it took) */ if (!out) await new Promise((r) => { setTimeout(r, 2000 * (k + 1)); }); }
-  console.log(`[tiger] caught by=${def.id} lost=${out?.lost?.length ?? 0}${account && !out ? ' unsaved' : ''}`); /* (no account in the log) */
-  notifyAccount(account, 'tigerCaught', { by: def.name, lost: out?.lost || [], x: spot.x, z: spot.z, ...(out?.bag ? { bag: out.bag } : {}), ...(account && !out ? { unsaved: true } : {}) });
+  const once = async () => { const r = await take().catch((error) => { console.error('호랑이 물건 잃기 실패:', error.message); return null; }); if (r?.error === 'DONE') return { lost: (await pointStore.questDoc(account, 'tiger')).doc?.lastLost || [] }; return r?.error ? { lost: [] } : r; }; /* (a try that had saved before its answer was lost: what it took) */
+  /* (tiger review #4: the move told at once -- the first try's loss with it; a try that failed goes on behind (up to five) and its loss follows as
+     'tigerLost'. #6: `who` -- only the screen caught goes to the mayor; the account's other screens have the bag and the word) */
+  const out = account ? await once() : null;
+  console.log(`[tiger] caught by=${def.id} lost=${out?.lost?.length ?? 0}${account && !out ? ' retrying' : ''}`); /* (no account in the log) */
+  notifyAccount(account, 'tigerCaught', { id, who: session.plazaId, ...(wasAway ? { away: true } : {}), by: def.name, lost: out?.lost || [], x: spot.x, z: spot.z, ...(out?.bag ? { bag: out.bag } : {}), ...(account && !out ? { pending: true } : {}) });
+  if (account && !out) (async () => { let late = null; for (let k = 1; k < 5 && !late; k += 1) { await new Promise((r) => { setTimeout(r, 2000 * k); }); late = await once(); }
+    console.log(`[tiger] caught by=${def.id} lost=${late?.lost?.length ?? 0}${late ? ' late' : ' unsaved'}`); notifyAccount(account, 'tigerLost', { id, by: def.name, lost: late?.lost || [], ...(late?.bag ? { bag: late.bag } : {}), ...(late ? {} : { unsaved: true }) }); })();
+}
+/* (tiger review #4: a screen that was shut or away when it was caught -- told once it is back (its lobby stream opens), till it says it saw it) */
+async function tigerCaughtReplay(account) {
+  if (!account) return; const doc = (await pointStore.questDoc(account, 'tiger').catch(() => ({ doc: null }))).doc;
+  if (!doc?.lastId || doc.seenId === doc.lastId || nowMs() - (doc.at || 0) > 24 * 3600000) return;
+  const def = IslandTigers.TIGERS.find((d) => d.id === doc.by); notifyAccount(account, 'tigerCaught', { id: doc.lastId, again: true, by: def?.name || '호랑이', lost: doc.lastLost || [] });
 }
 
 // v1.10.11 서버 공용 랜덤 이벤트 (lib/island-events.js): 15 out on the island for everyone. A player hears only of
@@ -5107,7 +5118,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.382' });
+    return sendJson(res, 200, { ok: true, version: '1.10.383' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -6158,6 +6169,7 @@ async function requestHandler(req, res) {
     broadcastLobby();
     sseWrite(res, 'announcements', { items: await announcementStore.list() });
     sseWrite(res, 'plaza', plazaSnapshot()); // who is already in the plaza (v1.9.3)
+    tigerCaughtReplay(pointAccountForSession(session)).catch(() => {}); /* (tiger review #4: a catch this account has not seen yet) */
     sseWrite(res, 'statues', statueSnapshot()); // v1.10.5: the donation statues on show
     sseWrite(res, 'islandEvents', { list: adminEventsView(), at: nowMs(), entry: true }); // (364 섬 이벤트: those running, told on entry)
 
@@ -7112,8 +7124,16 @@ async function requestHandler(req, res) {
     if (!checkRateLimit(`island-quarry-tap:${t}`, 90, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const body = await parseJson(req); const pull = quarryPulls.get(t); const k = Number(body.round);
     if (!pull || pull.result || pull.finishing || !Number.isInteger(k) || k < 0 || k >= pull.plan.length || nowMs() - pull.at > 15000) return sendError(res, 409, 'COLLECT_NOT_STARTED', '다시 시도해 주세요.'); /* (383 Codex 371~380 #1: no press once its finish is judged) */
-    pull.taps ||= pull.plan.map(() => null);
-    if (!pull.taps[k]) pull.taps[k] = IslandQuarry.tapAt(pull.plan, k, { spot: Number(body.spot), ms: Number(body.ms) }, nowMs() - pull.at);
+    pull.presses ||= pull.plan.map(() => null);
+    const press = { spot: Number(body.spot), ms: Number(body.ms), arrive: nowMs() }; /* (383 총괄 #534: kept as it came -- judged at the finish, by the start and by when the game showed) */
+    if (!pull.presses[k] && IslandQuarry.tapAt(pull.plan, k, press, press.arrive - pull.at)) pull.presses[k] = press;
+    return sendJson(res, 200, { ok: true });
+  }
+  // 383 총괄 #534: the page's game showed -- a slow phone's setting up not counted in its presses' lateness (IslandQuarry.tapAt shownSince):
+  // only before any press, and SHOWN_MAX after the start at most (a later word is that much)
+  if (pathname === '/api/island/quarry/shown' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const pull = quarryPulls.get(session.token);
+    if (pull && !pull.result && !pull.finishing && pull.shownAt === undefined && !(pull.presses || []).some(Boolean)) pull.shownAt = Math.min(nowMs(), pull.at + IslandQuarry.SHOWN_MAX);
     return sendJson(res, 200, { ok: true });
   }
   if (['/api/island/quarry/start', '/api/island/quarry/finish', '/api/island/quarry/cancel'].includes(pathname) && req.method === 'POST') {
@@ -7150,12 +7170,13 @@ async function requestHandler(req, res) {
     if (pull?.result && pull.requestId === body.requestId) return sendJson(res, 200, pull.result);
     if (pull?.finishing && !pull.result) return sendError(res, 409, 'COLLECT_BUSY', '하는 중이에요.'); /* (383 Codex 371~380 #1: a second finish while the first is paying -- never a second judgement; its retry with the same requestId gets the one result) */
     if (!pull || pull.result || pull.rock !== rock.id || pull.spot !== spot || nowMs() - pull.at > 15000) return sendError(res, 409, 'COLLECT_NOT_STARTED', '다시 시도해 주세요.');
-    if (nowMs() - pull.at < pull.ms - 300 && !IslandQuarry.judge(pull.plan, pull.taps || []).done) return sendError(res, 409, 'COLLECT_TOO_SOON', '다시 시도해 주세요.'); /* (1.10.355 「두 번 맞히면 바로 결과」: sooner only on the server's own two timed hits) */
+    const quarryTaps = (pullOf) => (pullOf.presses || []).map((p, k) => p && IslandQuarry.tapAt(pullOf.plan, k, p, p.arrive - pullOf.at, p.arrive - (pullOf.shownAt ?? pullOf.at)));
+    if (nowMs() - pull.at < pull.ms - 300 && !IslandQuarry.judge(pull.plan, quarryTaps(pull)).done) return sendError(res, 409, 'COLLECT_TOO_SOON', '다시 시도해 주세요.'); /* (1.10.355 「두 번 맞히면 바로 결과」: sooner only on the server's own two timed hits) */
     pull.finishing = true; pull.requestId = body.requestId; /* (383 #1: judged now, before any wait -- a late press or a second finish can not turn this one's miss into a hit too) */
     const kept = { left: IslandQuarry.ORE_PER_ROCK, gen: 0 }; /* (379 사용자 「이것도 없애」: a rock never empties, never fills again -- every mining its own claim, as the wall's) */
     // (1.10.342 98B, review-plan §1-8: the presses judged -- two of three hit, the ore; else rubble: a 작은 돌, the pickaxe one use
     // older, the rock's ores and the day's count as they were)
-    const judged = IslandQuarry.judge(pull.plan, pull.taps || []); /* (1.10.351 Codex P1: the presses the server timed -- body.taps not read) */
+    const judged = IslandQuarry.judge(pull.plan, quarryTaps(pull)); /* (1.10.351 Codex P1: the presses the server timed -- body.taps not read) */
     if (!judged.done) {
       // (1.10.351 Codex 341-350 #5: at the 화강암 벽 -- outside the day's count -- a miss gives nothing (nor wears the pickaxe), else
       // missing on purpose was endless 작은 돌)
@@ -9220,7 +9241,12 @@ async function requestHandler(req, res) {
     return sendJson(res, 200, { ok: true, override });
   }
   // (1.10.376 별마루섬 호랑이, tests: on or off, one put somewhere, their rest hours' clock shifted; the state read back)
-  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/tigers' && req.method === 'POST') { const body = await parseJson(req); if (typeof body.on === 'boolean') tigerSim.setOn(body.on); if (Number.isFinite(body.clockShift)) tigerSim.setClockShift(body.clockShift); if (body.place && Number.isFinite(body.place.x) && Number.isFinite(body.place.z)) tigerSim.place(String(body.place.id), body.place.x, body.place.z, nowMs()); plazaDirty = true; return sendJson(res, 200, { ok: true, on: tigerSim.isOn(), tigers: tigerSim.state(), ready: tigerSim.ready() }); }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/tigers' && req.method === 'POST') { const body = await parseJson(req); if (typeof body.on === 'boolean') tigerSim.setOn(body.on); if (typeof body.freeze === 'boolean') tigerFrozen = body.freeze; /* (383 photos: held where put, facing place.yaw) */ if (Number.isFinite(body.clockShift)) tigerSim.setClockShift(body.clockShift); if (body.place && Number.isFinite(body.place.x) && Number.isFinite(body.place.z)) tigerSim.place(String(body.place.id), body.place.x, body.place.z, nowMs(), Number.isFinite(body.place.yaw) ? body.place.yaw : undefined); plazaDirty = true; return sendJson(res, 200, { ok: true, on: tigerSim.isOn(), tigers: tigerSim.state(), ready: tigerSim.ready() }); }
+  if (pathname === '/api/island/tiger/seen' && req.method === 'POST') { /* (tiger review #4: the page showed this catch -- not told again) */
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req); const id = String(body.id || '');
+    if (account && id) await pointStore.questApply(account, 'tiger', (doc) => (doc.lastId === id && doc.seenId !== id ? { doc: { ...doc, seenId: id } } : { error: 'NONE' })).catch(() => null);
+    return sendJson(res, 200, { ok: true });
+  }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/tigers/catch' && req.method === 'POST') { /* (383 tests: both tigers' paws in one tick on me -- Codex 371~380 #2·#5·#6) */
     const session = requireSession(req, res); if (!session) return; const body = await parseJson(req);
     await Promise.all(IslandTigers.TIGERS.filter((d) => (body.both ? true : d.id === body.id)).map((d) => tigerCatch(session.token, d)));
@@ -10840,7 +10866,7 @@ async function main() {
   bootMark('before-listen');
   /* (1.10.376 별마루섬 호랑이: their ground made after the start in 20 ms slices, as 별마루섬's open table -- the tigers wait till it is) */
   if (process.env.NODE_ENV !== 'test') setTimeout(() => { const step = () => { try { if (!tigerSim.warm(20)) setImmediate(step); } catch (error) { console.error('호랑이 땅 만들기 실패:', error.message); } }; step(); }, 6000).unref?.();
-  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.382 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.383 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

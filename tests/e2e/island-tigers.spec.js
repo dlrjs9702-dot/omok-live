@@ -29,6 +29,9 @@ test('별마루섬 호랑이: 경고, 잡히면 물건 2개를 잃고 시장님 
     // first out of his sight (45 m) till his file is in, then 10 m off: he comes -- the warning on
     await post(request, '/api/test/tigers', who.token, { place: { id: 'ure', x: spot.x - 45, z: spot.z } });
     await expect.poll(() => page.evaluate(() => window.PlazaTigers()?.shown?.find((t) => t.id === 'ure')?.loaded), { timeout: 60000 }).toBe(true);
+    await page.evaluate(() => { window.__zzClips = []; window.__zzClipWatch = setInterval(() => { const c = window.PlazaTigers()?.list?.find((t) => t.id === 'ure')?.clip; if (c && window.__zzClips[window.__zzClips.length - 1] !== c) window.__zzClips.push(c); }, 80); }); /* (382: the clips he plays on the way) */
+    /* (사용자 결정 27 A: caught while 자리 비움 too -- the away time shortened, standing still till he comes) */
+    await post(request, '/api/test/away', who.token, { ms: 1500 }); await page.waitForTimeout(2200);
     await post(request, '/api/test/tigers', who.token, { place: { id: 'ure', x: spot.x - 18, z: spot.z } });
     const caught = page.waitForFunction(() => /잡혔어요/.test(document.getElementById('toast')?.textContent || ''), null, { timeout: 60000 });
     await expect.poll(() => page.evaluate(() => window.PlazaTigers()?.warn?.id || null), { timeout: 20000 }).toBe('ure');
@@ -37,9 +40,17 @@ test('별마루섬 호랑이: 경고, 잡히면 물건 2개를 잃고 시장님 
     await expect.poll(() => page.evaluate(() => document.getElementById('tigerTransfer')?.classList.contains('on') ?? false), { timeout: 60000 }).toBe(true);
     expect(await page.evaluate(() => document.querySelector('#tigerTransfer .tigerTransferGo')?.textContent)).toBe('이송 중');
     await caught;
+    /* (382 사용자 결정 12, assets 159: one standing still -- caught by one of the attacks the server picks) */
+    const clips = await page.evaluate(() => { clearInterval(window.__zzClipWatch); return window.__zzClips; });
+    /* (a run's pounce from 4.5 m is one of the patterns too; the Growl after it is not seen here -- caught, I am at the mayor, out of the tigers' frames
+       (383 Codex #15); which near attack comes when: test/island-tigers.test.js 「382 공격 고르기」) */
+    expect(clips.some((c) => ['Pounce', 'Swipe', 'TurnSwipe', 'TurnSwipeL', 'Lunge'].includes(c)), clips.join(',')).toBe(true);
     expect(await page.evaluate(() => document.getElementById('tigerTransfer').classList.contains('on'))).toBe(false);
     const toast = await page.evaluate(() => document.getElementById('toast').textContent);
     expect(toast).toContain('우레에게 잡혔어요'); expect(toast).toContain('큰일 날 뻔했어요'); expect(toast).toContain('잡초'); expect(toast).toContain('나뭇가지'); expect(toast).not.toContain('낚싯대');
+    /* (결정 27 A: caught away -- back (a key), the word again) */
+    await page.locator('#plazaStage').focus(); await page.keyboard.press('KeyQ');
+    await expect(page.locator('#toast')).toContainText('자리를 비운 사이'); await expect(page.locator('#toast')).toContainText('잡초');
     // in front of the mayor, on my screen and the server's
     const TH = T.TOWNHALL; const m = T.townhallWorld(0, TH.yard.z1 + 3.2);
     await expect.poll(() => page.evaluate(() => { const d = window.PlazaDebug(); return [d.x, d.z]; }).then(([x, z]) => Math.hypot(x - m.x, z - m.z)), { timeout: 10000 }).toBeLessThan(1.5);
@@ -48,5 +59,5 @@ test('별마루섬 호랑이: 경고, 잡히면 물건 2개를 잃고 시장님 
     // the warning is gone there
     await expect.poll(() => page.evaluate(() => document.getElementById('tigerWarn')?.classList.contains('on') ?? false), { timeout: 10000 }).toBe(false);
     expect(errors).toEqual([]);
-  } finally { await post(request, '/api/test/tigers', who.token, { on: false, clockShift: 0 }); await who.context.close(); }
+  } finally { await post(request, '/api/test/tigers', who.token, { on: false, clockShift: 0 }); await post(request, '/api/test/away', who.token, { ms: 0 }); await who.context.close(); }
 });

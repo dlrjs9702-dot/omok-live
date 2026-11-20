@@ -4604,10 +4604,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const ring = new THREE.Mesh(new THREE.RingGeometry(0.15, 0.185, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, depthTest: false, side: THREE.DoubleSide })); ring.rotation.y = face + Math.PI; ring.renderOrder = 4; ring.visible = false; scene.add(ring);
     const pips = document.createElement('div'); pips.className = 'minePips'; pips.setAttribute('aria-hidden', 'true'); host.append(pips);
     const top = new THREE.Vector3(S.x, base + tall + 0.35, S.z);
-    let pad = null; if (pilotPhone) { pad = document.createElement('button'); pad.type = 'button'; pad.className = 'mineDig'; pad.textContent = '⛏ 캐기'; pad.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); const gg = mineGame; if (!gg) return; const ms = performance.now() - gg.t0; const kk = Math.floor(ms / QY.ROUND_MS); if (kk >= 0 && kk < gg.plan.length) minePress(kk, gg.plan[kk].spot, ms); }); host.append(pad); }
+    let pad = null; if (pilotPhone) { pad = document.createElement('button'); pad.type = 'button'; pad.className = 'mineDig'; pad.textContent = '⛏ 캐기'; pad.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); const gg = mineGame; if (!gg) return; const ms = pressMs(e, gg); const kk = Math.floor(ms / QY.ROUND_MS); if (kk >= 0 && kk < gg.plan.length) minePress(kk, gg.plan[kk].spot, ms); }); host.append(pad); }
     document.body.classList.add('islandMining');
     mineGame = { q, plan: spec.plan, cracks, taps: spec.plan.map(() => null), t0: performance.now(), hint, cam, hits: 0, onTap: typeof spec.onTap === 'function' ? spec.onTap : null, ring, pips, top, pad, early: null };
     if (locked()) { lockGameExit = true; document.exitPointerLock?.(); }
+    try { spec.onShown?.(); } catch { /* (383 총괄 #534: the server told the game shows now -- its presses' lateness from here) */ }
     stepMineGame(0);
   }
   const CRACK_WAIT = new THREE.Color(0xf4efe6); /* (the crack to come: a white glow before its light) */
@@ -4633,9 +4634,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     stepMineGame(ms);
     if (g.hits >= QY.HITS_NEEDED && !g.early) g.early = setTimeout(() => { if (mineGame === g && gather?.kind === 'mine') endGather(true); }, 420); /* (두 번 맞히면 바로 결과 -- the server ends it on its own two timed hits) */
   }
+  /* (384 총괄 #534 채석장 폰: a press timed when it happened (the event's own time), not when a slow frame let it be handled -- a phone at a few
+     frames a second lost hits it made in time) */
+  const pressMs = (event, g) => { const now = performance.now(); const at = event?.timeStamp; return (Number.isFinite(at) && at > 0 && at <= now ? at : now) - g.t0; };
   function onMineDown(event) {
     const g = mineGame; if (!g) return; event.stopImmediatePropagation(); event.preventDefault();
-    const ms = performance.now() - g.t0; const k = Math.floor(ms / QY.ROUND_MS); if (k < 0 || k >= g.plan.length || g.taps[k]) return;
+    const ms = pressMs(event, g); const k = Math.floor(ms / QY.ROUND_MS); if (k < 0 || k >= g.plan.length || g.taps[k]) return;
     const rect = renderer.domElement.getBoundingClientRect(); let best = -1; let bestD = MINE_RING;
     g.cracks.forEach((m, i) => { const v = m.position.clone().project(camera); const d = Math.hypot(rect.left + ((v.x + 1) / 2) * rect.width - event.clientX, rect.top + ((1 - v.y) / 2) * rect.height - event.clientY); if (d < bestD) { bestD = d; best = i; } });
     if (best < 0) return; /* (not near a crack: nothing kept -- press again) */

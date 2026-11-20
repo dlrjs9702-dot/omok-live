@@ -15314,26 +15314,26 @@
     },
     {
       "out": "byeolmaru-v1/tiger.glb",
-      "src": "tiger158:01. High/byeolmaru-v1/tiger.glb",
-      "sha256": "0572f2e061c2c0915f81823f4e6502968985c188828fa3218a6e5b69de9b1385",
+      "src": "tiger159:01. High/byeolmaru-v1/tiger.glb",
+      "sha256": "4f633738534fcb3e2bc2bc0bdf617e59963df3a879990124ce1c1b4db77f1c83",
       "precompressed": true
     },
     {
       "out": "byeolmaru-v1/tiger_low.glb",
-      "src": "tiger158:02. Low/byeolmaru-v1/tiger_low.glb",
-      "sha256": "c2f7eaa6d086ecb7e8ebcecac4f8417b8b1c27e9ef8daf58482b066753e8c7ec",
+      "src": "tiger159:02. Low/byeolmaru-v1/tiger_low.glb",
+      "sha256": "c0c75447c15b895c34a52db2b4c05780b88236a884d592e3924ab7ce0dfd2c2b",
       "precompressed": true
     },
     {
       "out": "byeolmaru-v1/tiger_angae.glb",
-      "src": "tiger158:01. High/byeolmaru-v1/tiger_angae.glb",
-      "sha256": "bb76c2f408e6e56ac2d166d1c88c50da0d859c7fa6b0a35ae5b409bc6187ad68",
+      "src": "tiger159:01. High/byeolmaru-v1/tiger_angae.glb",
+      "sha256": "b2cc66880455ad14566161b287deb439539b112cfcb5c2cbe3611f0934963a43",
       "precompressed": true
     },
     {
       "out": "byeolmaru-v1/tiger_angae_low.glb",
-      "src": "tiger158:02. Low/byeolmaru-v1/tiger_angae_low.glb",
-      "sha256": "77233b6428e1f1cd4cf5ae8942120cd26af07434b6b3649e174552696f43fd19",
+      "src": "tiger159:02. Low/byeolmaru-v1/tiger_angae_low.glb",
+      "sha256": "a0094b940f2e901adc37079bd988e2acdfd05f2e66dfe4a9912da5e7414c4e3b",
       "precompressed": true
     },
     {
@@ -15643,6 +15643,7 @@
     "spring157": "157. Game Island creek spring cave 2026-11-20",
     "insect131": "131. Game Island rare insects new isle 2026-11-15",
     "fish132": "132. Game Island new isle fish 3 2026-11-15",
-    "tiger158": "158. Game Island tiger running pounce 2026-11-20"
+    "tiger158": "158. Game Island tiger running pounce 2026-11-20",
+    "tiger159": "159. Game Island tiger attacks 2026-11-20"
   }
 }
