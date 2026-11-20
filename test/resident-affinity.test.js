@@ -148,6 +148,13 @@ test('재료 부탁: 모자라면 다시 부탁, 그만큼 있으면 한꺼번�
   const qty = async () => { const b = (await req('/api/island/bag', a)).data; return (b.bag?.items || b.items || []).filter((x) => x.itemId === id).reduce((s, x) => s + x.qty, 0); };
   if (count > 1) { await req('/api/test/island/give', a, { itemId: id, qty: count - 1 }); const short = (await talkTo(n, {})).data; assert.equal(short.finished, null, '모자라면 아직'); assert.equal(await qty(), count - 1, '안 가져감'); }
   await req('/api/test/island/give', a, { itemId: id, qty: count === 1 ? 2 : 2 }); const have = await qty();
-  const done = (await talkTo(n, {})).data; assert.equal(done.finished?.reward, offer.reward, JSON.stringify(done)); assert.equal(await qty(), have - count, '그만큼 가져감');
-  assert.equal((await talkTo(n, {})).data.finished, null, '한 번만');
+  /* (383 Codex 371~380 #4: the pay failing after the materials are taken (23:59) -- the next day's first talk pays it, once) */
+  const balance = async () => (await req('/api/points', a)).data.balance; const before = await balance();
+  await req('/api/test/store/fail', null, { method: 'claimEvent' });
+  assert.notEqual((await talkTo(n, {})).status, 200, '사례 저장 실패'); assert.equal(await qty(), have - count, '재료는 가져감');
+  const tomorrow = new Date(Date.now() + 9 * 3600000 + 86400000).toISOString().slice(0, 10); await req('/api/test/roster', null, { on: false, day: tomorrow });
+  try {
+    await talkTo(n, {}); assert.equal(await balance(), before + offer.reward, '다음 날 첫 대화에서 어제 몫');
+    await talkTo(n, {}); assert.equal(await balance(), before + offer.reward, '한 번만');
+  } finally { await req('/api/test/roster', null, { on: false }); }
 });
