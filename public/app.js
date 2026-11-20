@@ -3857,7 +3857,8 @@
       const spec = await api('/api/island/quarry/start', { method: 'POST', body: JSON.stringify({ rock, spot: Number(spot) }) }); started = true;
       /* (1.10.351 Codex 341-350 P1: each press sent as it happens -- the server times it and judges those, not a list at the end) */
       const sent = []; const onTap = (round, tap) => { sent.push(api('/api/island/quarry/tap', { method: 'POST', body: JSON.stringify({ round, spot: tap.spot, ms: tap.ms }) }).catch(() => {})); };
-      const { fin } = await new Promise((resolve) => { if (!plaza.controller?.mineRock?.({ ...spec, rock, spot: Number(spot), onTap }, (ok) => resolve({ fin: ok }))) resolve({ fin: false }); });
+      const onShown = () => { sent.push(api('/api/island/quarry/shown', { method: 'POST', body: '{}' }).catch(() => {})); }; /* (383 총괄 #534: a slow phone's setting up not in its presses' lateness) */
+      const { fin } = await new Promise((resolve) => { if (!plaza.controller?.mineRock?.({ ...spec, rock, spot: Number(spot), onTap, onShown }, (ok) => resolve({ fin: ok }))) resolve({ fin: false }); });
       if (!fin) { await api('/api/island/quarry/cancel', { method: 'POST', body: '{}' }).catch(() => {}); return; }
       await Promise.all(sent);
       const body = JSON.stringify({ rock, spot: Number(spot), requestId: crypto.randomUUID() });

@@ -7124,8 +7124,16 @@ async function requestHandler(req, res) {
     if (!checkRateLimit(`island-quarry-tap:${t}`, 90, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
     const body = await parseJson(req); const pull = quarryPulls.get(t); const k = Number(body.round);
     if (!pull || pull.result || pull.finishing || !Number.isInteger(k) || k < 0 || k >= pull.plan.length || nowMs() - pull.at > 15000) return sendError(res, 409, 'COLLECT_NOT_STARTED', '다시 시도해 주세요.'); /* (383 Codex 371~380 #1: no press once its finish is judged) */
-    pull.taps ||= pull.plan.map(() => null);
-    if (!pull.taps[k]) pull.taps[k] = IslandQuarry.tapAt(pull.plan, k, { spot: Number(body.spot), ms: Number(body.ms) }, nowMs() - pull.at);
+    pull.presses ||= pull.plan.map(() => null);
+    const press = { spot: Number(body.spot), ms: Number(body.ms), arrive: nowMs() }; /* (383 총괄 #534: kept as it came -- judged at the finish, by the start and by when the game showed) */
+    if (!pull.presses[k] && IslandQuarry.tapAt(pull.plan, k, press, press.arrive - pull.at)) pull.presses[k] = press;
+    return sendJson(res, 200, { ok: true });
+  }
+  // 383 총괄 #534: the page's game showed -- a slow phone's setting up not counted in its presses' lateness (IslandQuarry.tapAt shownSince):
+  // only before any press, and SHOWN_MAX after the start at most (a later word is that much)
+  if (pathname === '/api/island/quarry/shown' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const pull = quarryPulls.get(session.token);
+    if (pull && !pull.result && !pull.finishing && pull.shownAt === undefined && !(pull.presses || []).some(Boolean)) pull.shownAt = Math.min(nowMs(), pull.at + IslandQuarry.SHOWN_MAX);
     return sendJson(res, 200, { ok: true });
   }
   if (['/api/island/quarry/start', '/api/island/quarry/finish', '/api/island/quarry/cancel'].includes(pathname) && req.method === 'POST') {
@@ -7162,12 +7170,13 @@ async function requestHandler(req, res) {
     if (pull?.result && pull.requestId === body.requestId) return sendJson(res, 200, pull.result);
     if (pull?.finishing && !pull.result) return sendError(res, 409, 'COLLECT_BUSY', '하는 중이에요.'); /* (383 Codex 371~380 #1: a second finish while the first is paying -- never a second judgement; its retry with the same requestId gets the one result) */
     if (!pull || pull.result || pull.rock !== rock.id || pull.spot !== spot || nowMs() - pull.at > 15000) return sendError(res, 409, 'COLLECT_NOT_STARTED', '다시 시도해 주세요.');
-    if (nowMs() - pull.at < pull.ms - 300 && !IslandQuarry.judge(pull.plan, pull.taps || []).done) return sendError(res, 409, 'COLLECT_TOO_SOON', '다시 시도해 주세요.'); /* (1.10.355 「두 번 맞히면 바로 결과」: sooner only on the server's own two timed hits) */
+    const quarryTaps = (pullOf) => (pullOf.presses || []).map((p, k) => p && IslandQuarry.tapAt(pullOf.plan, k, p, p.arrive - pullOf.at, p.arrive - (pullOf.shownAt ?? pullOf.at)));
+    if (nowMs() - pull.at < pull.ms - 300 && !IslandQuarry.judge(pull.plan, quarryTaps(pull)).done) return sendError(res, 409, 'COLLECT_TOO_SOON', '다시 시도해 주세요.'); /* (1.10.355 「두 번 맞히면 바로 결과」: sooner only on the server's own two timed hits) */
     pull.finishing = true; pull.requestId = body.requestId; /* (383 #1: judged now, before any wait -- a late press or a second finish can not turn this one's miss into a hit too) */
     const kept = { left: IslandQuarry.ORE_PER_ROCK, gen: 0 }; /* (379 사용자 「이것도 없애」: a rock never empties, never fills again -- every mining its own claim, as the wall's) */
     // (1.10.342 98B, review-plan §1-8: the presses judged -- two of three hit, the ore; else rubble: a 작은 돌, the pickaxe one use
     // older, the rock's ores and the day's count as they were)
-    const judged = IslandQuarry.judge(pull.plan, pull.taps || []); /* (1.10.351 Codex P1: the presses the server timed -- body.taps not read) */
+    const judged = IslandQuarry.judge(pull.plan, quarryTaps(pull)); /* (1.10.351 Codex P1: the presses the server timed -- body.taps not read) */
     if (!judged.done) {
       // (1.10.351 Codex 341-350 #5: at the 화강암 벽 -- outside the day's count -- a miss gives nothing (nor wears the pickaxe), else
       // missing on purpose was endless 작은 돌)

@@ -154,11 +154,16 @@
   // bonus, the better ore. The bonus now by a time never earlier than the server's own less LAG_ALLOW (a trip there and back): a made-up
   // `ms` gains that at most. A plain hit keeps the page's own time within the 2 s -- at CI's ~3 frames a second (and a slow phone's
   // trip) an honest press came in up to ~1.5 s late and the server's floor alone made every press a miss)
-  const LAG_MIN = -150; const LAG_MAX = 2000; const LAG_ALLOW = 450;
-  function tapAt(plan, k, tap, since) {
+  // (383 총괄 #534: a slow phone's 1 s and more from the start's answer to its game showing came into every press's lag, and an honest hit shown
+  // 「완벽!」 went over 2 s -- a miss. The page tells the server when its game showed (SHOWN_MAX after the start at most, and only before any press):
+  // how late a press is is counted from then (`shownSince`); a claim earlier than the start allows (LAG_MIN) and the bonus's floor stay by the
+  // start (`since`). LAG_MAX itself stays 2 s -- more would let the plan's presses made up and sent at the end hit two rounds again (Codex 341-350 P1))
+  const LAG_MIN = -150; const LAG_MAX = 2000; const LAG_ALLOW = 450; const SHOWN_MAX = 2500;
+  function tapAt(plan, k, tap, since, shownSince = since) {
     const r = plan?.[k]; if (!r || !tap || !Number.isInteger(tap.spot) || !Number.isFinite(tap.ms) || !Number.isFinite(since)) return null;
     const server = since - k * ROUND_MS - r.at; const lag = server - tap.ms;
-    return lag >= LAG_MIN && lag <= LAG_MAX ? { spot: tap.spot, ms: tap.ms, bonusMs: Math.max(tap.ms, server - LAG_ALLOW) } : { spot: tap.spot, ms: null, late: true };
+    const shown = Math.min(since, Number.isFinite(shownSince) ? shownSince : since) - k * ROUND_MS - r.at; /* (never later than the start's own) */
+    return lag >= LAG_MIN && shown - tap.ms <= LAG_MAX ? { spot: tap.spot, ms: tap.ms, bonusMs: Math.max(tap.ms, server - LAG_ALLOW) } : { spot: tap.spot, ms: null, late: true };
   }
   const PICK_USES = 40; // (a pickaxe: 40 ores)
   // a spot in the world: the surface point, outward, and where to stand (origin = S - R(yaw) HIT_TIP, facing -n)
@@ -188,5 +193,5 @@
   function rockState(kept, now, rock = null) { const k = kept || {}; const left = Number.isInteger(k.left) ? k.left : ORE_PER_ROCK; if (left <= 0 && Number.isFinite(k.minedAt) && now - k.minedAt >= (rock ? regrowOf(rock) : REGROW_MS)) return { left: ORE_PER_ROCK, gen: now, stage: 'full', regrown: true }; return { left, gen: k.gen || 0, stage: left > 0 ? 'full' : 'mined', minedAt: k.minedAt ?? null }; }
   // the solids round a rock (its circle, turned with it: centred) and the sign's and pile's
   const solidsOf = () => [...ROCKS.map((r) => ({ x: r.x, z: r.z, r: SOLIDS[r.kind].r, quarry: r.id })), { x: SIGN.x, z: SIGN.z, r: SOLIDS.sign.r }, { x: PILE.x, z: PILE.z, r: SOLIDS.pile.r }, ...propSolids()];
-  return { WALL, WALL_SPOTS, AREA, inArea, edgeDist, po, WALK, ROCKS, SIGN, PILE, SPOTS, SOLIDS, PROPS, RAIL, SHAPES, BATCHED, DECK, deckLift, HIT_TIP, SWING_MS, SWINGS, MINE_MS, END_MS, ORE_PER_ROCK, REGROW_MS, DAILY, PICK_USES, ROUNDS, ROUND_MS, GRACE_MS, BONUS_MS, HITS_NEEDED, CRACKS, lightOf, regrowOf, planOf, judge, tapAt, LAG_MIN, LAG_MAX, LAG_ALLOW, spotOf, standOf, rockById, spotCount, rockState, solidsOf, turn };
+  return { WALL, WALL_SPOTS, AREA, inArea, edgeDist, po, WALK, ROCKS, SIGN, PILE, SPOTS, SOLIDS, PROPS, RAIL, SHAPES, BATCHED, DECK, deckLift, HIT_TIP, SWING_MS, SWINGS, MINE_MS, END_MS, ORE_PER_ROCK, REGROW_MS, DAILY, PICK_USES, ROUNDS, ROUND_MS, GRACE_MS, BONUS_MS, HITS_NEEDED, CRACKS, lightOf, regrowOf, planOf, judge, tapAt, LAG_MIN, LAG_MAX, LAG_ALLOW, SHOWN_MAX, spotOf, standOf, rockById, spotCount, rockState, solidsOf, turn };
 }));

@@ -187,3 +187,35 @@ test('채석장 타격 시각 (1.10.351 Codex P1): 서버가 받은 시각과 �
   const forged = Q.tapAt(plan, 0, { spot: 1, ms: 500 }, 400 + 500 + 1500); assert.equal(forged.bonusMs, 1500 - Q.LAG_ALLOW + 500); assert.deepEqual([Q.judge(plan, [forged, null]).hits, Q.judge(plan, [forged, null]).bonus], [1, 0], '맞기는 하지만 보너스 아님(느린 폰의 정직한 타격도 맞음)');
   assert.equal(Q.judge(plan, [Q.tapAt(plan, 0, { spot: 1, ms: 500 }, 400 + 500 + 200), null]).bonus, 1, '오간 시간 200 ms 정직한 가운데는 보너스');
 });
+
+test('383 총괄 #534: 느린 폰은 게임이 뜬 때부터 늦음을 셈, 끝에 몰아 보낸 가짜는 한 판만, 한 누름은 한 판', () => {
+  const plan = Q.planOf({ ore: 'clay' }, () => 0.5).map((r, i) => ({ ...r, spot: i })); /* (three rounds, light 1000, each at 500) */
+  assert.ok(Q.LAG_MAX === 2000 && Q.SHOWN_MAX === 2500, '늦음 허용은 2 s 그대로');
+  /* (a slow phone: its game shown 1.2 s after the start, its press's request 1.5 s on the way -- 2.7 s behind the start, 1.5 s behind the showing) */
+  const since = plan[0].at + 300 + 1200 + 1500; const slow = Q.tapAt(plan, 0, { spot: 0, ms: 300 }, since, since - 1200);
+  assert.equal(slow.late, undefined, '게임이 뜬 때부터면 맞음'); assert.deepEqual([Q.judge(plan, [slow, null, null]).hits, Q.judge(plan, [slow, null, null]).bonus], [1, 0], '보너스는 시작 기준(그대로)');
+  assert.equal(Q.tapAt(plan, 0, { spot: 0, ms: 300 }, since).late, true, '게임 표시 신호가 없으면 예전처럼 늦음');
+  assert.equal(Q.tapAt(plan, 0, { spot: 0, ms: 300 }, since, since + 5000).late, true, '신호는 시작보다 이르게 셀 수 없음');
+  assert.equal(Q.tapAt(plan, 1, { spot: 1, ms: 900 }, 2000 + plan[1].at + 300, 2000 + plan[1].at + 300 - 1500).late, true, '서버 시작보다 이른 주장은 신호와 상관없이 늦음');
+  /* (Codex 341-350 P1 kept: the plan's presses made up and all sent at the six seconds' end -- by the start, or by a word of showing as late as it
+     counts (2.5 s) -- whatever ms they claim, only the last round can fit) */
+  for (const at of [350, 500, 650]) for (const shownAt of [0, 1200, Q.SHOWN_MAX]) for (const ms of [0, 200, 650, 1300]) {
+    const p = plan.map((r) => ({ ...r, at })); const arrive = shownAt + Q.MINE_MS;
+    const end = p.map((r, k) => Q.tapAt(p, k, { spot: r.spot, ms }, arrive, arrive - shownAt));
+    assert.ok(Q.judge(p, end).hits <= 1, `끝에 몰아 보냄 at ${at} shown ${shownAt} ms ${ms}`);
+  }
+  /* (총괄: the word of showing held back on purpose -- 2.5 s, or 4 s (counted as 2.5) -- and the list sent at the end after it: one round at most;
+     the time won by holding the word is the word's own wait, no more) */
+  for (const at of [350, 500, 650]) for (const word of [Q.SHOWN_MAX, 4000]) for (const ms of [0, 200, 650, 1300]) {
+    const p = plan.map((r) => ({ ...r, at })); const shownAt = Math.min(word, Q.SHOWN_MAX); const arrive = word + Q.MINE_MS;
+    const end = p.map((r, k) => Q.tapAt(p, k, { spot: r.spot, ms }, arrive, arrive - shownAt));
+    assert.ok(Q.judge(p, end).hits <= 1, `신호 미룸 ${word} at ${at} ms ${ms}`);
+  }
+  /* (one press one round: a round's first kept, as server.js /api/island/quarry/tap -- a second for the same round thrown away; a press for round 0
+     reaching the server in round 1's time is round 0's) */
+  const presses = [null, null, null]; const keep = (k, tap) => { if (!presses[k]) presses[k] = tap; };
+  keep(0, { spot: 0, ms: 300, arrive: since }); keep(0, { spot: 0, ms: 310, arrive: since + 20 });
+  assert.equal(Math.floor((since - 1200) / Q.ROUND_MS), 1, '도착은 1판 시간');
+  const taps = presses.map((p, k) => p && Q.tapAt(plan, k, p, p.arrive, p.arrive - 1200));
+  assert.deepEqual(Q.judge(plan, taps), { hits: 1, bonus: 0, done: false }, '한 누름 한 판');
+});

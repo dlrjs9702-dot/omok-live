@@ -19,10 +19,12 @@ test('채석장 폰: 큰 「캐기」 단추로 빛나는 금을 눌러 두 번 
   await expect.poll(() => page.evaluate(() => Boolean(window.PlazaDebug().mine())), { timeout: 15000 }).toBe(true);
   const game = await page.evaluate(() => window.PlazaDebug().mine()); expect(game.pad).toBe(true); expect(game.pips).toBe('○○○');
   await expect(page.locator('.mineDig')).toBeVisible(); await expect(page.locator('#islandStick')).toBeHidden(); await expect(page.locator('#plazaHint')).toBeHidden();
-  // the button at each light's middle (by the game's own clock, as the scene judges it -- not a slow frame's drawing)
-  await page.evaluate(() => { const g = window.PlazaDebug().mine(); const Q = window.IslandQuarry; const pad = document.querySelector('.mineDig');
-    g.plan.forEach((r, k) => setTimeout(() => pad.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 7, pointerType: 'touch' })), Math.max(0, g.t0 + k * Q.ROUND_MS + r.at + r.light / 2 - performance.now()))); });
-  const name = Items.ITEMS[`ore_${rock.ore}`].name; await expect(page.locator('#toast')).toContainText(`+1`, { timeout: 20000 }); /* (379: no day's count in it; the piece drawn from every grade now) */
+  // the button at the first chance while each light is on (by the game's own clock, as the scene judges it -- not a slow frame's drawing). (384
+  // 총괄 #534: one timer at the light's middle fired 1~2 s late on CI's phone at a few frames a second -- past the light; looked at every 25 ms instead)
+  await page.evaluate(() => { const g = window.PlazaDebug().mine(); const Q = window.IslandQuarry; const pad = document.querySelector('.mineDig'); const done = g.plan.map(() => false);
+    const tick = setInterval(() => { const ms = performance.now() - g.t0; const k = Math.floor(ms / Q.ROUND_MS); const r = g.plan[k]; if (!r || !document.contains(pad)) { clearInterval(tick); return; } const local = ms - k * Q.ROUND_MS;
+      if (!done[k] && local >= r.at + 40 && local <= r.at + r.light + Q.GRACE_MS - 60) { done[k] = true; pad.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 7, pointerType: 'touch' })); } }, 25); });
+  const name = Items.ITEMS[`ore_${rock.ore}`].name; await expect(page.locator('#toast')).toContainText(`${name} +1`, { timeout: 20000 }); /* (379: no day's count in it; the piece drawn from every grade now. 384: the ore's name -- 「작은 돌 +1」 of a missed set is not it) */
   expect(await page.evaluate(() => window.IslandFeel.shown().filter((w) => w.text === '쨍!' || w.text === '완벽!').length)).toBeGreaterThanOrEqual(2);
   await expect(page.locator('.mineDig')).toHaveCount(0); await expect(page.locator('#islandStick')).toBeVisible(); /* (the game gone, the stick back) */
   const bag = (await get(request, '/api/island/bag', token)).data; expect((bag.items || []).filter((e) => e.itemId === `ore_${rock.ore}`).reduce((n, e) => n + e.qty, 0)).toBe(1);
