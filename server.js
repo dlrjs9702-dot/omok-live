@@ -2626,7 +2626,8 @@ function adminEventsTick(now = nowMs()) { // (every 15 s: a start or an end tell
   if (shown !== adminEventsShown) { adminEventsShown = shown; broadcastIsland('islandEvents', { list: adminEventsView(now), at: now }); }
 }
 // (364) a reason the unstuck move is refused now, or null -- N2a fills it in: not while a tiger chases me
-const stuckRefuse = (session) => null; // eslint-disable-line no-unused-vars
+/* (383 Codex 371~380 #9: a tiger stalking, chasing or springing at me -- the unstuck move is no way out of it) */
+const stuckRefuse = (session) => (tigerSim.isOn() && tigerSim.state().some((t) => t.target === session.token && ['stalk', 'chase', 'pounce', 'attack'].includes(t.mode)) ? '호랑이가 쫓고 있어요! 지금은 쓸 수 없어요.' : null);
 // v1.10.294 7 (사용자 「그대로 한바퀴 돌아서 그 자리까지 가야 다른 사람도 탈 수 있게」): one car a stop -- stop id -> the ride its car is out on
 // (there and back empty, IslandTaxi.backOf); in memory: a restart has every car at its stop
 const taxiStopOut = new Map();
@@ -7129,6 +7130,9 @@ async function requestHandler(req, res) {
       if ([resourcePulls.get(t), weedPulls.get(t), quarryPulls.get(t)].some((p) => p && !p.result && nowMs() - p.at < 15000)) return sendError(res, 409, 'COLLECT_BUSY', '하는 중이에요.');
       if ([...quarryPulls].some(([o, p]) => o !== t && !p.result && p.rock === rock.id && p.spot === spot && nowMs() - p.at < 15000)) return sendError(res, 409, 'SPOT_BUSY', '다른 사람이 캐는 자리예요. 옆 자리에서 캐 보세요.');
       const { doc, bag } = await pointStore.questDoc(account, 'quarry');
+      /* (383 Codex 371~380 #10: the spot looked at again after the bag's wait -- two at once both passed the first look; from here to its keeping no wait) */
+      if ([...quarryPulls].some(([o, p]) => o !== t && !p.result && p.rock === rock.id && p.spot === spot && nowMs() - p.at < 15000)) return sendError(res, 409, 'SPOT_BUSY', '다른 사람이 캐는 자리예요. 옆 자리에서 캐 보세요.');
+      if ([resourcePulls.get(t), weedPulls.get(t), quarryPulls.get(t)].some((p) => p && !p.result && nowMs() - p.at < 15000)) return sendError(res, 409, 'COLLECT_BUSY', '하는 중이에요.');
       if (!IslandItems.toolCount(bag, 'pickaxe')) return sendError(res, 409, 'NO_PICKAXE', '곡괭이가 있어야 캘 수 있어요. 잡화점에서 살 수 있어요.');
       void doc; void today; /* (379 사용자 「광석 캐기 제한을 없애고」: no day's cap -- the rocks' eight pieces and their fill time stay) */
       if (!IslandItems.addToBag(bag, `ore_${rock.ore}`, 1, null, null, IslandItems.capOf(account))) return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요.');

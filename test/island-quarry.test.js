@@ -136,6 +136,12 @@ test('채석장 서버: 곡괭이·자리·캐기 → 주 광석 · 곡괭이 �
     assert.equal((await req('/api/island/quarry/tap', a, { round: 2, spot: s.data.plan[2].spot, ms: 200 })).status, 409, '끝난 뒤 누름은 안 받음');
     const b2 = (await req('/api/island/bag', a)).data; const after = (b2.bag?.items || b2.items || []).filter((e) => e.itemId === 'stone').reduce((n, e) => n + e.qty, 0); const ores = (b2.bag?.items || b2.items || []).filter((e) => /^(ore|gem)_/.test(e.itemId)).reduce((n, e) => n + e.qty, 0);
     assert.equal(after, before.stone + 1, '작은 돌 하나만'); assert.equal(ores, 2, '광석은 그대로(f1·f2)'); }
+  { /* (383 Codex 371~380 #10: two at the same spot at once -- one starts, the other is told it is taken) */
+    const b = await server.enter(await server.issue('광부둘')); await req('/api/test/island/give', b, { itemId: 'pickaxe', qty: 1 });
+    for (const w of [a, b]) await req('/api/plaza/state', w, { x: stand.x, z: stand.z, yaw: stand.yaw, moving: false });
+    const both = await Promise.all([a, b].map((w) => req('/api/island/quarry/start', w, { rock: rock.id, spot: 0 })));
+    assert.deepEqual(both.map((r) => r.status).sort(), [200, 409], JSON.stringify(both.map((r) => r.data))); assert.ok(both.some((r) => r.data.error === 'SPOT_BUSY'));
+    for (const w of [a, b]) await req('/api/island/quarry/cancel', w, { rock: rock.id, spot: 0 }); }
   // 366 광석 개편 2: a gem instead of the ore -- the first of each its card (once an account), the island told
   const g1 = await mine(true, 0.1, 0.001); assert.equal(g1.itemId, 'gem_moonstone'); assert.equal(g1.gem, 'moonstone'); assert.equal(g1.name, '달빛석');
   assert.deepEqual(g1.firstGem, { id: 'moonstone', title: '첫 달빛석이에요!', line: require('../lib/gem-cards.json').moonstone.line, card: '/assets/items/cards/gem_moonstone_card.webp' });

@@ -31,6 +31,19 @@ test('호랑이 잡기 서버: 두 마리 같은 순간이어도 한 번(물건 
   assert.equal(after, 8, '8초 안 두 번째 잡기는 없음');
 });
 
+// 383 Codex 371~380 #9: chased -- 「막혔을 때」 (the unstuck move) refused
+test('호랑이에게 쫓기는 중에는 「막혔을 때」 안 됨', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'tiger-unstuck-')); rmAtExit(dir);
+  const { req, issue, enter } = await boot(t, dir); const a = await enter(await issue('쫓김이'));
+  const spot = { x: P.SWAMPS[1][0] + 18, z: P.SWAMPS[1][1] }; await req('/api/plaza/state', a, { x: spot.x, z: spot.z, yaw: 0, moving: false });
+  const T = require('../public/plaza/island-terrain.js'); const I = T.dalmaru.NEW_ISLE; const shift = (() => { const kst = new Date(Date.now() + 9 * 3600000); return Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate(), 0, 0, 0) - Date.now(); })(); /* (09시: both awake) */
+  try {
+    await req('/api/test/tigers', null, { on: true, clockShift: shift, place: { id: 'ure', x: spot.x - 12, z: spot.z } }); await req('/api/test/tigers', null, { place: { id: 'angae', x: I.x + 60, z: I.z - 60 } });
+    let mode = null; for (let k = 0; k < 30 && !['stalk', 'chase'].includes(mode); k += 1) { await new Promise((r) => { setTimeout(r, 100); }); mode = (await req('/api/test/tigers', null, {})).data.tigers[0].mode; }
+    assert.ok(['stalk', 'chase'].includes(mode), mode); const r = await req('/api/island/unstuck', a, {}); assert.equal(r.data.error, 'NOT_NOW', JSON.stringify(r.data));
+  } finally { await req('/api/test/tigers', null, { on: false, clockShift: 0 }); }
+});
+
 // 383 Codex 371~380 #7: on a bike in 별마루섬's swamp the server too keeps to the swamp's 4.3 m/s (the tigers chase where the server has one)
 test('늪 자전거 서버: 늪 안으로 한 번에 멀리 간 위치는 늪 속도만큼만', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'swamp-bike-')); rmAtExit(dir);
