@@ -59,7 +59,7 @@ test('386 창고 서버: 관공서에서 짓기·넓히기(값, 한 단계 한 �
   const inHall = async (fn) => { await stand(door.x, door.z); assert.equal((await req('/api/island/townhall/enter', a, {})).status, 200); const r = await fn(); await stand(ex.x, ex.z); await req('/api/island/townhall/leave', a, {}); return r; };
   assert.equal((await req('/api/home/storehouse/build', a, {})).data.error, 'TOO_FAR', '관공서에서만');
   await inHall(async () => { assert.equal((await req('/api/home/storehouse/build', a, {})).data.error, 'NO_HOME'); assert.equal((await req('/api/home/apply', a, { lot: lot.id, roof: 'blue' })).status, 200); });
-  let before = await balance(); const built = await inHall(() => req('/api/home/storehouse/build', a, {}));
+  let before = await balance(); const built = await inHall(() => req('/api/home/storehouse/build', a, { to: 1 }));
   assert.equal(built.status, 200, JSON.stringify(built.data)); assert.deepEqual([built.data.stage, built.data.slots, before - await balance()], [1, 20, 100000]);
   assert.equal((await req('/api/home', a)).data.storehouse, 1);
   // placed with the yard's request (its uid), not counted; a spot that fits every stage
@@ -75,13 +75,20 @@ test('386 창고 서버: 관공서에서 짓기·넓히기(값, 한 단계 한 �
   let r = await req('/api/home/storehouse/move', a, { dir: 'put', entryId: carrot.entryId, qty: 50 }); assert.equal(r.status, 200, JSON.stringify(r.data));
   assert.deepEqual([r.data.storehouse.used, r.data.storehouse.items[0].qty], [1, 50]); assert.equal((await bagOf()).items.filter((e) => e.itemId === 'crop_carrot').reduce((n, e) => n + e.qty, 0), 40);
   const pick = (await bagOf()).items.find((e) => e.itemId === 'bread'); assert.ok(pick, JSON.stringify((await bagOf()).items.map((e) => e.itemId))); assert.equal((await req('/api/home/storehouse/move', a, { dir: 'put', entryId: pick.entryId, qty: 1 })).data.error, 'NOT_KEPT');
-  r = await req('/api/home/storehouse/move', a, { dir: 'take', entryId: r.data.storehouse.items[0].entryId, qty: 20 }); assert.equal(r.status, 200); assert.equal(r.data.storehouse.items[0].qty, 30);
+  { /* (검토 #4: the same request twice -- its answer lost -- moves once) */ const requestId = crypto.randomUUID(); const body = { dir: 'take', entryId: r.data.storehouse.items[0].entryId, qty: 20, requestId };
+    r = await req('/api/home/storehouse/move', a, body); assert.equal(r.status, 200); assert.equal(r.data.storehouse.items[0].qty, 30);
+    const twice = await req('/api/home/storehouse/move', a, body); assert.deepEqual([twice.status, twice.data.again, twice.data.storehouse.items[0].qty], [200, true, 30]); }
   assert.equal((await bagOf()).items.filter((e) => e.itemId === 'crop_carrot').reduce((n, e) => n + e.qty, 0), 60);
   // grown at the 관공서: 30만, where it stood, its things kept; the last stage -- no more
-  before = await balance(); const grown = await inHall(() => req('/api/home/storehouse/build', a, {}));
+  before = await balance(); const grown = await inHall(async () => { const g = await req('/api/home/storehouse/build', a, { to: 2 }); const again = await req('/api/home/storehouse/build', a, { to: 2 }); assert.deepEqual([again.status, again.data.error], [409, 'STALE'], '검토 #1: 같은 단계를 다시 눌러도 다음 단계를 안 삼'); assert.equal((await req('/api/home/storehouse/build', a, {})).data.error, 'STALE', '단계 없는 요청도 거절'); return g; });
   assert.deepEqual([grown.data.stage, grown.data.slots, grown.data.putAway, before - await balance()], [2, 40, false, 300000]);
   const yard = (await req('/api/home', a)).data.lots.find((l) => l.id === lot.id).yard; const s2 = yard.find((p) => p.uid === 'storehouse'); assert.deepEqual([s2.id, s2.x, s2.z], [Y.STORE.idOf(2), at.x, at.z]);
   assert.equal((await req('/api/home/storehouse', a)).data.storehouse.items[0].qty, 30, '넓혀도 물건은 그대로');
-  await inHall(async () => { assert.equal((await req('/api/home/storehouse/build', a, {})).status, 200); assert.equal((await req('/api/home/storehouse/build', a, {})).status, 200); assert.equal((await req('/api/home/storehouse/build', a, {})).data.error, 'TOP_STAGE'); });
+  await inHall(async () => { assert.equal((await req('/api/home/storehouse/build', a, { to: 3 })).status, 200); assert.equal((await req('/api/home/storehouse/build', a, { to: 4 })).status, 200); assert.equal((await req('/api/home/storehouse/build', a, { to: 5 })).data.error, 'TOP_STAGE'); });
   const view = (await req('/api/home/storehouse', a)).data.storehouse; assert.deepEqual([view.stage, view.slots, view.next], [4, 100, null]);
+  // (검토 #2: a worn house's yard locked -- but its storehouse, put away, placed again: its things in reach)
+  await stand(Y.world(lot, at.x, at.z - 2).x, Y.world(lot, at.x, at.z - 2).z); assert.equal((await req('/api/home/yard', a, { uid: 'storehouse', remove: true })).status, 200);
+  await req('/api/test/home/farm-time', a, { level: 2 }); /* (낡음) */
+  assert.equal((await req('/api/home/yard', a, { uid: 'storehouse', x: at.x, z: at.z, rot: 0 })).data.error, undefined, '접어 둔 창고는 낡음에도 다시 놓음');
+  assert.equal((await req('/api/home/yard', a, { uid: 'storehouse', x: at.x, z: at.z, rot: 2 })).data.error, 'HOUSE_WORN', '놓인 창고 옮기기는 다른 마당 물건처럼 잠김');
 });

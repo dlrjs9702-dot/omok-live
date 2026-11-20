@@ -270,7 +270,7 @@ test('마당 창고: 관공서에서 짓기 → 마당에 놓기 → 문 앞 SPA
     const th = await page.evaluate(() => window.PlazaDebug().doors.townhall); await standAt(request, a, th.x, th.z); expect((await post(request, '/api/island/townhall/enter', token, {})).status).toBe(200);
     lot = (await get(request, '/api/home', token)).data.lots.find((l) => l.owner === null).id; expect((await post(request, '/api/home/apply', token, { lot, roof: 'green' })).status).toBe(200);
     const before = (await get(request, '/api/points', token)).data.balance;
-    const built = await post(request, '/api/home/storehouse/build', token, {}); expect(built.status).toBe(200); expect(built.data.slots).toBe(20);
+    const built = await post(request, '/api/home/storehouse/build', token, { to: 1 }); expect(built.status).toBe(200); expect(built.data.slots).toBe(20);
     expect(before - (await get(request, '/api/points', token)).data.balance).toBe(100000); /* (10만, 결정 19) */
     const ex = T.roomWorld(T.TOWNHALL_ROOM.exit.lx, T.TOWNHALL_ROOM.exit.lz); await standAt(request, a, ex.x, ex.z); await post(request, '/api/island/townhall/leave', token, {});
     const L = Y.lotById(lot); let spot = null; const b = Y.boxOf(L, 1, 1);

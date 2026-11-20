@@ -4340,7 +4340,7 @@
     if (!s.stage) { showToast('마당 창고는 관공서 민원실에서 지어요.'); return; }
     const act = async (dir, entryId, qty) => {
       if (homeBusy) return; homeBusy = true;
-      try { const pose = plaza.controller?.pose?.(); if (pose) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(pose) }).catch(() => {}); const r = await api('/api/home/storehouse/move', { method: 'POST', body: JSON.stringify({ dir, entryId, qty }) }); if (r.bag) drawIslandBag(r.bag); }
+      try { const pose = plaza.controller?.pose?.(); if (pose) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(pose) }).catch(() => {}); const r = await api('/api/home/storehouse/move', { method: 'POST', body: JSON.stringify({ dir, entryId, qty, requestId: crypto.randomUUID() }) }); if (r.bag) drawIslandBag(r.bag); } /* (검토 #4) */
       catch (error) { showToast(error.message, 4000); } finally { homeBusy = false; }
       openStorehouse();
     };
@@ -4357,11 +4357,11 @@
     if (!s.next) { homeCard.replaceChildren(line(`마당 창고를 다 넓혔어요 · ${s.name} ${s.slots}칸`)); openPlazaWindow('마당 창고', [homeCard]); return; }
     const go = btn(`${s.stage ? '넓히기' : '짓기'} · ${Number(s.next.price).toLocaleString('ko-KR')}P`, 'primary', async () => {
       if (homeBusy) return; homeBusy = true; go.disabled = true;
-      try { const r = await api('/api/home/storehouse/build', { method: 'POST', body: '{}' }); plazaDialog.close(); showToast(r.stage === 1 ? '마당 창고를 지었어요! 마당 꾸미기에서 놓을 자리를 골라 주세요.' : r.putAway ? `마당 창고를 ${r.slots}칸으로 넓혔어요. 지금 자리에 안 맞아 접어 두었어요 — 마당 꾸미기에서 다시 놓아 주세요.` : `마당 창고를 ${r.slots}칸으로 넓혔어요!`, 6000); await refreshHomes(); loadPoints(); }
+      try { const r = await api('/api/home/storehouse/build', { method: 'POST', body: JSON.stringify({ to: s.next.stage }) }); /* (검토 #1: the stage this window offered -- pressed again, never the one after) */ plazaDialog.close(); showToast(r.stage === 1 ? '마당 창고를 지었어요! 마당 꾸미기에서 놓을 자리를 골라 주세요.' : r.putAway ? `마당 창고를 ${r.slots}칸으로 넓혔어요. 지금 자리에 안 맞아 접어 두었어요 — 마당 꾸미기에서 다시 놓아 주세요.` : `마당 창고를 ${r.slots}칸으로 넓혔어요!`, 6000); await refreshHomes(); loadPoints(); }
       catch (error) { showToast(error.message, 4000); } finally { homeBusy = false; go.disabled = false; }
     });
     const nodes = [line(s.stage ? `${s.name} ${s.slots}칸 → ${s.next.name} ${s.next.slots}칸` : `${s.next.name} ${s.next.slots}칸 · 한 칸에 99개, 가방 물건을 넣어 둬요(도구·자전거·펫·심부름 물건 빼고)`, 'lostRequestLine'),
-      line(s.stage ? '넓혀도 안의 물건은 그대로예요. 같은 자리에서 커지고, 안 맞으면 접어 둬요.' : '지은 뒤 마당 꾸미기에서 자리를 골라 놓아요. 집 하나에 하나, 마당 물건 수에는 안 들어가요.'), go];
+      line(s.stage ? '넓혀도 안의 물건은 그대로예요. 같은 자리에서 커지고, 자리가 모자라면 접혀요 — 마당을 넓히거나 다른 자리로 옮겨 주세요.' : '지은 뒤 마당 꾸미기에서 자리를 골라 놓아요. 집 하나에 하나, 마당 물건 수에는 안 들어가요.'), go]; /* (검토 #5: a big house in a first yard -- the 2nd stage mostly put away) */
     homeCard.replaceChildren(...nodes); openPlazaWindow(s.stage ? `마당 창고 넓히기 · ${s.next.slots}칸` : '마당 창고 짓기', [homeCard]);
   }
   // the yard's own storehouse among the yard pieces to place (built, not in the 가구 창고)
