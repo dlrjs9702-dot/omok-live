@@ -663,7 +663,7 @@ const depthOf = (o) => { const m = o.material; if (!m || Array.isArray(m) || m.a
   }
   // each frame: the one-off clips and the falling flakes
   function tick(dt, x, z, reduceMotion = false) {
-    for (const c of creatures) { if (c.gone) { c.mixer?.stopAllAction(); creatures.delete(c); } else c.mixer?.update(dt); } // B 47 반려동물
+    for (const c of creatures) { if (c.gone) { c.mixer?.stopAllAction(); creatures.delete(c); } else if (!(c.pauseHidden && c.root && !c.root.visible)) c.mixer?.update(dt); } // B 47 반려동물 (383 Codex 371~380 #18: a creature that asks -- the tigers -- rests its mixer while hidden)
     for (let i = playing.length - 1; i >= 0; i -= 1) {
       const p = playing[i]; p.t += dt; p.mixer.update(dt);
       p.root.getWorldPosition(at); const below = at.y < p.holder.position.y;

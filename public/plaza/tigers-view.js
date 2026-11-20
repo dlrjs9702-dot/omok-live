@@ -27,7 +27,7 @@ export function createTigerView({ scene, assets, heightAt, serverNow, lowFiles =
   const safeAt = (x, z) => Boolean(I) && (Math.hypot(x - camp.x, z - camp.z) < camp.r + 2 || Math.hypot(x - peak.x, z - peak.z) < 14);
   const near = (me) => Boolean(I) && Math.hypot(me.x - I.x, me.z - I.z) < I.r + 120;
   function holder(id) {
-    const def = DEFS[id]; const c = { root: new THREE.Group(), mixer: null, actions: {}, want: 'Idle', now: null, gone: false, low: lowFiles(),
+    const def = DEFS[id]; const c = { root: new THREE.Group(), mixer: null, actions: {}, want: 'Idle', now: null, gone: false, low: lowFiles(), pauseHidden: true /* (383 Codex #18: no mixer work while hidden) */,
       play(name, again = false) { c.want = name; if (!c.mixer) return; inPlace(c); if (c.now === name && !again) return; const next = c.actions[name] || c.actions.Idle; if (!next) return; const once = ONCE.has(name); if (c.now === name) next.stop(); next.reset(); next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity); next.clampWhenFinished = once; next.fadeIn(name === 'Run' && c.now === 'Stalk' ? 0.35 : once ? 0.1 : 0.2).play(); /* (379 assets 158: into the Pounce in 0.1 s; 382 the attacks too) */ if (c.now !== name) c.actions[c.now]?.fadeOut(0.2); c.now = name; } };
     scene.add(c.root); assets.creature([def.model], c); return c;
   }
@@ -53,7 +53,7 @@ export function createTigerView({ scene, assets, heightAt, serverNow, lowFiles =
   function set(next) { list = Array.isArray(next) ? next.filter((s) => s && DEFS[s.id] && Number.isFinite(s.x) && Number.isFinite(s.z)) : []; for (const s of list) { const h = shown.get(s.id); if (h) { h.s = s; h.at = performance.now(); } } }
   function step(dt, me, on) {
     const want = on && near(me);
-    if (!want) { for (const [, h] of shown) h.c.root.visible = false; warnState = null; warnUi(null); return; }
+    if (!want) { for (const [, h] of shown) { h.c.root.visible = false; h.runAt = null; /* (383 #18: its Run lined up with the server again when seen) */ } warnState = null; warnUi(null); return; }
     const tNow = serverNow();
     for (const s of list) {
       let h = shown.get(s.id); if (!h) { h = { c: holder(s.id), s, at: performance.now(), x: s.x, z: s.z, yaw: s.yaw }; shown.set(s.id, h); }
@@ -74,7 +74,7 @@ export function createTigerView({ scene, assets, heightAt, serverNow, lowFiles =
       if (a && st.clip === 'Run' && h.runAt !== st.at) { h.runAt = st.at; const d = a.getClip().duration || 0.6; a.time = ((((tNow - st.at) / 1000) * (def.speed / def.run)) % d + d) % d; }
       if (a) a.timeScale = st.clip === 'Run' ? def.speed / def.run : st.clip === 'Walk' ? Math.max(0.6, Math.min(1.5, (st.sp || def.walk) / def.walk)) : st.clip === 'Stalk' ? Math.max(0.6, Math.min(1.6, (st.sp || def.stalk) / def.stalk)) : 1;
     }
-    for (const [id, h] of shown) if (!list.some((s) => s.id === id)) h.c.root.visible = false;
+    for (const [id, h] of shown) if (!list.some((s) => s.id === id)) { h.c.root.visible = false; h.runAt = null; }
     shareNormal();
     // the warning: the nearest awake tiger within its own distance, unless I stand where they never come
     warnState = null;
