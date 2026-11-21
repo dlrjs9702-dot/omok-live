@@ -53,3 +53,18 @@ test('택시 N4-c: 세 번째 종점·정류장 ⑥⑦ — 모든 두 자리 사
   assert.ok(offAt(30, 236) > 1, 'the village street: its own lane');
   assert.equal(X.bridgeOf(196, 226), 1); assert.equal(X.bridgeOf(59, 140), 0); assert.equal(X.bridgeOf(30, 236), -1);
 });
+
+// 1.10.401 Codex 391~400 #1: the server's tick looks ahead on the ride's own table clock -- that copy kept only from and startedAt, so a ride
+// from a stop between the terminals (박물관 …) had no end and curbOf(undefined) threw, stopping the server; an empty car fetching a caller
+// there and going back the same. timeless keeps where it goes, leaves out only the waits and the aside
+test('택시 Codex #1: 중간 정류장 출발·빈 차 복귀를 미리 보는 운행이 목적지를 잃지 않음', () => {
+  const ends = ['plaza', 'isle', 'head'];
+  for (const from of Object.keys(X.ROADSTOPS)) for (const to of ends) for (const extra of [{}, { empty: true, stay: false, park: 0 }]) {
+    const ride = { from, to, startedAt: 1000, ...extra, warp: { at: 5000, tau: 5000, r0: 1, r1: 0, ms: 700 }, side: { at: 5000, from: 0, to: 0.8, ms: 700 }, ghost: { at: 6000, until: null } };
+    assert.throws(() => X.carAt({ from: ride.from, startedAt: ride.startedAt }, 4000), `${from}: the old copy had no end`);
+    const bare = X.timeless(ride);
+    assert.deepEqual(Object.keys(bare).sort(), Object.keys({ from, to, startedAt: 1, ...extra }).sort(), 'no clock or aside');
+    const clean = { from, to, startedAt: 1000, ...extra };
+    for (const t of [1000, 4000, 20000, 60000, 200000]) assert.deepEqual(X.carAt(bare, t), X.carAt(clean, t), `${from} → ${to} at ${t}`);
+  }
+});

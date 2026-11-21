@@ -2728,7 +2728,7 @@ function taxiTick() {
     if (ride.runMs) continue;
     const p = IslandTaxi.carAt(ride, now);
     if (!p || !['start', 'run', 'stop', 'back'].includes(p.phase)) { if (ride.blockedAt || ride.dodge) { ride.blockedAt = null; ride.dodge = null; plazaDirty = true; } continue; }
-    const road = IslandTaxi.roadNow(ride, now); const bare = { from: ride.from, startedAt: ride.startedAt };
+    const road = IslandTaxi.roadNow(ride, now); const bare = IslandTaxi.timeless(ride); /* (1.10.401 Codex #1: where it goes kept -- a ride from a stop between had none and threw) */
     const speedAt = (r) => { const a = IslandTaxi.carAt(bare, r); const b = IslandTaxi.carAt(bare, r + 200); return a && b ? Math.hypot(b.x - a.x, b.z - a.z) / 0.2 : 0; };
     const brake = IslandTaxi.LEAD + IslandTaxi.RAMP / 2 + 200 + late * 2; /* (+ a late tick or two on a busy server) */ const vTable = speedAt(road); const vMax = Math.max(vTable, speedAt(road + brake)); /* (pulling away it is still speeding up as it brakes) */
     const look = TAXI_LOOK.gap + vMax * IslandTaxi.rateOf(ride, now) * (brake / 1000);
