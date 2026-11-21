@@ -2269,6 +2269,14 @@
     "dalmaru-v1/bridge_yunseul_high.glb": {
       "triangles": 21000,
       "reason": "1.10.389 N3-a assets 133 높은 윤슬다리: 56 m at its own length (the old one is 50 m drawn shorter), 8 piers, 4 lamps, the ramps' cleats; within the asset order's 33,000 cap. 60 m off it is the Low (3,196)"
+    },
+    "dalmaru-v1/ferry.glb": {
+      "nodes": 12,
+      "reason": "1.10.390 N3-b assets 134 자연 구역 탐방선: one mesh and its ten named marks kept (seat_1~4, board_L/R, gate_L/R, captain, mast_top -- ferry.json; the game reads the numbers, the names stay for checks)"
+    },
+    "dalmaru-v1/ferry_low.glb": {
+      "nodes": 12,
+      "reason": "1.10.390 N3-b assets 134 자연 구역 탐방선: one mesh and its ten named marks kept (seat_1~4, board_L/R, gate_L/R, captain, mast_top -- ferry.json; the game reads the numbers, the names stay for checks)"
     }
   },
   "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files.",
