@@ -471,13 +471,13 @@
     },
     "characters/ip-characters/ironman.glb": {
       "triangles": 69590,
-      "sourceSha256": "dcef3fe8ccf2d49b260d454e44276a790431e6f07493a840a3692a098934250b",
-      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+      "sourceSha256": "759ab9669a0811684d204779ddb1d1b0a956d73e5efd743008c337269daa74c6",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged; 1.10.401 assets 169 (batman cape_spread morph, ironman softer metal -- triangles unchanged)"
     },
     "characters/ip-characters/ironman_low.glb": {
       "triangles": 22876,
-      "sourceSha256": "52c48ec99bb39bc1fef4ef155e97a9784cf0102e6e7a6036900841f324a04b1d",
-      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+      "sourceSha256": "93331379e40ab6b32dad6febb9d6b51a41d164a357bca611dda987e536aacba5",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged; 1.10.401 assets 169 (batman cape_spread morph, ironman softer metal -- triangles unchanged)"
     },
     "characters/ip-characters/superman.glb": {
       "triangles": 47402,
@@ -491,13 +491,13 @@
     },
     "characters/ip-characters/batman.glb": {
       "triangles": 54722,
-      "sourceSha256": "b36f4fecc31072a5873af9313909e0efcb1eb9ae3d7b43eb09c86d7bd3b7dca8",
-      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+      "sourceSha256": "0b9a80c22a3567613db9b08a0e05be9b277f9d476f6ecd63ee12ff17f9156a6d",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged; 1.10.401 assets 169 (batman cape_spread morph, ironman softer metal -- triangles unchanged)"
     },
     "characters/ip-characters/batman_low.glb": {
       "triangles": 16948,
-      "sourceSha256": "f49ed496f1d1599a897b9c3f9465bba2434b559531df5527d4eb635f27beeac6",
-      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged"
+      "sourceSha256": "e6f04931555e692ed57d5c9d706cb3a5eb0670cbb5b8e476c3c963b96c7e605d",
+      "reason": "User-authorized transformation fidelity exception, pack30; global character budget unchanged; 1.10.401 assets 169 (batman cape_spread morph, ironman softer metal -- triangles unchanged)"
     },
     "characters/ip-characters/spiderman.glb": {
       "triangles": 64330,
