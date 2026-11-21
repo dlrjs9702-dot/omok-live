@@ -3224,8 +3224,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const PET_QUICK = new Set(['tf_animal-dog', 'tf_animal-cat', 'tf_animal-fox', 'tf_animal-rabbit', 'puppy', 'kitten']);
   const PET_BIG = new Set(['tf_animal-bear', 'tf_animal-panda', 'tf_animal-cow', 'tf_animal-pig', 'tf_animal-sheep']);
   const PET_HERO = { tf_batman: 'glide', tf_superman: 'fly', tf_ironman: 'flyR', tf_captainamerica: 'sprint' };
+  /* (1.10.396 문제 기록 38e19523, 사용자 「달릴 때는 모든 펫 다 기존처럼 달려오는걸로 … 자전거탈 때만 다르게」 -- 결정 26's running part
+     changed: walking or running every pet follows as before; only on a bike its own way) */
   function petRole(kind, mode) {
-    if (mode === 'walk') return 'follow';
+    if (mode !== 'bike') return 'follow';
     if (PET_HEAD.has(kind)) return 'head';
     if (kind === 'ditto') return mode === 'bike' ? 'basket' : 'head';
     if (PET_QUICK.has(kind)) return mode === 'bike' ? 'basket' : 'run';
@@ -6304,7 +6306,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (!fp) { if (t.userData.fpBase) { t.scale.copy(t.userData.fpBase); delete t.userData.fpBase; } continue; }
       t.userData.fpBase ||= t.scale.clone(); const k = Math.max(0.3, Math.min(1, c.root.position.distanceTo(p) / 4)); t.scale.copy(t.userData.fpBase).multiplyScalar(k);
     }
-    { const on = !talkView; if (me.tag) me.tag.visible = on; for (const o of others.values()) if (o.c.tag) o.c.tag.visible = on && !placeAim; /* (v1.10.239 5-1: placing -- my own tag only) */ for (const pt of pets.values()) if (pt.tag) pt.tag.visible = on; if (yard.mayor.tag) yard.mayor.tag.visible = on; } // (v1.10.194 총괄 검토: while talking no name tags over heads -- mine and theirs, the pets' -- in the picture)
+    /* (1.10.396 문제 기록 b718b5ab 「자전거탔을 때 이름표가 시야를 가려 1인칭이면」: in my own eyes' view my tag and my pet's (in the crate before me,
+       on my head) are not drawn -- they stood big over the road) */
+    { const on = !talkView; const own = on && !fpNow(); if (me.tag) me.tag.visible = own; for (const o of others.values()) if (o.c.tag) o.c.tag.visible = on && !placeAim; /* (v1.10.239 5-1: placing -- my own tag only) */ for (const [k, pt] of pets) if (pt.tag) pt.tag.visible = k === 'me' ? own : on; if (yard.mayor.tag) yard.mayor.tag.visible = on; } // (v1.10.194 총괄 검토: while talking no name tags over heads -- mine and theirs, the pets' -- in the picture)
     // (v1.10.315 배치 도구 1단계, 사용자 「카메라 돌려서 볼 수 있게와 확대해서 미세조정」: zoomed in (editZoom 0..1) the camera comes down to
     // 1.5 m and lower, its middle going over to the piece in hand (editFocus) -- turned as ever with the view's yaw)
     // (총괄 #465, 사용자 「너무 위에서 크게 보면서 하니까」: opened, it starts slanting in about 9 m off -- toward the piece in hand, or
