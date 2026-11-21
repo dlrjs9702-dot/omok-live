@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.399 작은 묶음 — 에셋 168 연결 · 배 물결 · 밤 빛 · 폰 다리 위 시점(notes asset-eyes-2-20261121, 결정 52 A)
+
+- 에셋 168(SHA 일치): 자전거 몸체·크랭크(bike.frame__* keepNodes, basket_cushion은 펫이 바구니에 타면 숨김), fence_gate_wide 빗장, fence_gate 잎 팻말, 옷가게 preview_bg, 새 taxi.stop_mark(모든 자리 boardOf)·taxi.lane(종점 쉼터→문양 타일)·dalmaru.dock_board(T.DOCK_BOARDS, dest_plate에 글자, 기둥 원 structureSolids — 배 타는 곳은 걷는 길 피해 (−2.5, −3.5)).
+- 배 물결: 움직이는 탐방선 양옆 두 줄(속도에 따라). 밤 빛: 승선 계단·긴 다리 세 곳 양 끝·택시 문양에 그린 빛 웅덩이(wayLights, 업라이트 수와 따로). 폰 세로 화면 긴 다리 가운데: 시점 8° 낮게·1/5 멀리·옆 2.2 m.
+- 고침: 택시 화면 정류장 출발 빈 차의 머무를 곳(STOPS[from].to → toOf, 392부터 페이지 오류).
+- 예산: 자전거 몸체 메시 2·노드 6, 새 모델 셋.
+
 ## v1.10.398 새것 다듬기 — 결정 55 A 건물 가려도 보이기 · 에셋 검사 2회차 코드 몫 · CI 흔들림(notes asset-eyes-2-20261121, ui-review P6)
 
 - 결정 55 A: see-through.js SEE_BUILDING_IDS(달마루섬 건물 77종·그 위 장식) + seeBuilding — asset-loader attach/swapAttach가 대역·모델 재질을 SEE.cliff 구멍 사본으로(High만, 지붕 눈 포함), seeHolders; occlusion.js blocked()로 카메라→나 줄을 건물 모양 상자로 판정(별도 인스턴스 sight), cliffWant에 더함; 백화점 유리는 userData.facadeGlass로 따로(이중 구멍 없음). 실내·1인칭·사진 모드는 꺼짐 그대로.
@@ -29,10 +36,3 @@
 - 별마루섬 자연물: 세 번째 종점 둘레 10 m 비움.
 - 결정 54 A 목책: 걸을 수 있는 둑·절벽 끝 조각도 세움(시냇물 위만 비움) — 목책 줄에 지나갈 틈 0, 드나드는 곳은 넓은 문·부두 문.
 - 시험: 세 종점 2/2/2·6대, 모든 두 자리 사이 길(끊김 없음·끝은 그 자리)·거리·요금·두 다리 가운데.
-
-## v1.10.396 N4-c 길 연장 · ④ 정류장 · 문제 기록 6건(notes n4-plan-20261120 §5-3, 결정 50 A · 26 바뀜, 검토 isle2-fence-bridge-whale · pet-unnamed-invisible)
-
-- 길(island-taxi EXT, ROADS): 마을 정류장 앞 모퉁이 → 목 x −20 → 마을 거리 z 236(마당 울타리 앞면 232.1·239.9 사이 7.8 m) → lot14 모퉁이 지나 x 116 → 별마루다리 걷는 길 → 다리 → 넓은 문 안 10.5 m, 320 m. 건널목 6곳(−20,224 · −12/14/42/70/98,236). 땅 띠·칠·주민 길 격자·채집·나무 비우기(별마루섬 숲 포함, 자리 다시 뽑힘 한 번)가 모든 길을 읽음, 마을 거리 가로등은 인도 위 3.3 m, 별마루섬 안내판 길 밖으로. 차는 아직 새 길로 안 감(397).
-- ④ 달끝나루·달끝역 정류장: 길 위 225 m(두 건널목에서 6.75 m).
-- 문제 기록: 38e19523 걷기·뛰기는 모든 펫이 따라 달림(자전거만 387 방식 — 결정 26 뛰기 몫 바뀜), b718b5ab 1인칭에서 내 이름표·내 펫 이름표 숨김, 5218e442·1bca464b 별마루섬 목책·동굴·캠핑장·바위·표지판이 화면 solids에, 937dce24 낮은 모델 다리 옆막이(문턱 0.15), a3408e31 긴 다리 25 m 안에 고래·바다 볼거리 없음.
-- 시험: 새 길 단위, island-pets 이름 없는 펫 Idle, island-tigers 경고를 80 ms 감시로 기록(검토: 395 CI 흔들림).
