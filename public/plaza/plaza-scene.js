@@ -378,6 +378,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   let timeMode = 'auto'; let lightKey = null; let decorOn = null; let phase = 'day';
   let night = null; let halloweenOverride = null;
   const uplightBeams = []; // (v1.10.224 야경 조명: the lights' beams and their glow on the ground, at night only)
+  const wayLights = []; let wayDark = false; /* (1.10.399 에셋 검사 2회차 「밤 승선구·다리 입구 빛」: drawn pools at night -- their own list, the uplights' count kept) */
   // (R3 ③ 주민의 하루) the islanders walk the round of the island's time of day as the server has it -- its held mode
   // (walkTime: from the server only; a test's look at another hour changes the light, not where they are)
   let walkTime = 'auto';
@@ -401,7 +402,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (indoors && !openSky) { scene.background.set(0x000000); scene.fog.color.set(0x000000); } // (문제 기록 3회차 18 「밖은 그냥 검은 화면으로」; v1.10.211 the roof: the sky)
     lightBase.sky.copy(hemi.color); lightBase.hemi = hemi.intensity; lightBase.sun = sun.intensity; lightBase.fog.copy(scene.fog.color); lightBase.phase = phase; lightBase.indoor = indoors && !openSky; lightWood = -1; /* (1.10.371 §3: the time of day's light, the wood's tint over it -- woodLight) */
     candle.intensity = halloweenOn ? (dark ? 38 : 12) : 0;
-    assets.setNight(dark); for (const b of uplightBeams) b.visible = Boolean(dark); /* (v1.10.224) */
+    assets.setNight(dark); for (const b of uplightBeams) b.visible = Boolean(dark); /* (v1.10.224) */ wayDark = Boolean(dark); for (const w of wayLights) w.visible = wayDark; /* (399) */
     // v1.10.38: in October every lamp glows orange; the lamps are lit from the evening on
     for (const m of [...lamps.map((l) => l.material), island.lampBulb]) { m.color.set(halloweenOn ? 0xffc27a : 0xfff3c2); m.emissive.set(halloweenOn ? 0xff8a1f : 0xffe08a); }
     island.lampBulb.emissiveIntensity = lit ? 1.6 : 0.6;
@@ -1440,6 +1441,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const BT = globalThis.IslandBoat; const boatSea = globalThis.IslandTerrain.dalmaru?.SEA ?? -0.6;
   let boatsState = null; let myBoat = null; let boatPlace = {}; let boatsAt = 0;
   const CAPTAIN_SHIRTS = [0x2f6f8f, 0x8f3b2f, 0x3f7a4a, 0x6a4f8f];
+  /* (1.10.399 에셋 검사 2회차 「배 물결 자국」: two pale lines from the hull's sides back past the stern while it moves -- one canvas, a strip a side;
+     lit, so darker at night) */
+  const wakeTex = (() => { const c = document.createElement('canvas'); c.width = 32; c.height = 128; const x = c.getContext('2d');
+    const along = x.createLinearGradient(0, 0, 0, 128); along.addColorStop(0, 'rgba(255,255,255,0)'); along.addColorStop(1, 'rgba(255,255,255,0.75)'); x.fillStyle = along; x.fillRect(0, 0, 32, 128);
+    x.globalCompositeOperation = 'destination-in'; const across = x.createLinearGradient(0, 0, 32, 0); across.addColorStop(0, 'rgba(0,0,0,0)'); across.addColorStop(0.5, 'rgba(0,0,0,1)'); across.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = across; x.fillRect(0, 0, 32, 128);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+  const wakeGeo = new THREE.PlaneGeometry(0.7, 14).rotateX(-Math.PI / 2).translate(0, 0, -7); /* (its bright end at z 0, fading back along -z) */
   const boatObjs = BT && globalThis.IslandTerrain.DOCK2 ? BT.createFleet({ now: 0 }).boats.map((b, k) => {
     const g = new THREE.Group(); g.visible = false; scene.add(g); const v = new THREE.Group(); g.add(v);
     mesh(new THREE.BoxGeometry(3, 1.1, 8), mat(0xf1e6cf), 0, 0.15, 0, v); mesh(new THREE.BoxGeometry(3, 0.12, 4.2), mat(0x5f7f4a), 0, 2.55, 0.4, v); /* (the stand-in: hull and roof) */
@@ -1447,15 +1455,29 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const s of [-1, 1]) { const n = plaque('자연 구역 탐방선', s * 1.52, 2.36, 0.75, s * Math.PI / 2, 0.17); g.add(n); } /* (assets 134 nameFACE: the cream boards each side under the roof's rim) */
     const look = { gender: k % 2 ? 'female' : 'male', outfit: 'avatar_outfit_16', hat: 'avatar_hat_1' }; const spec = { shirt: CAPTAIN_SHIRTS[k], hair: 0x2b2b2b, skin: 0xffdcbc, hat: 0xf3f0e6 };
     const cap = makeCharacter(spec); dressUp(cap, look, spec); const c = BT.NODES.captain; cap.root.position.set(-c[0], c[1], -c[2]); cap.root.visible = false; g.add(cap.root); cap.anim?.loop?.('idle');
-    return { id: b.id, k, g, cap, pose: null };
+    const wakeMat = new THREE.MeshStandardMaterial({ map: wakeTex, color: 0xeaf6ff, roughness: 1, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    const wake = new THREE.Group(); wake.visible = false; scene.add(wake);
+    for (const s of [-1, 1]) { const w = new THREE.Mesh(wakeGeo, wakeMat); w.position.set(s * 1.55, 0, 1.5); w.rotation.y = -s * 0.14; wake.add(w); } /* (opening outward a little) */
+    return { id: b.id, k, g, cap, pose: null, wake, wakeMat, wakeK: 0, last: null };
   }) : [];
+  /* (399: a warm pool on each dock's boarding steps and across each long bridge's first planks at both ends, at night -- drawn, no real light) */
+  { const wayGlowMat = new THREE.MeshBasicMaterial({ color: 0xffd38a, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    const wayGlow = (geo, x, y, z, yaw) => { const m = new THREE.Mesh(geo, wayGlowMat); m.rotation.set(-Math.PI / 2, yaw, 0, 'YXZ'); m.position.set(x, y, z); m.visible = wayDark; scene.add(m); wayLights.push(m); };
+    if (BT && globalThis.IslandTerrain.DOCK2) { const lit = []; const disc = new THREE.CircleGeometry(0.8, 20);
+      for (const id of Object.keys(BT.DOCKS)) for (let k = 0; k < BT.DOCKS[id].berths.length; k += 1) { const e = BT.exitOf(id, k); if (lit.some((q) => Math.hypot(q.x - e.x, q.z - e.z) < 1.2)) continue; lit.push(e); wayGlow(disc, e.x, heightAt(e.x, e.z) + 0.04, e.z, 0); } }
+    const TT = globalThis.IslandTerrain; for (const b of TT.bridges || []) if (b.model) { const strip = new THREE.PlaneGeometry(b.w - 0.8, 0.8);
+      for (const s of [-1, 1]) { const u = s * (b.half - 0.5); wayGlow(strip, b.x + b.ux * u, TT.deckAt({ b, u }) + 0.1, b.z + b.uz * u, Math.atan2(b.ux, b.uz)); } } }
   function stepBoats(dt, at) {
     const live = boatsState && mySpace === 'island'; const now = taxiNow(); const S = boatsState?.scale || 1;
     for (const o of boatObjs) {
-      const b = live && boatsState.boats.find((x) => x.id === o.id); if (!b) { o.g.visible = false; o.pose = null; continue; }
+      const b = live && boatsState.boats.find((x) => x.id === o.id); if (!b) { o.g.visible = false; o.pose = null; o.wake.visible = false; o.last = null; continue; }
       const p = BT.poseAt(b, now, S); const bob = Math.sin(now / 900 + o.k) * 0.04; o.pose = { x: p.x, z: p.z, yaw: p.yaw, y: boatSea + bob };
       o.g.position.set(p.x, boatSea + bob, p.z); o.g.rotation.set(Math.sin(now / 1300 + o.k) * 0.015, p.yaw, Math.sin(now / 1100 + o.k) * 0.02, 'YXZ');
-      const d = Math.hypot(p.x - at.x, p.z - at.z); o.g.visible = d < 180; const capOn = d < 40; if (o.cap.root.visible !== capOn) o.cap.root.visible = capOn; if (capOn) o.cap.anim?.update?.(dt);
+      const d = Math.hypot(p.x - at.x, p.z - at.z);
+      { const sp = o.last && dt > 0 ? Math.hypot(p.x - o.last.x, p.z - o.last.z) / dt : 0; o.last = { x: p.x, z: p.z }; /* (399: the wake by its pace -- in and out as it eases, the slower stretch too) */
+        const want = d < 120 && sp > 0.5 ? Math.min(1, sp / BT.FAST) : 0; o.wakeK += (want - o.wakeK) * Math.min(1, dt * 1.5);
+        o.wake.visible = o.wakeK > 0.02; if (o.wake.visible) { o.wake.position.set(p.x, boatSea + 0.05, p.z); o.wake.rotation.y = p.yaw; o.wakeMat.opacity = 0.55 * o.wakeK; o.wake.scale.z = 0.5 + 0.5 * o.wakeK; } }
+      o.g.visible = d < 180; const capOn = d < 40; if (o.cap.root.visible !== capOn) o.cap.root.visible = capOn; if (capOn) o.cap.anim?.update?.(dt);
     }
     const seatOf = (bs) => { const o = boatObjs.find((x) => x.id === bs.id); return o?.pose ? BT.seatAt(o.pose, bs.seat) : null; };
     if (myBoat && live) { const b = boatsState.boats.find((x) => x.id === myBoat.id); if (b && b.n > myBoat.n) { const at = b.outAt || b.at; const e = BT.DOCKS[at] ? BT.exitOf(at, b.outAt ? b.outBerth : b.berth) : null; setMyBoat(null); if (e) { me.root.position.set(e.x, heightAt(e.x, e.z), e.z); correction = null; } } } /* (395 Codex 9: where it let me off -- it may have taken the next four and gone in the same tick) */ /* (let off: on the float at once -- the server's word follows with the next pose) */
@@ -6127,7 +6149,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const camLook = new THREE.Vector3();
   const OFFSET = new THREE.Vector3(0, 7.4, 10.8);
   const CAM_DIST = Math.hypot(OFFSET.y, OFFSET.z); const CAM_ELEV = Math.atan2(OFFSET.y, OFFSET.z); // the default view: 13.1 away, 34.4° up
-  const CAM_CLEAR = 1.0; let camDist = CAM_DIST;
+  const CAM_CLEAR = 1.0; let camDist = CAM_DIST; let bridgeK = 0; /* (399: an upright screen on a long bridge) */
   // 문제 기록 7 (2026-10-21 「카메라는 직접 조작해서 보이게」): no lift over walls any more (a building in the way is
   // see-through); the camera keeps CAM_CLEAR over gentle ground only -- ground rising CAM_STEEP..+3 m above my feet
   // (a cliff, the ridge) lets go of it smoothly and the camera stays where it is, the ground seen through from inside
@@ -6278,12 +6300,18 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // v1.10.21: tilted by camPitch around the same distance (문제 기록 7: inside a building it stays -- the building fades)
     // v1.10.40: toward the sky the camera comes down to SKY_LOW above the level of my head, and what is left of the tilt
     // lifts its aim (the look point raised as far as that angle) -- the sky and the moon above, me at the bottom
-    const SKY_LOW = 0.1; const lift = Math.max(0, SKY_LOW - (CAM_ELEV + camPitch));
-    const elev = Math.max(SKY_LOW, CAM_ELEV + camPitch); const at = (d) => ({ x: p.x + sin * Math.cos(elev) * d, z: p.z + cos * Math.cos(elev) * d });
-    const dist = zoomDist; // v1.10.62: the player's zoom, never pulled in
+    /* (1.10.399 에셋 검사 2회차 「폰 다리 위 시점이 널빤지 길」: an upright screen is ~20° wide -- 4.6 m at 13 m, the deck 5.6: on a long bridge's middle
+       the view eases 8° lower, a fifth farther and 2.2 m aside (aimed at me still -- the keys keep their way) -- a rail and the sea in the picture;
+       a landscape window never) */
+    const onB = camera.aspect < 0.8 && mySpace === 'island' ? globalThis.IslandTerrain.onBridge?.(p.x, p.z) : null;
+    const bWant = onB && onB.b.half > 10 && Math.abs(onB.u) < onB.b.half * 0.7 ? 1 : 0; bridgeK = snap || lessMotion?.matches ? bWant : bridgeK + (bWant - bridgeK) * cameraEase(0.05, camDt);
+    const pitchNow = camPitch - 0.14 * bridgeK;
+    const SKY_LOW = 0.1; const lift = Math.max(0, SKY_LOW - (CAM_ELEV + pitchNow));
+    const elev = Math.max(SKY_LOW, CAM_ELEV + pitchNow); const at = (d) => ({ x: p.x + sin * Math.cos(elev) * d, z: p.z + cos * Math.cos(elev) * d });
+    const dist = zoomDist * (1 + 0.2 * bridgeK); // v1.10.62: the player's zoom, never pulled in
     snap ||= Boolean(lessMotion?.matches);
     camDist = snap ? dist : camDist + (dist - camDist) * cameraEase(0.2, camDt);
-    const c = at(camDist);
+    const c = at(camDist); c.x += cos * 2.2 * bridgeK; c.z -= sin * 2.2 * bridgeK;
     const orbitY = p.y + Math.sin(elev) * camDist;
     const want = new THREE.Vector3(c.x, camFloor(c.x, c.z, p.y, orbitY), c.z); // v1.10.0: follow the player across the island
     const lookY = p.y + 1.3 + Math.tan(lift) * (camDist * Math.cos(elev) + 2.4);

@@ -75,6 +75,10 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
     const at = X.boardOf(id); const g = new THREE.Group(); g.position.set(at.x, groundY(at.x, at.z), at.z); group.add(g);
     const fb = new THREE.Group(); piece(fb, markMat, 0.9, 0.03, 0.9, 0, 0.015, 0); g.add(fb); assets.attach('taxi.stop_mark', g, fb); return g;
   });
+  /* (399 에셋 검사 2회차 「택시 대기 자리 빛」: a warm pool round each mark at night -- drawn, no real light) */
+  const glowMat = new THREE.MeshBasicMaterial({ color: 0xffd38a, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); made.push(glowMat);
+  const glowGeo = new THREE.CircleGeometry(1.0, 20).rotateX(-Math.PI / 2); made.push(glowGeo);
+  const markGlows = marks.map((g) => { const m = new THREE.Mesh(glowGeo, glowMat); m.position.set(g.position.x, g.position.y + 0.05, g.position.z); m.visible = false; group.add(m); return m; });
   const lanes = [];
   for (const st of stops) {
     const out = st.s.out; const sh = st.s.shelter; const dx = out.x - sh.x; const dz = out.z - sh.z; const len = Math.hypot(dx, dz) || 1; const ux = dx / len; const uz = dz / len;
@@ -119,7 +123,7 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
       if (tag && say !== st.said) { st.said = say; if (st.label) { group.remove(st.label); st.label.traverse((o) => { o.material?.map?.dispose?.(); o.material?.dispose?.(); }); st.label = null; } if (say) { st.label = tag(say); st.label.position.set(st.s.shelter.x, groundY(st.s.shelter.x, st.s.shelter.z) + 3.7, st.s.shelter.z); group.add(st.label); } }
     }
     for (const rec of moving.values()) for (const m of rec.lights) m.emissiveIntensity = night ? 1.2 : 0;
-    lamp.emissiveIntensity = night ? 1.2 : 0;
+    lamp.emissiveIntensity = night ? 1.2 : 0; for (const m of markGlows) m.visible = night; /* (399) */
   }
   // where a rider sits in a ride's car now (their pose then: seated, facing the car's way)
   function seatOf(ride, now) {
