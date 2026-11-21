@@ -68,17 +68,26 @@
     return { x, z, yaw: wrap(s.yaw + Math.PI), approach: [x + Math.sin(s.yaw) * IN, z + Math.cos(s.yaw) * IN] };
   }
   const driveOf = (from) => { const s = stopOf(STOPS[from].to); const d = dropOf(s.id); return [...roadOf(from).slice(0, -1).filter(([x, z]) => Math.hypot(x - s.x, z - s.z) > 10), d.approach, [d.x, d.z]]; };
+  // 1.10.391 N4-a (notes docs/n4-plan-20261120.md §5-1, 사용자 N4 §8): keep right -- every car LANE m to its own right of the road's
+  // middle, eased in over the first and last LANE_EASE m of a drive; on the one-lane bridge (and LANE_EASE m before it) the middle.
+  // Each point of a drive keeps its offset (`offs`): a car going back the same road is shifted by it in its own frame -- its right too
+  const LANE = 1.15; const LANE_EASE = 8;
+  const bridgeOut = (x, z) => (z < BRIDGE.z0 - 4 || z > BRIDGE.z1 + 4 ? Infinity : Math.max(0, BRIDGE.x0 - x, x - BRIDGE.x1));
+  function laneOffs(road) {
+    const ds = [0]; for (let i = 1; i < road.length; i += 1) ds.push(ds[i - 1] + Math.hypot(road[i][0] - road[i - 1][0], road[i][1] - road[i - 1][1])); const total = ds[ds.length - 1];
+    return road.map(([x, z], i) => LANE * Math.min(1, ds[i] / LANE_EASE, (total - ds[i]) / LANE_EASE, bridgeOut(x, z) / LANE_EASE));
+  }
   // the time table of a ride's drive: distance gone by each 50 ms, easing in and out; a short road (runMs) is the same drive faster
   const tables = new Map();
   function tableOf(from, runMs) {
     const key = `${from}|${runMs || 0}`; if (tables.has(key)) return tables.get(key);
-    const road = driveOf(from); const ss = segs(road); const total = ss.reduce((n, s) => n + s.len, 0);
+    const road = driveOf(from); const ss = segs(road); const total = ss.reduce((n, s) => n + s.len, 0); const offs = laneOffs(road);
     const speedAt = (d) => { let k = 0; let at = 0; while (k < ss.length - 1 && at + ss[k].len < d) { at += ss[k].len; k += 1; } return ss[k].slow ? SLOW : FAST; };
     let cruise = 0; for (const s of ss) cruise += s.len / (s.slow ? SLOW : FAST); const M = cruise * 1000 + EASE; // (easing in and out costs half a ramp each)
     const out = [0]; let d = 0; let u = 0;
     while (d < total && out.length < 100000) { u += STEP; const f = smooth(u / EASE) * smooth((M - u) / EASE + 0.02); d = Math.min(total, d + speedAt(d) * Math.max(0.04, f) * STEP / 1000); out.push(d); }
     const scale = runMs ? runMs / (out.length * STEP) : 1;
-    const t = { road, ss, total, ds: out, step: STEP * scale, runMs: out.length * STEP * scale };
+    const t = { road, ss, total, offs, ds: out, step: STEP * scale, runMs: out.length * STEP * scale };
     tables.set(key, t); return t;
   }
   const durationOf = (ride) => ENTER + tableOf(ride.from, ride.runMs).runMs + EXIT;
@@ -117,7 +126,8 @@
     let yaw = s.yaw; const R = 4; // (a corner taken over 4 m either side)
     if (k > 0 && d - at < R) yaw = t.ss[k - 1].yaw + wrap(s.yaw - t.ss[k - 1].yaw) * (0.5 + 0.5 * smooth((d - at) / R));
     else if (k < t.ss.length - 1 && at + s.len - d < R) yaw = s.yaw + wrap(t.ss[k + 1].yaw - s.yaw) * 0.5 * (1 - smooth((at + s.len - d) / R));
-    return { x, z, yaw, k };
+    const o = t.offs ? t.offs[k] + (t.offs[k + 1] - t.offs[k]) * u : 0; /* (391: the lane's offset here) */
+    return { x, z, yaw, k, o };
   }
   // the ride at `now`: phase enter | start | run | stop | exit | done, where the car is, its heading and lean (back as it goes,
   // forward as it stops, over in a turn), how far the wheels have rolled
@@ -130,14 +140,19 @@
     const i = r / t.step; const i0 = Math.floor(i); const d = t.ds[Math.min(t.ds.length - 1, i0)] + ((t.ds[Math.min(t.ds.length - 1, i0 + 1)] - t.ds[Math.min(t.ds.length - 1, i0)]) * (i - i0));
     const p = along(t, d); const ahead = along(t, Math.min(t.total, d + 3));
     const acc = r < EASE * (t.runMs / (t.ds.length * STEP) || 1) ? 'start' : r > t.runMs - EASE * (t.runMs / (t.ds.length * STEP) || 1) ? 'stop' : 'run';
-    return shifted({ phase: acc, ...p, d, pitch: acc === 'start' ? -0.04 : acc === 'stop' ? 0.05 : 0, roll: Math.max(-0.06, Math.min(0.06, wrap(ahead.yaw - p.yaw) * 0.25)), k: d / t.total }, sideAt(ride, real)); /* (340: aside, by server time) */
+    return shifted({ phase: acc, ...p, d, pitch: acc === 'start' ? -0.04 : acc === 'stop' ? 0.05 : 0, roll: Math.max(-0.06, Math.min(0.06, wrap(ahead.yaw - p.yaw) * 0.25)), k: d / t.total }, sideAt(ride, real) + p.o); /* (340: aside, by server time; 391: in its lane) */
   }
   // v1.10.294 7: the stop's car for a ride -- its way there (poseAt), then empty: turning round where it let the rider out (TURN
   // ms), the same road back on the same timing reversed, turning round again into its place at its stop; null once it stands
   // there. backOf: when that is (the stop has no car till then -- TAXI_AWAY)
+  // (1.10.391 N4-a) a car that stays where it let its rider out (`ride.stay`, the server's call as it set off: that stop had fewer than two)
+  // glides from where it stopped into its standing place there (`ride.park`) over TURN ms; one going back ends in `ride.park` at home
   const TURN = 3000;
-  const backRoad = (ride) => ride.startedAt + durationOf(ride) + TURN + tableOf(ride.from, ride.runMs).runMs + TURN;
-  const backOf = (ride, now = Date.now()) => realAt(ride, backRoad(ride), now); // (317: in server time -- later by every wait)
+  const backRoad = (ride) => ride.startedAt + durationOf(ride) + TURN + (ride.stay ? 0 : tableOf(ride.from, ride.runMs).runMs + TURN);
+  const backOf = (ride, now = Date.now()) => realAt(ride, backRoad(ride), now); // (317: in server time -- later by every wait; 391: or parked where it stays)
+  const PLACES = 2; const BACK = 4.5; // (391: a stop's standing places -- 0 its front, where one gets in; 1 the same way 4.5 m behind it)
+  function placeOf(id, k = 0) { const s = stopOf(id); const b = k ? BACK : 0; return { x: s.x - Math.sin(s.yaw) * b, z: s.z - Math.cos(s.yaw) * b, yaw: s.yaw }; }
+  const glide = (a, b, k, d) => { const s = smooth(k); return { phase: 'turn', x: a.x + (b.x - a.x) * s, z: a.z + (b.z - a.z) * s, yaw: a.yaw + wrap(b.yaw - a.yaw) * s, d, pitch: 0, roll: 0, k }; };
   // (317) the ride over (the rider out at the other stop) by server time `now`
   const rideOver = (ride, now) => roadNow(ride, now) >= ride.startedAt + durationOf(ride);
   function carAt(ride, now) {
@@ -145,14 +160,50 @@
     const real = now; now = roadNow(ride, now);
     const t = tableOf(ride.from, ride.runMs); const e = now - ride.startedAt - durationOf(ride);
     const turn = (q, k) => ({ phase: 'turn', ...q, yaw: wrap(q.yaw + Math.PI * smooth(k)), d: q.d, pitch: 0, roll: 0, k });
+    if (ride.stay) { if (e >= TURN) return null; const a = along(t, t.total); return glide(a, placeOf(STOPS[ride.from].to, ride.park || 0), e / TURN, t.total); } /* (391: into its place there) */
     if (e < TURN) return turn({ ...along(t, t.total), d: t.total }, e / TURN);
     const r = e - TURN; if (r < t.runMs) {
       const i = (t.runMs - r) / t.step; const i0 = Math.floor(i); const at = (j) => t.ds[Math.min(t.ds.length - 1, Math.max(0, j))]; const d = at(i0) + (at(i0 + 1) - at(i0)) * (i - i0);
-      const q = along(t, d); return shifted({ phase: 'back', ...q, yaw: wrap(q.yaw + Math.PI), d, pitch: 0, roll: 0, k: 1 - d / t.total }, sideAt(ride, real));
+      const q = along(t, d); return shifted({ phase: 'back', ...q, yaw: wrap(q.yaw + Math.PI), d, pitch: 0, roll: 0, k: 1 - d / t.total }, sideAt(ride, real) + q.o); /* (391: its own lane, its right going back) */
     }
     const k = (r - t.runMs) / TURN; if (k >= 1) return null;
-    const s = along(t, 0); return turn({ ...s, yaw: wrap(s.yaw + Math.PI), d: 0 }, k);
+    const s = along(t, 0); if (ride.park) return glide({ x: s.x, z: s.z, yaw: wrap(s.yaw + Math.PI) }, placeOf(ride.from, ride.park), k, 0); /* (391: its place behind) */
+    return turn({ ...s, yaw: wrap(s.yaw + Math.PI), d: 0 }, k);
   }
+  // ---- 1.10.391 N4-a the cars (notes n4-plan §4, 사용자 N4 §8 · 11-20 「가까운 빈자리를 채우는 걸로」): PLACES at each stop at the start; a ride
+  // takes a stop's front car (the one behind pulls up); it stays where it lets its rider out when that stop has fewer than PLACES
+  // (standing there, staying there after a ride, going back there), else it goes back empty to where it came from. The server keeps
+  // `fleet`; pure here (test/island-taxi-fleet.test.js). A car: { id, at, place, ride, pulledAt } -- `at` null while out on `ride`
+  function createFleet(now = 0) { const cars = []; let n = 0; for (const id of Object.keys(STOPS)) for (let k = 0; k < PLACES; k += 1) cars.push({ id: `t${++n}`, at: id, place: k, ride: null, pulledAt: 0 }); return { cars, at: now }; }
+  /* (a car out whose ride has not ended yet is nobody's yet: where it goes is decided as its rider gets out -- settle) */
+  const headingTo = (c) => (!c.ride ? c.at : c.ride.stay === true ? STOPS[c.ride.from].to : c.ride.stay === false ? c.ride.from : null);
+  const countAt = (fleet, stop) => fleet.cars.filter((c) => headingTo(c) === stop).length;
+  const freePlace = (fleet, stop, except) => { const used = new Set(fleet.cars.filter((c) => c !== except && headingTo(c) === stop).map((c) => (c.ride ? c.ride.park || 0 : c.place))); for (let k = 0; k < PLACES; k += 1) if (!used.has(k)) return k; return 0; };
+  const standingAt = (fleet, stop) => fleet.cars.filter((c) => !c.ride && c.at === stop).sort((a, b) => a.place - b.place);
+  // a ride from `from`: its car (the front one), the one behind pulled up, where it goes after -> { car, undo } or null (none standing)
+  function takeCar(fleet, from, ride, now) {
+    const standing = standingAt(fleet, from); const car = standing[0]; if (!car) return null;
+    const was = fleet.cars.map((c) => ({ c, at: c.at, place: c.place, ride: c.ride, pulledAt: c.pulledAt }));
+    car.ride = ride; car.at = null; ride.car = car.id; ride.seat = 0;
+    for (const c of standing.slice(1)) if (c.place > 0 && !standingAt(fleet, from).some((o) => o.place === 0)) { c.place = 0; c.pulledAt = now; }
+    return { car, undo: () => { for (const w of was) Object.assign(w.c, { at: w.at, place: w.place, ride: w.ride, pulledAt: w.pulledAt }); delete ride.car; delete ride.seat; } };
+  }
+  // the clock moved on: a ride just over decides where its car goes (stays where that stop has fewer than PLACES, else back home) and
+  // which place it takes; each car whose glide or way back is over stands in it -> whether anything changed
+  function settle(fleet, now) {
+    let moved = false;
+    for (const c of fleet.cars) if (c.ride && c.ride.stay === undefined && rideOver(c.ride, now)) { const to = STOPS[c.ride.from].to; const stay = countAt(fleet, to) < PLACES; c.ride.stay = stay; c.ride.park = freePlace(fleet, stay ? to : c.ride.from, c); moved = true; }
+    for (const c of fleet.cars) if (c.ride && c.ride.stay !== undefined && now >= backOf(c.ride, now)) { c.at = c.ride.stay ? STOPS[c.ride.from].to : c.ride.from; c.place = c.ride.park || 0; c.ride = null; c.pulledAt = 0; moved = true; }
+    return moved;
+  }
+  // when a car will next stand at `stop` (ms from now; 0 one is there)
+  function etaAt(fleet, stop, now) {
+    if (standingAt(fleet, stop).length) return 0; let best = Infinity;
+    for (const c of fleet.cars) { if (!c.ride) continue; const h = headingTo(c); /* (one not decided yet: as if it came back here, or stayed here after letting its rider out) */
+      if (h === stop || (h === null && (c.ride.from === stop || STOPS[c.ride.from].to === stop))) best = Math.min(best, (h === null && c.ride.from !== stop ? realAt(c.ride, c.ride.startedAt + durationOf(c.ride) + TURN, now) : backOf(c.ride, now)) - now); }
+    return Number.isFinite(best) ? Math.max(1, best) : 1000;
+  }
+  const fleetView = (fleet) => ({ cars: fleet.cars.map((c) => ({ id: c.id, at: c.at, place: c.place, pulledAt: c.pulledAt || 0, ride: c.ride })) });
   // where the rider stands once out (and where a ride cut off counts them): beside the car as it stands at the other stop
   const arrivalOf = (ride) => { const t = tableOf(ride.from, ride.runMs); const p = along(t, t.total); return beside(p.x, p.z, p.yaw, ALIGHT); };
   // the door's opening (0 shut .. 1 open) through a getting in or out (motion-utils doorAngle: in 0..0.14 open, 0.86..1 shut;
@@ -162,5 +213,6 @@
   // v1.10.294 6a: the screen's clock offset a frame toward the server's -- at most `step` ms, at once past `jump` (a first
   // reading, a sleep): a clock answer moving it tens of ms at once made a moving car jump that far
   const easeClock = (view, server, step = 2, jump = 1000) => (view == null || Math.abs(server - view) > jump ? server : view + Math.max(-step, Math.min(step, server - view)));
-  return { CROSSINGS, CROSS_HALF, CROSS_CLEAR, ROAD, LEAD, RAMP, sideAt, ghostAt, shifted, roadNow, rateOf, warpTo, realAt, rideOver, TURN, backOf, carAt, easeClock, ROUTE, STOPS, BRIDGE, ENTER, EXIT, EASE, FAST, SLOW, FARE, DAY_PASS, EXTRA, BOARD, ALIGHT, SEAT, roadOf, stopOf, dropOf, driveOf, tableOf, durationOf, poseAt, arrivalOf, doorOf, fareOf };
+  return { LANE, PLACES, BACK, placeOf, laneOffs, createFleet, takeCar, settle, etaAt, fleetView, countAt, standingAt, onBridgeBox: (x, z, m = 0) => x >= BRIDGE.x0 - m && x <= BRIDGE.x1 + m && z >= BRIDGE.z0 && z <= BRIDGE.z1, /* (391 N4-a) */
+    CROSSINGS, CROSS_HALF, CROSS_CLEAR, ROAD, LEAD, RAMP, sideAt, ghostAt, shifted, roadNow, rateOf, warpTo, realAt, rideOver, TURN, backOf, carAt, easeClock, ROUTE, STOPS, BRIDGE, ENTER, EXIT, EASE, FAST, SLOW, FARE, DAY_PASS, EXTRA, BOARD, ALIGHT, SEAT, roadOf, stopOf, dropOf, driveOf, tableOf, durationOf, poseAt, arrivalOf, doorOf, fareOf };
 }));

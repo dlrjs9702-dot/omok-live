@@ -1256,6 +1256,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     // standing there (1.7 x 3.2 m) block -- three circles along the shelter, two along the car; the car's door side left clear
     const sh = s.shelter; for (const k of [-0.8, 0, 0.8]) solids.push({ x: sh.x + Math.cos(sh.yaw) * k, z: sh.z - Math.sin(sh.yaw) * k, r: 0.7, taxi: true });
     for (const k of [-0.75, 0.75]) solids.push({ x: s.x + Math.sin(s.yaw) * k, z: s.z + Math.cos(s.yaw) * k, r: 0.9, taxi: true });
+    { const b = TX.placeOf(id, 1); for (const k of [-0.75, 0.75]) solids.push({ x: b.x + Math.sin(b.yaw) * k, z: b.z + Math.cos(b.yaw) * k, r: 0.9, taxi: true }); } /* (1.10.391 N4-a: the second car's place behind) */
   }
   // (v1.10.285) a car on its way or parked: I am put out of its box (0.85 + 0.35 across, 1.6 + 0.35 along) -- it never stops
   // for me (the same clock on every screen), so it pushes; walking islanders step 2 m to its right while it is within 5 m
@@ -7099,11 +7100,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (Number.isFinite(t?.blockedAt)) out.blockedAt = t.blockedAt;
     const s = t?.side; if (s && finite(s.at, s.from, s.to, s.ms) && s.ms > 0 && Math.abs(s.to) <= 2 && Math.abs(s.from) <= 2) out.side = { at: s.at, from: s.from, to: s.to, ms: s.ms }; /* (1.10.340 133A: aside) */
     const g = t?.ghost; if (g && Number.isFinite(g.at)) out.ghost = { at: g.at, until: Number.isFinite(g.until) ? g.until : null }; /* (see-through going by) */
+    if (typeof t?.car === 'string') out.car = t.car; if (Number.isInteger(t?.seat)) out.seat = t.seat; /* (1.10.391 N4-a: which car, which seat; where it goes after -- decided as the rider gets out) */
+    if (typeof t?.stay === 'boolean') { out.stay = t.stay; out.park = Number.isInteger(t.park) ? t.park : 0; }
     return out;
   }
   function setTaxiRide(t) {
     if (!taxiRide || !t || t.from !== taxiRide.ride.from || t.startedAt !== taxiRide.ride.startedAt) return;
-    const { warp, blockedAt, side, ghost } = roadClockOf(t); taxiRide.ride.warp = warp; taxiRide.ride.blockedAt = blockedAt; taxiRide.ride.side = side; taxiRide.ride.ghost = ghost;
+    const { warp, blockedAt, side, ghost, car, stay, park } = roadClockOf(t); taxiRide.ride.warp = warp; taxiRide.ride.blockedAt = blockedAt; taxiRide.ride.side = side; taxiRide.ride.ghost = ghost; if (car) taxiRide.ride.car = car; if (stay !== undefined) { taxiRide.ride.stay = stay; taxiRide.ride.park = park; }
   }
   function startTaxi(ride) {
     if (taxiRide || riding || !ride || !TX.STOPS[ride.from] || !Number.isFinite(ride.startedAt)) return false;

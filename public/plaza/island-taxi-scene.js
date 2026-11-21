@@ -53,31 +53,42 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
       if (!o.userData.ownMat) { o.material = Array.isArray(o.material) ? o.material.map((m) => m.clone()) : o.material.clone(); o.userData.ownMat = true; for (const m of [].concat(o.material)) made.push(m); }
       for (const m of [].concat(o.material)) { m.transparent = rec.ghost; m.opacity = rec.ghost ? 0.4 : 1; m.depthWrite = !rec.ghost; m.needsUpdate = true; } });
   }
-  const moving = new Map(); // (294 7) stop id -> its car while out (there, the turn, back)
+  for (const st of stops) st.standing.h.visible = false; /* (1.10.391 N4-a: the four cars below stand there -- the stop's own one no longer) */
+  const moving = new Map(); // (1.10.391 N4-a) car id -> its record: the four cars, standing in their places or out on a ride
   let night = false;
-  // each frame: `rides` [{ key, ride }] I know of and `out` { stopId: ride } the server's -- one car a stop (294 7): on its ride, then
-  // empty back the same road (IslandTaxi.carAt) -- the standing one away till it is in its place again, its sign the seconds left
-  const live = new Set(); const byStop = {}; /* (1.10.353 재사용 ③: kept between frames, emptied each) */
-  function step(now, rides, people = [], out = {}) { // (v1.10.285 people: [{ x, z }] on foot -- a running car within 2 m of one honks)
-    live.clear(); for (const k in byStop) delete byStop[k]; Object.assign(byStop, out); for (const { ride } of rides) if (!byStop[ride.from] || byStop[ride.from].startedAt <= ride.startedAt) byStop[ride.from] = ride;
-    for (const key in byStop) { const ride = byStop[key];
-      const p = X.carAt(ride, now); if (!p) continue; live.add(key);
-      let rec = moving.get(key); if (!rec) { rec = car(); moving.set(key, rec); }
-      placeCar(rec, p); rec.running = ['start', 'run', 'stop', 'back'].includes(p.phase); rec.rate = X.rateOf(ride, now); rec.waitMs = ride.blockedAt ? Math.max(0, now - ride.blockedAt) : 0;
+  // each frame: `rides` [{ key, ride }] I know of and `fleet` { cars } the server's (391: two a stop -- standing in a place, or out on a
+  // ride: there, then staying in a place there or back empty to one at home; IslandTaxi.carAt) -- a stop with none standing says when one comes
+  const live = new Set(); const rideOf = new Map(); const standCount = {}; /* (1.10.353 재사용 ③: kept between frames, emptied each) */
+  const startFleet = X.createFleet(0).cars; /* (till the server's comes: two standing at each stop) */
+  const sm = (k) => { const t = Math.min(1, Math.max(0, k)); return t * t * (3 - 2 * t); };
+  function step(now, rides, people = [], fleet = {}) { // (v1.10.285 people: [{ x, z }] on foot -- a running car within 2 m of one honks)
+    live.clear(); rideOf.clear(); for (const k in standCount) delete standCount[k];
+    const cars = Array.isArray(fleet?.cars) ? fleet.cars : startFleet;
+    for (const { ride } of rides) if (ride?.car) rideOf.set(ride.car, ride);
+    for (const c of cars) {
+      const known = rideOf.get(c.id); let ride = c.ride || null; if (!ride && known && !X.rideOver(known, now)) ride = known; /* (just taken: before the server's fleet says so) */
+      if (ride && known && known.startedAt === ride.startedAt) ride = { ...ride, warp: known.warp ?? ride.warp, side: known.side ?? ride.side, ghost: known.ghost ?? ride.ghost, blockedAt: known.blockedAt ?? ride.blockedAt }; /* (my own ride's clock: fresher) */
+      let rec = moving.get(c.id); if (!rec) { rec = car(); moving.set(c.id, rec); }
+      let p = ride ? X.carAt(ride, now) : null;
+      if (ride && !p) { const home = ride.stay ? X.STOPS[ride.from].to : ride.from; p = { ...X.placeOf(home, ride.park || 0), phase: 'wait', d: 0 }; } /* (in its place, before the server says so) */
+      if (!ride) { const q = X.placeOf(c.at, c.place); standCount[c.at] = (standCount[c.at] || 0) + 1;
+        if (c.pulledAt && c.place === 0 && now - c.pulledAt < 2000) { const f = X.placeOf(c.at, 1); const k = sm((now - c.pulledAt) / 2000); p = { x: f.x + (q.x - f.x) * k, z: f.z + (q.z - f.z) * k, yaw: q.yaw, phase: 'wait', d: k * X.BACK }; } /* (the one behind pulling up) */
+        else p = { ...q, phase: 'wait', d: 0 }; }
+      if (ride) live.add(c.id);
+      placeCar(rec, p); rec.running = Boolean(ride) && ['start', 'run', 'stop', 'back'].includes(p.phase); rec.out = Boolean(ride); rec.rate = ride ? X.rateOf(ride, now) : 1; rec.waitMs = ride?.blockedAt ? Math.max(0, now - ride.blockedAt) : 0;
+      if (!ride) { if (rec.horn) rec.horn.visible = false; if (rec.ask) rec.ask.visible = false; ghostCar(rec, false); continue; }
       /* (317 A2: 「빵」 once the server has had it waiting for someone in front -- no sound; 1.10.340 133A: after 1 s, with 「비켜 주세요~」) */
       if (mark && rec.running && rec.waitMs >= 1000) { if (!rec.horn) { rec.horn = mark(); rec.horn.position.y = 3.4; /* (317: over the rider's name) */ rec.h.add(rec.horn); } if (tag && !rec.ask) { rec.ask = tag('비켜 주세요~'); rec.ask.position.y = 4.3; rec.h.add(rec.ask); } rec.hornUntil = now + 600; }
       if (rec.horn) rec.horn.visible = rec.hornUntil > now; if (rec.ask) rec.ask.visible = rec.hornUntil > now;
       ghostCar(rec, X.ghostAt(ride, now)); /* (133A: no room aside -- see-through going by) */
     }
-    for (const [key, rec] of moving) if (!live.has(key)) { group.remove(rec.h); moving.delete(key); } /* (in its place: the standing one again) */
     for (const st of stops) {
-      const away = live.has(st.id); st.standing.h.visible = !away;
-      const left = away ? Math.max(1, Math.ceil((X.backOf(byStop[st.id], now) - now) / 1000)) : 0; st.sign.userData.say(left ? `${st.s.sign} · 약 ${left}초` : st.s.sign);
+      const away = !standCount[st.id];
+      const left = away ? Math.max(1, Math.ceil(X.etaAt({ cars }, st.id, now) / 1000)) : 0; st.sign.userData.say(left ? `${st.s.sign} · 약 ${left}초` : st.s.sign);
       const say = left ? `🚕 돌아오는 중 · ${left}초` : ''; /* (294: big, over the stop -- the sign's seconds were too small to read) */
       if (tag && say !== st.said) { st.said = say; if (st.label) { group.remove(st.label); st.label.traverse((o) => { o.material?.map?.dispose?.(); o.material?.dispose?.(); }); st.label = null; } if (say) { st.label = tag(say); st.label.position.set(st.s.shelter.x, groundY(st.s.shelter.x, st.s.shelter.z) + 3.7, st.s.shelter.z); group.add(st.label); } }
     }
     for (const rec of moving.values()) for (const m of rec.lights) m.emissiveIntensity = night ? 1.2 : 0;
-    for (const s of stops) for (const m of s.standing.lights) m.emissiveIntensity = night ? 1.2 : 0;
     lamp.emissiveIntensity = night ? 1.2 : 0;
   }
   // where a rider sits in a ride's car now (their pose then: seated, facing the car's way)
@@ -88,6 +99,6 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
   const setNight = (on) => { night = Boolean(on); };
   const dispose = () => { scene.remove(group); for (const m of made) m.dispose?.(); };
   // (v1.10.285) the cars on their way or parked after a ride: where, which way, running or not, honking -- they block and others step aside
-  const cars = () => [...moving.entries()].map(([key, r]) => ({ key, x: r.h.position.x, z: r.h.position.z, yaw: r.h.rotation.y, running: Boolean(r.running), horn: Boolean(r.horn?.visible), ask: Boolean(r.ask?.visible), ghost: Boolean(r.ghost), rate: r.rate ?? 1, waitMs: r.waitMs || 0 })); /* (317: its pace -- 0 standing for someone, a little creeping by) */
-  return { group, step, seatOf, setNight, dispose, cars, stops: () => stops.map((st) => ({ id: st.id, x: st.s.x, z: st.s.z, standing: st.standing.h.visible, away: [...moving.keys()].includes(st.id), label: st.said || '' })), /* (294) */ moving: () => [...moving.keys()] };
+  const cars = () => [...moving.entries()].filter(([, r]) => r.out).map(([key, r]) => ({ key, x: r.h.position.x, z: r.h.position.z, yaw: r.h.rotation.y, running: Boolean(r.running), horn: Boolean(r.horn?.visible), ask: Boolean(r.ask?.visible), ghost: Boolean(r.ghost), rate: r.rate ?? 1, waitMs: r.waitMs || 0 })); /* (317: its pace -- 0 standing for someone, a little creeping by; 391: the cars out) */
+  return { group, step, seatOf, setNight, dispose, cars, stops: () => stops.map((st) => ({ id: st.id, x: st.s.x, z: st.s.z, standing: Boolean(standCount[st.id]), count: standCount[st.id] || 0, away: !standCount[st.id], label: st.said || '' })), /* (294; 391: how many stand there) */ moving: () => [...moving.entries()].filter(([, r]) => r.out).map(([k]) => k), parked: () => [...moving.entries()].filter(([, r]) => !r.out).map(([k, r]) => ({ id: k, x: +r.h.position.x.toFixed(2), z: +r.h.position.z.toFixed(2) })) };
 }

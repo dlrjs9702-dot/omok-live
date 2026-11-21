@@ -14,6 +14,8 @@ const X = require('../public/plaza/island-taxi');
 const H = require('../public/plaza/island-home');
 const T = require('../public/plaza/island-terrain');
 const sleep = (ms) => new Promise((r) => { setTimeout(r, ms); });
+/* (1.10.391 N4-a: the server's cars -- the one out from 대청마당 on that ride) */
+const outRide = (data, prev) => (data.taxiStops?.cars || []).map((c) => c.ride).find((r) => r && r.from === 'plaza' && (!prev || r.startedAt === prev.startedAt)) || null;
 
 test('섬 택시 서버: 요금(누구나 1,000P, 하루 자유이용권 5,000P)·한 번 차감·두 번 타기·먼 곳·포인트 부족 막기, 타는 동안 길 위, 끝나면 건너편 정류장', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'taxi-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
@@ -27,7 +29,8 @@ test('섬 택시 서버: 요금(누구나 1,000P, 하루 자유이용권 5,000P)
   await stand(a, P.x + 12, P.z); assert.equal((await req('/api/island/taxi', a, { from: 'plaza' })).data.error, 'TOO_FAR');
   // by the stop: 1,000P, once
   await stand(a, P.out.x, P.out.z);
-  assert.deepEqual((await req('/api/island/taxi?from=plaza', a)).data, { ok: true, from: 'plaza', to: 'isle', fare: 1000, dayPass: 5000, pass: false, awayS: 0 });
+  const asked = { ok: true, from: 'plaza', to: 'isle', fare: 1000, dayPass: 5000, pass: false, awayS: 0, dests: [{ id: 'isle', label: '툇마루섬 마을', fare: 1000 }], cars: 2 }; /* (391 N4-a: where to, and two cars standing) */
+  assert.deepEqual((await req('/api/island/taxi?from=plaza', a)).data, asked);
   const before = await balance(a); const rode = await req('/api/island/taxi', a, { from: 'plaza' });
   assert.equal(rode.status, 200, JSON.stringify(rode.data)); assert.equal(rode.data.fare, 1000); assert.equal(rode.data.taxi.runMs, 3000);
   assert.equal(await balance(a), before - 1000);
@@ -39,17 +42,16 @@ test('섬 택시 서버: 요금(누구나 1,000P, 하루 자유이용권 5,000P)
   // over: at the 툇마루섬 stop's step out
   await sleep(X.durationOf(rode.data.taxi) - (X.ENTER + 1500) + 300); const done = await stand(a, -50, -50);
   const out = X.arrivalOf(rode.data.taxi); assert.deepEqual([done.data.x, done.data.z], [Math.round(out.x * 100) / 100, Math.round(out.z * 100) / 100]); void I; assert.equal(done.data.taxi, null); assert.ok(done.data.taxiDone);
-  // (294 7) the stop's car on its way back empty: no car there -- refused, nothing taken; every screen told
-  assert.ok(['turn', 'back'].includes(X.carAt(rode.data.taxi, Date.now())?.phase)); assert.ok(done.data.taxiStops.plaza?.startedAt === rode.data.taxi.startedAt);
-  await stand(b, P.out.x + 0.5, P.out.z + 0.5); const b0 = await balance(b); const away = await req('/api/island/taxi', b, { from: 'plaza' });
-  assert.equal(away.data.error, 'TAXI_AWAY'); assert.ok(away.data.awayS > 0 && away.data.awayS <= Math.ceil((X.backOf(rode.data.taxi) - Date.now()) / 1000) + 1); assert.equal(await balance(b), b0);
-  assert.ok((await req('/api/island/taxi?from=plaza', b)).data.awayS > 0); await req('/api/test/taxi-run', a, { ms: 3000 }); /* (back at its stop) */
+  // (294 7; 391 N4-a) its car: 툇마루섬 had two -- back empty; every screen told; the stop's other car stands in front (one left there)
+  const mine = done.data.taxiStops.cars.find((c) => c.id === rode.data.taxi.car); assert.ok(mine?.ride && mine.ride.startedAt === rode.data.taxi.startedAt && mine.ride.stay === false, JSON.stringify(mine));
+  assert.ok(['turn', 'back'].includes(X.carAt(mine.ride, Date.now())?.phase)); await stand(b, P.out.x + 0.5, P.out.z + 0.5); assert.equal((await req('/api/island/taxi?from=plaza', b)).data.cars, 1);
+  await req('/api/test/taxi-run', a, { ms: 3000 }); /* (every car at its stop) */
   // (1.10.327 택시 요금, 사용자) a home owner pays too; the day's pass (5,000P) bought once -- that day's rides then free, shown so
   const door = T.facilityDoor('townhall'); await stand(b, door.x, door.z); assert.equal((await req('/api/island/townhall/enter', b, {})).status, 200);
   const lot = H.LOTS[3]; assert.equal((await req('/api/home/apply', b, { lot: lot.id, roof: 'red' })).status, 200);
   const ex = T.roomWorld(T.TOWNHALL_ROOM.exit.lx, T.TOWNHALL_ROOM.exit.lz); await stand(b, ex.x, ex.z); await req('/api/island/townhall/leave', b, {});
   await stand(b, P.out.x + 0.5, P.out.z + 0.5); const owner = await balance(b);
-  assert.deepEqual((await req('/api/island/taxi?from=plaza', b)).data, { ok: true, from: 'plaza', to: 'isle', fare: 1000, dayPass: 5000, pass: false, awayS: 0 }, '집이 있어도 요금');
+  assert.deepEqual((await req('/api/island/taxi?from=plaza', b)).data, asked, '집이 있어도 요금');
   const rideB = async (from, pay) => { /* (b rides from that stop -- and is out at the other by the end) */
     const S = X.stopOf(from); await stand(b, S.out.x + 0.5, S.out.z + 0.5); const r = await req('/api/island/taxi', b, { from, pay }); assert.equal(r.status, 200, JSON.stringify(r.data));
     await sleep(X.durationOf(r.data.taxi) + 300); await stand(b, S.out.x, S.out.z); await req('/api/test/taxi-run', a, { ms: 3000 }); /* (294: its car back) */ return r.data;
@@ -69,10 +71,13 @@ test('섬 택시 서버: 요금(누구나 1,000P, 하루 자유이용권 5,000P)
   await stand(c, P.out.x - 0.6, P.out.z - 0.6); assert.equal((await req('/api/island/taxi?from=plaza', c)).data.fare, fare);
   const poor = await req('/api/island/taxi', c, { from: 'plaza' }); assert.equal(poor.data.error, 'INSUFFICIENT_POINTS'); assert.match(poor.data.message, /1,500P/); assert.equal(await balance(c), 500);
   assert.equal((await req('/api/island/taxi?from=plaza', c)).data.awayS, 0, '못 탄 사람은 차를 잡지 않음');
-  // (294 7) two at once at one stop: one rides, the other is told the car is away -- and pays nothing
-  const d = await server.enter(await server.issue('동시하나')); const e = await server.enter(await server.issue('동시둘')); for (const who of [d, e]) { await req('/api/test/points-credit', who, { amount: 100000 }); await stand(who, P.out.x, P.out.z); }
-  const [d0, e0] = [await balance(d), await balance(e)]; const both = await Promise.all([d, e].map((who) => req('/api/island/taxi', who, { from: 'plaza' })));
-  assert.deepEqual(both.map((r) => r.data.error || 'ok').sort(), ['TAXI_AWAY', 'ok']); assert.equal((await balance(d)) + (await balance(e)), d0 + e0 - fare);
+  // (294 7; 391 N4-a two cars a stop) three at once at one stop: two ride, the third is told a car is coming -- and pays nothing
+  await req('/api/test/taxi-run', a, { ms: 3000 });
+  const d = await server.enter(await server.issue('동시하나')); const e = await server.enter(await server.issue('동시둘')); const f = await server.enter(await server.issue('동시셋'));
+  for (const who of [d, e, f]) { await req('/api/test/points-credit', who, { amount: 100000 }); await stand(who, P.out.x, P.out.z); }
+  const [d0, e0, f0] = [await balance(d), await balance(e), await balance(f)]; const all = await Promise.all([d, e, f].map((who) => req('/api/island/taxi', who, { from: 'plaza' })));
+  assert.deepEqual(all.map((r) => r.data.error || 'ok').sort(), ['TAXI_AWAY', 'ok', 'ok']); assert.equal((await balance(d)) + (await balance(e)) + (await balance(f)), d0 + e0 + f0 - 2 * fare);
+  const away = all.find((r) => r.data.error); assert.ok(away.data.awayS > 0, JSON.stringify(away.data)); assert.notEqual(all.filter((r) => !r.data.error)[0].data.taxi.car, all.filter((r) => !r.data.error)[1].data.taxi.car, 'two cars');
 });
 
 // v1.10.317 택시 서서 기다리기 (notes docs/taxi-yield-20261109.md A1~A3): on the real road someone standing in the car's way has it
@@ -90,7 +95,7 @@ test('섬 택시 서서 기다리기: 앞에 선 사람 앞에서 섬, 4초 뒤 
   const rode = await req('/api/island/taxi', a, { from: 'plaza' }); assert.equal(rode.status, 200, JSON.stringify(rode.data));
   const t0 = Date.now(); let ride = null; let blockedSeen = null; let creep = null;
   while (Date.now() - t0 < 16000) {
-    const s = await stand(b, spot.x, spot.z); ride = s.data.taxiStops?.plaza || ride;
+    const s = await stand(b, spot.x, spot.z); ride = outRide(s.data, ride) || ride;
     if (ride?.blockedAt && !blockedSeen) blockedSeen = Date.now();
     if (ride?.warp && ride.warp.r1 > 0 && ride.warp.r1 < 0.3) { creep = ride.warp.r1; break; }
     await sleep(200);
@@ -100,12 +105,12 @@ test('섬 택시 서서 기다리기: 앞에 선 사람 앞에서 섬, 4초 뒤 
   assert.ok(closest > 1.95 + 0.5, `stands short of them (its nose 1.95 m on): ${closest.toFixed(2)} m from its middle`); /* (round the corner too -- 317: it looks along its own way) */
   assert.ok(creep > 0 && creep < 0.3, `going by at a walk after 3 s: ${creep}`); assert.ok(Date.now() - blockedSeen >= 2500);
   /* (1.10.340 133A: by them aside within the road -- 1.3 m off them, never past 1.5 m -- on the server's clock, every screen the same) */
-  assert.equal(ride.dodge?.mode, 'side', JSON.stringify(ride.dodge)); assert.ok(Math.abs(ride.side.to) <= 1.5 && Math.abs(ride.side.to) >= 1, `aside ${ride.side.to}`);
+  assert.equal(ride.dodge?.mode, 'side', JSON.stringify(ride.dodge)); assert.ok(Math.abs(ride.side.to) <= 1.5, `aside ${ride.side.to}`); /* (391 N4-a: already 1.15 m right in its lane -- what it needs aside is less; the gap below is what counts) */
   { const q = X.carAt(ride, ride.side.at + ride.side.ms + 50); const across = (spot.x - q.x) * Math.cos(q.yaw) - (spot.z - q.z) * Math.sin(q.yaw); assert.ok(Math.abs(across) >= 1.25, `going by ${across.toFixed(2)} m off them`); }
   const late = rode.data.taxi.startedAt + X.durationOf(rode.data.taxi); assert.equal(X.rideOver(ride, late), false, 'the ride later by its wait');
   // off the road: on at its pace again
   let back = null; const t1 = Date.now();
-  while (Date.now() - t1 < 5000) { const s = await stand(b, spot.x + 6, spot.z); const r = s.data.taxiStops?.plaza; if (r && !r.blockedAt && r.warp?.r1 === 1) { back = r; break; } await sleep(200); }
+  while (Date.now() - t1 < 5000) { const s = await stand(b, spot.x + 6, spot.z); const r = outRide(s.data, ride); if (r && !r.blockedAt && r.warp?.r1 === 1) { back = r; break; } await sleep(200); }
   assert.ok(back, 'on again once clear'); assert.equal(back.side?.to ?? 0, 0, 'back to the road\'s middle'); assert.equal(back.dodge ?? null, null);
   await req('/api/test/taxi-run', a, { ms: 3000 });
 });
@@ -123,7 +128,7 @@ test('섬 택시 비켜 가기: 건널목에 선 사람은 3초 뒤 반투명으
   assert.equal((await req('/api/island/taxi', a, { from: 'plaza' })).status, 200);
   const t0 = Date.now(); let ghost = null; let solid = null;
   while (Date.now() - t0 < 30000) {
-    const r = (await stand(b, spot.x, spot.z)).data.taxiStops?.plaza;
+    const r = outRide((await stand(b, spot.x, spot.z)).data, null);
     if (r?.ghost && !ghost) ghost = { ...r.ghost, dodge: r.dodge };
     if (ghost && r?.ghost?.until) { solid = r; break; }
     await sleep(200);
