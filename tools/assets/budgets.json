@@ -2265,6 +2265,10 @@
     "bike-v1/bike_crank_low.glb": {
       "nodes": 2,
       "reason": "1.10.387 assets 161 자전거 크랭크: its mesh under a pivot node at the axle, turned by the game"
+    },
+    "dalmaru-v1/bridge_yunseul_high.glb": {
+      "triangles": 21000,
+      "reason": "1.10.389 N3-a assets 133 높은 윤슬다리: 56 m at its own length (the old one is 50 m drawn shorter), 8 piers, 4 lamps, the ramps' cleats; within the asset order's 33,000 cap. 60 m off it is the Low (3,196)"
     }
   },
   "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files.",

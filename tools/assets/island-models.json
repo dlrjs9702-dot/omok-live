@@ -4832,6 +4832,14 @@
       "precompressed": true
     },
     {
+      "out": "dalmaru-v1/bridge_yunseul_high.glb",
+      "src": "yunseul133:01. High/bridge_yunseul_high.glb",
+      "sha256": "1505387d1e27d449acb5e16ef492f025dbd56a501f883a2307d9b2719573062b",
+      "lowSrc": "yunseul133:02. Low/bridge_yunseul_high_low.glb",
+      "lowSha256": "899dab0fdd7fe8e8dca4b501a3ce4ad7d3757c96bd61786fcfe07d0ebe4b9084",
+      "precompressed": true
+    },
+    {
       "out": "dalmaru-v1/dock_boat.glb",
       "src": "flicker150:01. High/dalmaru-v1/dock_boat.glb",
       "sha256": "32e968385a1864be36b4381d08aa7cdd72ef02d0c705cf6b3c11c8c2fe9c1995",
@@ -15726,6 +15734,7 @@
     "tiger158": "158. Game Island tiger running pounce 2026-11-20",
     "tiger159": "159. Game Island tiger attacks 2026-11-20",
     "storehouse160": "160. Game Island yard storehouse 2026-11-20",
-    "petbike161": "161. Game Island pet bike 2026-11-20"
+    "petbike161": "161. Game Island pet bike 2026-11-20",
+    "yunseul133": "133. Game Island high yunseul bridge 2026-11-15"
   }
 }

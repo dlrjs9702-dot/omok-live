@@ -32,8 +32,11 @@ for (let i = 0; i < pts.length; i += 1) {
   segs.push({ i, x: mx, z: mz, yaw: Math.atan2(-nx, -nz), keep, walk: T.walkDist(mx, mz) });
 }
 const gate = segs.filter((s) => s.keep).sort((p, q) => p.walk - q.walk)[0]; /* (the walk from 별마루다리: the only one it crosses) */
+/* (1.10.389 N3-a 부두 문: the second gate, the piece nearest the 별마루섬 부두's gangway foot (its float 7.2 m west of it) -- a gate's 12 m round
+   is the tigers' safe ground (lib/island-tigers reads the gates off this list)) */
+const DOCK2 = D.PLACES.dock2; const dockGate = DOCK2 ? segs.filter((s) => s.keep && s !== gate).sort((p, q) => Math.hypot(p.x - DOCK2.x - 7.2, p.z - DOCK2.z) - Math.hypot(q.x - DOCK2.x - 7.2, q.z - DOCK2.z))[0] : null;
 const KINDS = ['fence_segment', 'fence_palisade_b', 'fence_palisade_e', 'fence_stonewall', 'fence_gate'];
-const FENCE = segs.filter((s) => s.keep).map((s) => { const h = hash(s.x, s.z, 3); const kind = s === gate ? 4 : h < 0.07 ? 1 : h < 0.14 ? 2 : h < 0.2 ? 3 : 0; return [r2(s.x), r2(s.z), r3(s.yaw), kind]; });
+const FENCE = segs.filter((s) => s.keep).map((s) => { const h = hash(s.x, s.z, 3); const kind = s === gate || s === dockGate ? 4 : h < 0.07 ? 1 : h < 0.14 ? 2 : h < 0.2 ? 3 : 0; return [r2(s.x), r2(s.z), r3(s.yaw), kind]; });
 const CORNERS = []; for (let i = 0; i < segs.length; i += 1) { const p = segs[(i + segs.length - 1) % segs.length]; const s = segs[i]; if (p.keep !== s.keep) { CORNERS.push([r2(pts[i][0]), r2(pts[i][1])]); continue; } /* (a run's end, by a cliff or the creek: its post) */ if (!p.keep || !s.keep) continue; let turn = Math.abs(s.yaw - p.yaw); turn = Math.min(turn, Math.PI * 2 - turn); if (turn > (10 * Math.PI) / 180) CORNERS.push([r2(pts[i][0]), r2(pts[i][1])]); }
 
 // ---- the warning board (152b/152e sign_tiger): outside the gate, beside the walk, facing whoever comes over 별마루다리 ----

@@ -753,6 +753,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (now - minimapAt < 120) return;
     minimapAt = now;
     const places = Object.entries(doors).filter(([id, d]) => !id.startsWith('room:') && !id.startsWith('trophy:') && !id.startsWith('quarry:') /* (1.10.323: the rocks' many spots -- the chip says 채석장) */ && !id.endsWith(':back') && (!id.startsWith('home:') || d.mine)).map(([, d]) => ({ x: d.x, z: d.z, name: d.mapName || d.name })); // (v1.10.84: the map says 관공서, the hint 관공서 들어가기)
+    { const D2 = globalThis.IslandTerrain.DOCK2; if (D2) places.push({ x: D2.x, z: D2.z, name: '부두' }, { x: D2.x + 8.8, z: D2.z, name: '부두 문' }); } /* (1.10.389 N3-a: 별마루섬 부두 and its gate -- the map shows one name where they meet) */
     if (pinMark && now > pinMark.until) pinMark = null;
     if (now - placeChipAt > 1000) { placeChipAt = now; const w = placeWords(); if (w !== placeText.textContent) placeText.textContent = w; placeChip.hidden = !w; }
     ({ turn: minimapTurn, shown: minimapShown } = island.drawMinimap(minimap.getContext('2d'), minimap.width, { x: me.root.position.x, z: me.root.position.z }, camYaw, places, festMarks.length || tentMarks.length || pinMark ? mapMarkers.concat(festMarks, tentMarks, pinMark ? [pinMark] : []) : mapMarkers));
@@ -1195,6 +1196,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     solids.push(...T.structureSolids()); // (the shared circles: the islanders' routes keep off them too)
     piece('dalmaru.pier_dalkkeut', S.pier.x, S.pier.y, S.pier.z, S.pier.yaw, box(3.6, 0.2, 20, 0xc58b5a, 10), true);
     piece('dalmaru.dock_boat', S.dock.x, S.dock.y, S.dock.z, S.dock.yaw, box(12, 0.15, 3, 0xc58b5a), true);
+    if (S.dock2) piece('dalmaru.dock_boat', S.dock2.x, S.dock2.y, S.dock2.z, S.dock2.yaw, box(12, 0.15, 3, 0xc58b5a), true); // (1.10.389 N3-a 별마루섬 부두: the same, its gangway east)
     // the stairs: its model runs along local -x from its foot; the low wall on its open side (and its back, the stone
     // under the steps) are walked round, its ends are open
     const st = T.STAIRS; const stairs = new THREE.Group(); const flights = new THREE.Group(); stairs.add(flights);
@@ -1402,8 +1404,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   })();
   // 1.10.377 N2a 별마루다리's people gate (assets 152 fence_gate: its leaf hinged at x -0.52, opened turning +Y): on its own with its nodes kept, the
   // leaf swinging open while anyone stands within 2.6 m of it and shut again after
-  const isle2Gate = (() => {
-    const P2 = globalThis.Isle2Props; const f = P2?.FENCE?.find((a) => P2.FENCE_KINDS[a[3]] === 'fence_gate'); if (!f) return null;
+  // (1.10.389 N3-a: and the 부두 문 by 별마루섬 부두 -- every gate in the list, the first 별마루다리's)
+  const isle2Gates = (globalThis.Isle2Props?.FENCE || []).filter((a) => globalThis.Isle2Props.FENCE_KINDS[a[3]] === 'fence_gate').map((f) => {
     const g = new THREE.Group(); g.position.set(f[0], heightAt(f[0], f[1]), f[1]); g.rotation.y = f[2]; scene.add(g);
     const v = new THREE.Group(); g.add(v); for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.24, 2.42, 0.24), mat(0x8a6440), s * 1.08, 1.21, 0, v); mesh(new THREE.BoxGeometry(2.4, 0.16, 0.2), mat(0x8a6440), 0, 2.34, 0, v);
     assets.attach('byeolmaru.fence_gate', g, v);
@@ -1413,7 +1415,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const near = people.some((p) => Math.hypot(p.x - f[0], p.z - f[1]) < 2.6); open += ((near ? 1 : 0) - open) * (1 - Math.exp(-dt * 6));
       for (const l of leaves) { l.rotation.y = open * 1.45; l.updateMatrix?.(); l.matrixAutoUpdate = true; }
     } };
-  })();
+  });
+  const isle2Gate = isle2Gates[0] || null;
   // (1.10.352 무게 ⑥ §9-2: a board taken down for good -- its texture, material and plane let go, and out of `textures`)
   function dropBoard(face) { if (!face) return; face.removeFromParent(); const m = face.material; const t = m?.map; if (t) { t.dispose(); const k = textures.indexOf(t); if (k >= 0) textures.splice(k, 1); } m?.dispose?.(); face.geometry?.dispose?.(); }
   function plaque(text, x, y, z, yaw, h) {
@@ -6775,7 +6778,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       forestAir.step(dt, { me: { x: p.x, y: p.y, z: p.z }, sunDir: sunDirNow, phase, quality, lessMotion: Boolean(lessMotion?.matches), outdoors, season: globalThis.IslandTerrain.seasonAt?.(p.x, p.z, Date.now() + serverOffset) || 'summer', now, woodNow: island.isle2Wood?.() || 0, sound: !photoMode });
       woodLight();
       tigerView.step(dt, p, outdoors); /* (1.10.376 N2a-2 별마루섬 호랑이: tigers-view.js) */
-      if (isle2Gate && Math.hypot(p.x - isle2Gate.at.x, p.z - isle2Gate.at.z) < 60) { const people = [p]; for (const o of others.values()) people.push(o.c.root.position); isle2Gate.step(dt, people); } /* (1.10.377: the gate's leaf) */
+      for (const gate of isle2Gates) if (Math.hypot(p.x - gate.at.x, p.z - gate.at.z) < 60) { const people = [p]; for (const o of others.values()) people.push(o.c.root.position); gate.step(dt, people); } /* (1.10.377: the gate's leaf; 389: each gate's) */
     }
     farCull(camera.position.x, camera.position.z);
     drops.forEach((d) => { const t = (ambientClock * 0.7 + d.userData.phase) % 1; const a = d.userData.phase * TAU; d.position.set(Math.cos(a) * t * 1.4, dropTop + Math.sin(t * Math.PI) * 0.9 - t * 1.6, Math.sin(a) * t * 1.4); });
@@ -6940,7 +6943,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const targets = [...Object.entries(doors).filter(([id, d]) => !id.startsWith('room:') && T.coastDist(d.x, d.z) > -20).map(([id, d]) => [id, d.x, d.z]) /* (v1.10.230: on the land -- the rooms lie far out at sea; the island's radius now reaches the jail's) */, ...COTTAGES.map((c, k) => [`house${k}`, c.x + (c.face[0] - c.x) * 0.45, c.z + (c.face[1] - c.z) * 0.45])];
     if (T.STRUCTURES) {
       const S = T.STRUCTURES; const st = T.STAIRS;
-      targets.push(['lighthouse', S.lighthouse.x + 5, S.lighthouse.z - 1], ['pierEnd', T.PIER.x + T.PIER.ux * 8, T.PIER.z + T.PIER.uz * 8], ['dock', T.DOCK.x, T.DOCK.z], ['isle', T.dalmaru.ISLE.x, T.dalmaru.ISLE.z], ['stairsTop', st.x + st.ux * 34 + st.nx * 1.7, st.z + st.uz * 34 + st.nz * 1.7], ['ridge', st.x + st.ux * 35 - st.nx * 8, st.z + st.uz * 35 - st.nz * 8]);
+      targets.push(['lighthouse', S.lighthouse.x + 5, S.lighthouse.z - 1], ['pierEnd', T.PIER.x + T.PIER.ux * 8, T.PIER.z + T.PIER.uz * 8], ['dock', T.DOCK.x, T.DOCK.z], ...(T.DOCK2 ? [['dock2', T.DOCK2.x, T.DOCK2.z]] : []), ['isle', T.dalmaru.ISLE.x, T.dalmaru.ISLE.z], ['stairsTop', st.x + st.ux * 34 + st.nx * 1.7, st.z + st.uz * 34 + st.nz * 1.7], ['ridge', st.x + st.ux * 35 - st.nx * 8, st.z + st.uz * 35 - st.nz * 8]);
       for (const [id, st] of Object.entries(globalThis.IslandTrain?.STATIONS || {})) if (st.entry) targets.push([`station:${id}`, ...st.entry]);
       for (const k of ['MUSEUM', 'FARM', 'CONTEST_STATUE']) { const p = T[k]; targets.push([k, p.x + (k === 'MUSEUM' ? -Math.sin(p.yaw) * 6 : 0), p.z + (k === 'MUSEUM' ? -Math.cos(p.yaw) * 6 : k === 'FARM' ? -4 : 0)]); }
     }

@@ -527,7 +527,7 @@
   // to the game's +Z; on the preview the 관공서 and 백화점 are their cliff fronts (the rooms inside are as now)
   const DAL = '/assets/island/dalmaru-v1';
   const dal = (file, extra = {}) => ({ url: `${DAL}/${file}.glb`, low: { url: `${DAL}/${file}_low.glb` }, rotationY: Math.PI, near: 90, ...extra });
-  for (const f of ['bridge_yunseul', 'lighthouse_choseung', 'pier_dalkkeut', 'dock_boat', 'stairs_ridge', 'rail_waterfront', 'lamp_waterfront', 'bench_waterfront', 'niche_hero']) REGISTRY[`dalmaru.${f}`] = dal(f);
+  for (const f of ['bridge_yunseul', 'bridge_yunseul_high' /* (1.10.389 N3-a, assets 133: the east one, 56 m, drawn at its own length) */, 'lighthouse_choseung', 'pier_dalkkeut', 'dock_boat', 'stairs_ridge', 'rail_waterfront', 'lamp_waterfront', 'bench_waterfront', 'niche_hero']) REGISTRY[`dalmaru.${f}`] = dal(f);
   REGISTRY['dalmaru.lighthouse_choseung'].keepNodes = true; // (S2: its lamp's `glow` its own -- the night beat)
   for (const f of ['facade_townhall', 'facade_mall']) REGISTRY[`dalmaru.${f}`] = dal(f, { near: 140 });
   // 묶음 1 대청마당 바닥 (assets 59): the disc (its crescent to the cliff: the file's -Z is north, not turned), ring, kerbs,

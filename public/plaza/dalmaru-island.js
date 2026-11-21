@@ -295,7 +295,7 @@
         for (let cx = Math.floor((Math.min(ax, bx) - BANK_REACH) / 8); cx <= Math.floor((Math.max(ax, bx) + BANK_REACH) / 8); cx += 1) for (let cz = Math.floor((Math.min(az, bz) - BANK_REACH) / 8); cz <= Math.floor((Math.max(az, bz) + BANK_REACH) / 8); cz += 1) { const k = `${cx},${cz}`; if (!bankGrid.has(k)) bankGrid.set(k, []); bankGrid.get(k).push(i); } }
     }
     const segs = bankGrid.get(`${Math.floor(x / 8)},${Math.floor(z / 8)}`); if (!segs) return h;
-    for (const b of D.BRIDGES) if (Math.abs(x - b.x) < b.length / 2 + 4 && Math.abs(z - b.z) < 2.8 + 4) return h;
+    for (const b of D.BRIDGES) if (Math.abs(x - b.x) < (b.bank || b.length) / 2 + 4 && Math.abs(z - b.z) < 2.8 + 4) return h;
     const R = TX.ROUTE; let d = Infinity;
     for (const i of segs) { const [ax, az] = R[i - 1]; const [bx, bz] = R[i]; const dx = bx - ax; const dz = bz - az; const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1e-9))); const e = Math.hypot(x - ax - dx * t, z - az - dz * t); if (e < d) d = e; }
     if (d >= BANK_REACH) return h;
@@ -325,10 +325,18 @@
 
   // ---- bridges: 윤슬다리 (its arched deck the model's), and a plain one wherever a walk crosses a river ----
   const YB = { rise: 3.2, top: 0.43 }; // the model's deck: rise * sin(πt) over its ends, its planks' top 0.43 over that
+  /* (1.10.389 N3-a, assets 133 deck-profile.json: the high one's planks over its base line -- flat 13 m at the top, 0.27 down each
+     ramp, the bends rounded over 3 m; its last 2 m eased to meet each bank, which stand 0.12 / 0.33 m under its ends) */
+  const HB = { flat: 8, rise: 5.4, b: 1.5, top: 0.43, ease: 2 };
+  const hbProfile = (u, half) => { const g = HB.rise / (half - HB.flat); const d = Math.abs(u) - HB.flat; return d <= -HB.b ? HB.rise : d < HB.b ? HB.rise - g * (d + HB.b) ** 2 / (4 * HB.b) : Math.max(0, HB.rise - g * d); };
   const bridges = D.BRIDGES.map((b) => {
-    const ends = b.ends.map(([x, z]) => D.ground(x, z));
+    const ends = b.ends.map(([x, z]) => (b.high ? ground(x, z) : D.ground(x, z))); /* (389: the high one meets the ground as walked -- the road's bank cut its east bank 0.4 m under the raw one) */
+    if (b.high) return { x: b.x, z: b.z, ux: 1, uz: 0, half: b.length / 2, w: 5.6, high: true, base: Math.max(...ends, SEA) - HB.top + 0.12, e0: ends[0] + 0.02, e1: ends[1] + 0.02, get deck() { return this.base + HB.top; }, modelTop: (u) => HB.top + hbProfile(u, b.length / 2), model: 'dalmaru.bridge_yunseul_high' };
     return { x: b.x, z: b.z, ux: 1, uz: 0, half: b.length / 2, w: 5.6, arch: YB.rise, base: Math.max(...ends, SEA) - YB.top + 0.12, get deck() { return this.base + YB.top; }, model: 'dalmaru.bridge_yunseul', ...(b.isle2 ? { isle2: true } : {}) };
   });
+  /* (the ease at least 2 m, longer where the bank stands lower -- no steeper than the ramp's 0.27 + 0.18: the east bank, cut by the
+     road's bank, 0.73 under the planks' end -> 4 m) */
+  const highDeck = (b, u) => { const y = b.base + b.modelTop(u); const drop = (u < 0 ? b.e0 : b.e1) - (b.base + HB.top); const L = Math.max(HB.ease, Math.abs(drop) / 0.18); const e = b.half - Math.abs(u); return e >= L ? y : y + drop * (1 - Math.max(0, e) / L); };
   for (const walk of walkCurves) {
     let run = null;
     const add = () => {
@@ -350,7 +358,7 @@
     }
     return null;
   }
-  const deckAt = (hit) => (hit.b.arch ? hit.b.base + YB.top + hit.b.arch * Math.sin((Math.PI * (hit.u + hit.b.half)) / (2 * hit.b.half)) : hit.b.e0 !== undefined ? hit.b.e0 + (hit.b.e1 - hit.b.e0) * (hit.u / hit.b.half + 1) / 2 + Math.max(0.35, hit.b.deck + 0.35 - (hit.b.e0 + hit.b.e1) / 2) * (1 - (hit.u / hit.b.half) ** 2) : hit.b.deck + 0.35 * (1 - (hit.u / hit.b.half) ** 2));
+  const deckAt = (hit) => (hit.b.high ? highDeck(hit.b, hit.u) : hit.b.arch ? hit.b.base + YB.top + hit.b.arch * Math.sin((Math.PI * (hit.u + hit.b.half)) / (2 * hit.b.half)) : hit.b.e0 !== undefined ? hit.b.e0 + (hit.b.e1 - hit.b.e0) * (hit.u / hit.b.half + 1) / 2 + Math.max(0.35, hit.b.deck + 0.35 - (hit.b.e0 + hit.b.e1) / 2) * (1 - (hit.u / hit.b.half) ** 2) : hit.b.deck + 0.35 * (1 - (hit.u / hit.b.half) ** 2));
   // 달끝나루 (assets 55 pier.dalkkeut: 20 m out from its root, deck top 0.69 over it) straight out from the east cape, and
   // 배 타는 곳 (dock.boat) off 물가 거리 before 대청마당 -- both walked on
   const CAPE = D.CAPES[1]; const pierL = Math.hypot(PL.pier.x - CAPE.x, PL.pier.z - CAPE.z);
@@ -364,7 +372,15 @@
   const DOCK = { x: PL.dock.x, z: PL.dock.z - 2, root: { x: PL.dock.x, z: PL.dock.z - 2, y: DOCK_Y, yaw: 0 },
     rects: [{ x: PL.dock.x, z: PL.dock.z - 2, ux: 1, uz: 0, half: 6, w: 3, deck: 0.15 + DOCK_Y }, { x: PL.dock.x, z: PL.dock.z - 5.6, ux: 0, uz: 1, half: 2.3, w: 1.6, deck: 0.3 + DOCK_Y },
       { x: PL.dock.x, z: PL.dock.z - 8.1, ux: 0, uz: 1, half: 0.22, w: 1.8, deck: 0.03 + DOCK_Y }] }; // (v1.10.190, assets 81: the stone steps off the gangway's land end, world z -4.6)
-  const onDock = (x, z, grow = 0) => DOCK.rects.find((r) => inRect(r, x, z, grow));
+  /* 1.10.389 N3-a (notes n3-plan-20261120 §3-3 · §4-1): 별마루섬 부두 -- the same dock.boat once more off its west-north-west shore by the
+     bridge head, its float north-south (x 222.1 ~ 225.1, z 191 ~ 203), its gangway east onto the beach (its steps' end where the beach is
+     walked, 1.2 m in from the water); walked on as 배 타는 곳 is */
+  const dockAt = (p, yaw) => { const gx = -Math.sin(yaw); const gz = -Math.cos(yaw); const ax = Math.cos(yaw); const az = -Math.sin(yaw);
+    return { x: p.x, z: p.z, root: { x: p.x, z: p.z, y: DOCK_Y, yaw }, rects: [{ x: p.x, z: p.z, ux: ax, uz: az, half: 6, w: 3, deck: 0.15 + DOCK_Y }, { x: p.x + gx * 3.6, z: p.z + gz * 3.6, ux: gx, uz: gz, half: 2.3, w: 1.6, deck: 0.3 + DOCK_Y },
+      { x: p.x + gx * 6.1, z: p.z + gz * 6.1, ux: gx, uz: gz, half: 0.22, w: 1.8, deck: 0.03 + DOCK_Y }] }; };
+  const DOCK2 = ISLE2 && PL.dock2 ? dockAt(PL.dock2, -Math.PI / 2) : null;
+  const DOCKS = [DOCK, ...(DOCK2 ? [DOCK2] : [])];
+  const onDock = (x, z, grow = 0) => { for (const d of DOCKS) { const r = d.rects.find((o) => inRect(o, x, z, grow)); if (r) return r; } return undefined; };
   const inRect = (r, x, z, grow = 0) => { const dx = x - r.x; const dz = z - r.z; return Math.abs(dx * r.ux + dz * r.uz) <= r.half + grow && Math.abs(-dx * r.uz + dz * r.ux) <= r.w / 2 + grow; };
 
   function heightAt(x, z) {
@@ -490,6 +506,16 @@
     return out;
   }
   const ISLE_SIGN_IN = 8.3; // (툇마루섬's board, its middle this far in from the isle's centre: 7.3 -> 8.3 in T1, off the road's walk -- plaza-scene draws it here)
+  /* 1.10.389 N3-a (notes n3-plan-20261120 §3-2 · 위험 1): the high bridge's ramps run 9 m over land each side -- one coming in from the side
+     would rise onto the planks (up to 4 m), one going off them would drop. Where its planks stand over 0.4 m above the walkable ground
+     beside them, its sides are walled: 0.4 m circles every 0.5 m just out of its walk (3.25 m off its line; the rails stand at 3.2) */
+  let guards_ = null;
+  function rampGuards() {
+    if (guards_) return guards_; const out = [];
+    for (const b of bridges) { if (!b.high) continue;
+      for (let u = -b.half; u <= b.half + 1e-6; u += 0.5) for (const v of [-3.25, 3.25]) { const x = b.x + b.ux * u - b.uz * v; const z = b.z + b.uz * u + b.ux * v; if (deckAt({ b, u }) - ground(x, z) > 0.4 && walkable(x, z)) out.push({ x, z, r: 0.4, guard: true }); } }
+    return (guards_ = out);
+  }
   function structureSolids() {
     const out = [{ x: PL.lighthouse.x, z: PL.lighthouse.z, r: 3.2 }, { x: D.ISLE.x - 4, z: D.ISLE.z - ISLE_SIGN_IN, r: 1.1 }, ...pavingSolids(), ...auctionSolids()];
     for (let u = 1.1; u <= SL - 2; u += 0.5) for (const v of [-0.05, 3.45]) out.push( /* (the rails' run: the foot and the top meet level ground, nothing drawn there to stop one) */{ x: STAIRS.x + STAIRS.ux * u + STAIRS.nx * v, z: STAIRS.z + STAIRS.uz * u + STAIRS.nz * v, r: 0.28, rail: true });
@@ -504,6 +530,7 @@
     out.push(...towerSolids()); // (v1.10.250: the islanders' routes and the player keep off 기록의 탑)
     out.push(...exchangeSolids()); // (v1.10.320: and off the 증권거래소)
     if (Q) out.push(...Q.solidsOf()); // (1.10.323 채석장: its rocks, the sign and the ore pile -- assets 129 circles)
+    out.push(...rampGuards()); // (1.10.389: the high bridge's ramps' sides over land)
     return out;
   }
   // v1.10.320 섬 증권거래소: its ground's edge all round (0.5 m circles every 0.5 m, 0.3 in) and its middle filled -- in its own
@@ -517,7 +544,7 @@
     return out;
   }
   const STRUCTURES = { // the pieces of assets 55 that stand once (plaza-scene draws them; solids are theirs)
-    lighthouse: { ...PL.lighthouse, r: 3.2 }, pier: PIER.root, dock: DOCK.root, stairs: { x: SF.x, z: SF.z, yaw: Math.atan2(STAIRS.nx, STAIRS.nz), base: STAIRS.base }, // (its model, turned, runs along local -x: the chord)
+    lighthouse: { ...PL.lighthouse, r: 3.2 }, pier: PIER.root, dock: DOCK.root, ...(DOCK2 ? { dock2: DOCK2.root } : {}), stairs: { x: SF.x, z: SF.z, yaw: Math.atan2(STAIRS.nx, STAIRS.nz), base: STAIRS.base }, // (its model, turned, runs along local -x: the chord)
   };
 
   // 대청마당's own things round its fountain: benches facing it, lamps on a ring, flower beds (island-terrain's plazaProps,
@@ -885,7 +912,7 @@
     coastR: () => D.R_OUT, coastDist: D.coastDist, cliffAt, rawLand: D.landHeight, land, ground, creekWaterY, meshGroundHeight, settledSpot, heightAt, walkable,
     streamDist: () => Infinity, walkDist, STREAMS: [], streamCurves: [], walkCurves, RIVER_WIDE: { pts: [] }, riverExtra: () => 0,
     streamDepth: () => 0, streamWaterHeight: () => SEA, POND: { x: 1e5, z: 1e5, r: 0 }, PADS,
-    bridges, onBridge, deckAt, onStairs, STAIRS, PIER, DOCK, BREAKWATER: { x: 1e5, z: 1e5, ux: 1, uz: 0, half: 0, w: 0, deck: 0 }, bayR: D.R_BAY,
+    bridges, onBridge, deckAt, onStairs, STAIRS, PIER, DOCK, DOCK2, DOCKS, BREAKWATER: { x: 1e5, z: 1e5, ux: 1, uz: 0, half: 0, w: 0, deck: 0 }, bayR: D.R_BAY,
     fishWater, canFish: (x, z) => fishWater(x, z) !== null, ISLAND_RADIUS: 540 /* (v1.10.230: the village's far corner, r 323; N1: 새 섬's east end x 516 -- 330 -> 540) */,
     /* N1 새 섬's ground: its own mesh on the main ground's 2.5 m lattice (x0, z0 on it), a cell its when within 14 m of its coast
        (the main ground leaves those out -- no cell drawn twice); its own ground maps over this square */

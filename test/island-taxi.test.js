@@ -156,7 +156,7 @@ test('T1 길 넓히기: 차선 2.3 m×2 + 인도 1.6 m×2, 그 안에 단단한 
   assert.deepEqual({ ...X.ROAD }, { lane: 2.3, walk: 1.6, half: 3.9 });
   const R = X.ROUTE; const P = T.plazaProps();
   const solids = [...T.natureSolids(), ...T.structureSolids(), ...T.villageSolids(), ...P.benches, ...P.lamps, ...P.beds];
-  for (const s of solids) { const edge = T.lineDist(s.x, s.z, R) - (s.r || 0.5); if (T.onBridge(s.x, s.z)) continue; assert.ok(edge > X.ROAD.half - 0.15, `${s.x.toFixed(1)},${s.z.toFixed(1)} in the road (${edge.toFixed(2)})`); }
+  for (const s of solids) { const edge = T.lineDist(s.x, s.z, R) - (s.r || 0.5); if (T.onBridge(s.x, s.z) || s.guard) continue; /* (1.10.389: the high bridge's ramp sides -- over it the road is its planks) */ assert.ok(edge > X.ROAD.half - 0.15, `${s.x.toFixed(1)},${s.z.toFixed(1)} in the road (${edge.toFixed(2)})`); }
   for (const o of [...P.benches, ...P.lamps, ...P.beds]) assert.ok(Math.hypot(o.x - R[0][0], o.z - R[0][1]) > 8 - 1.2, `${o.x},${o.z} by the 대청마당 stop`);
   assert.ok(X.CROSSINGS.length >= 10 && X.CROSSINGS.length <= 12, `${X.CROSSINGS.length} crossings`);
   for (const c of X.CROSSINGS) assert.ok(T.lineDist(c.x, c.z, R) < 0.1, `crossing ${c.x},${c.z} off the middle`);
