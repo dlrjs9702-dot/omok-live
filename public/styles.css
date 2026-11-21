@@ -2920,7 +2920,16 @@ body>.dressRoom{display:none} /* (bugs 10: the 성형외과·염색사 card wait
 .dressRoom{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,46%);gap:14px;align-items:start}
 .dressRoom>.skinTryOn{position:sticky;top:0;margin:0}
 @media (max-width:700px){
-  .skinShopDialog.dressing[open],.myInfoSection.dressing{grid-template-columns:1fr;grid-template-areas:"head" "status" "view" "detail" "list" "bar"}
+  .skinShopDialog.dressing[open],.myInfoSection.dressing{grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "status" "view" "detail" "list" "bar"}
+  /* (1.10.398 에셋 검사 2회차 · ui-review P6 「폰 옷가게 오른쪽 잘림」: the one-line bar (points + four buttons, ~460 px) and the 270 px sign widened the
+     whole sheet past a 360 px phone -- the sign two-thirds, the balance wrapping, the points a line of their own, the buttons sharing the next; the
+     header's ✕ closes (C3)) */
+  .skinShopDialog.dressing>.recordsDialogHead h2{flex:0 1 180px;min-width:0;width:180px;height:59px;margin:-9px 0 -11px -5px;padding:0 8px 3px 76px;font-size:1.05rem}
+  .skinShopDialog.dressing>.recordsDialogHead .skinShopBalance{flex:1 1 auto;min-width:0;font-size:.8rem;line-height:1.15;text-align:right;overflow-wrap:anywhere}
+  .dressBar{flex-wrap:wrap}
+  .dressBar .dressPoints{flex:1 0 100%}
+  .dressBar button{flex:1 1 0;min-width:0;padding:0 6px}
+  .skinShopDialog .dressBar .dressClose{display:none}
   .skinShopDialog.dressing>.skinShopBody,.myInfoSection.dressing>.skinShopBody{max-height:none;overflow:visible}
   .skinShopDialog.dressing>.skinTryOn,.skinShopDialog.dressing>.dressDetail{margin:0 12px}
   .skinShopDialog.dressing>.dressBar,.myInfoSection.dressing>.dressBar{position:sticky;bottom:0;margin:0;z-index:4;border-radius:14px 14px 0 0}
