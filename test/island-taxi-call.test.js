@@ -45,6 +45,22 @@ test('택시 부르기: 정류장에서 부르면 가까운 차가 빈 차로 �
   assert.equal((await req('/api/island/taxi?from=isleFork', b)).data.called, null, 'walked off: the call let go');
 });
 
+// 1.10.403 Codex 391~400 #6: the fare's claim is the page's request -- the same request again (no answer the first time) is not a second fare;
+// a request that already started its ride starts no other
+test('택시 Codex #6: 같은 요청은 한 번만 결제, 이미 탄 요청으로 다시 타기는 막음', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'taxi-req-')); rmAtExit(dir);
+  const server = await boot(t, dir); const { req } = server;
+  const a = await server.enter(await server.issue('요청한번')); await req('/api/test/points-credit', a, { amount: 100000 });
+  const balance = async () => (await req('/api/skins', a)).data.balance; const P = X.stopOf('plaza');
+  await req('/api/test/taxi-run', a, { ms: 3000 }); await req('/api/plaza/state', a, { x: P.out.x, z: P.out.z, yaw: 0, moving: false }); const before = await balance();
+  const body = { from: 'plaza', to: 'isle', pay: 'fare', requestId: 'taxi-req-00000001' };
+  const r = await req('/api/island/taxi', a, body); assert.equal(r.status, 200, JSON.stringify(r.data)); assert.equal(await balance(), before - r.data.fare);
+  await sleep(X.durationOf(r.data.taxi) + 400); await req('/api/test/taxi-run', a, { ms: 3000 }); const I = X.stopOf('isle'); await req('/api/plaza/state', a, { x: I.out.x, z: I.out.z, yaw: 0, moving: false });
+  body.from = 'isle'; body.to = 'plaza'; /* (out at 마을 now: the same request, from there) */
+  const again = await req('/api/island/taxi', a, body); assert.equal(again.status, 409); assert.equal(again.data.error, 'TAXI_PRICE'); assert.equal(await balance(), before - r.data.fare, '두 번째 결제 없음');
+  const fresh = await req('/api/island/taxi', a, { ...body, requestId: 'taxi-req-00000002' }); assert.equal(fresh.status, 200, JSON.stringify(fresh.data)); assert.equal(await balance(), before - 2 * r.data.fare);
+});
+
 // 1.10.401 Codex 391~400 #1: on the real road (no test run time) the server's tick looks ahead along each ride -- a ride from a stop between
 // the terminals lost its end in that copy and threw, stopping the server
 test('택시 Codex #1: 중간 정류장에서 실제 속도로 출발해도 서버가 멈추지 않음', async (t) => {

@@ -2631,6 +2631,7 @@ const trainVisitors = new Map();
 const trainRiders = new Map(); let trainShift = 0; let trainTraffic = IslandTrain.createTraffic(nowMs());
 const taxiRides = new Map(); // v1.10.271 섬 택시: session token -> { from, startedAt, runMs? } while riding
 const taxiPaying = new Set(); // (v1.10.283: a fare being taken -- one at a time per session)
+const taxiPaidRides = new Map(); // (1.10.403 Codex #6: a fare's claim -> when its ride started; an hour's -- a paid request starts one ride)
 const unstuckAt = new Map(); // (1.10.322 U3: session token -> when it last asked to be put on 대청마당)
 const IslandUnstuck = require('./lib/island-unstuck'); // (364: the nearest free spot, 10 minutes apart)
 // 364 관리자 「섬 이벤트」 (lib/island-admin-events.js): the list kept in worldValue('adminEvents'); the server applies them (sales,
@@ -8749,9 +8750,14 @@ async function requestHandler(req, res) {
     try {
       const price = hasPass ? 0 : pay === 'pass' ? dayPass : fare;
       if (price > 0) {
-        const out = await pointStore.charge(pay === 'pass' ? { userId: account, claimId: passClaim, price, title: `섬 택시 자유이용권 · ${passDay.slice(5)}` } : { userId: account, claimId: `taxi:${account}:${startedAt}`, price, title: `섬 택시 · ${IslandTaxi.labelOf(from)} → ${IslandTaxi.labelOf(to)}` }).catch(() => null);
+        /* (1.10.403 Codex 391~400 #6: the fare's claim by the page's request, not the moment -- paid, then the server gone before the ride was kept: the
+           same request pressed again rides on that payment, not a second fare; a paid request starts one ride, and only within 10 minutes) */
+        const rid = typeof body.requestId === 'string' && /^[A-Za-z0-9-]{8,64}$/.test(body.requestId) ? body.requestId : null; const fareClaim = `taxi:${account}:${rid || startedAt}`;
+        const out = await pointStore.charge(pay === 'pass' ? { userId: account, claimId: passClaim, price, title: `섬 택시 자유이용권 · ${passDay.slice(5)}` } : { userId: account, claimId: fareClaim, price, title: `섬 택시 · ${IslandTaxi.labelOf(from)} → ${IslandTaxi.labelOf(to)}` }).catch(() => null);
         if (!out) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
         if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', `포인트가 모자라요(${price.toLocaleString('ko-KR')}P)`);
+        if (pay !== 'pass' && !out.applied) { const at = Number.isFinite(Number(out.at)) ? Number(out.at) : Date.parse(String(out.at)); if (!rid || taxiPaidRides.has(fareClaim) || !(nowMs() - at < 600000)) return sendError(res, 409, 'TAXI_PRICE', '이미 쓴 결제예요. 다시 타기를 눌러 주세요.'); }
+        if (pay !== 'pass') { taxiPaidRides.set(fareClaim, nowMs()); for (const [k, at] of taxiPaidRides) if (nowMs() - at > 3600000) taxiPaidRides.delete(k); }
         if (out.applied) { paid = price; notifyPointsChanged([account]); } /* (a pass already bought today -- by another screen at once: not again) */
       }
       took = true;

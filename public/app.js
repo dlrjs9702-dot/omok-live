@@ -6170,6 +6170,7 @@
     });
     row.append(call, close); card.append(line, status, row); openPlazaWindow('🚕 택시 부르기', [card]); call.focus({ preventScroll: true });
   }
+  const taxiPending = new Map(); /* (403 Codex #6: a 타기 not answered yet, by where from, where to and how paid -> its request) */
   async function openTaxi(from) {
     let q; let balance = null;
     try { const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {}); q = await api(`/api/island/taxi?from=${encodeURIComponent(from)}`); balance = (await api('/api/points')).balance; } catch (error) { showToast(error.message); return; }
@@ -6202,9 +6203,12 @@
       /* (403 Codex #7: where and for how much fixed at the press -- the places locked till the answer; #5: 「타기」 with today's pass held says so, so a
          press after midnight is not taken for buying the new day's pass) */
       const chose = pick; going = true; for (const b of [ride, pass, ...list.children]) if (b) b.disabled = true;
+      /* (403 Codex #6: this press's own request -- the same one again if the last had no answer, so a fare already paid carries the ride) */
+      const key = `${from}:${chose.id}:${pay}`; const requestId = taxiPending.get(key) || crypto.randomUUID(); taxiPending.set(key, requestId);
       try {
         const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
-        const r = await api('/api/island/taxi', { method: 'POST', body: JSON.stringify({ from, to: chose.id, pay, fare: q.pass ? 0 : pay === 'pass' ? q.dayPass : chose.fare, ...(q.pass ? { held: true } : {}) }) });
+        const r = await api('/api/island/taxi', { method: 'POST', body: JSON.stringify({ from, to: chose.id, pay, requestId, fare: q.pass ? 0 : pay === 'pass' ? q.dayPass : chose.fare, ...(q.pass ? { held: true } : {}) }) }).catch((error) => { if (error?.status) taxiPending.delete(key); throw error; });
+        taxiPending.delete(key);
         plaza.controller?.onTaxiEnd?.(() => showToast(`🚕 ${chose.label}에 도착했어요`)); plaza.controller?.startTaxi?.(r.taxi);
         plazaDialog.close(); if (r.fare) loadPoints(); if (r.fare && r.pass) showToast('🎫 오늘 자유이용권 ✓ · 오늘은 몇 번이든 타요', 3000); plazaStage.focus({ preventScroll: true });
       } catch (error) { status.textContent = error.message; going = false; for (const b of list.children) b.disabled = false; ride.disabled = short(pick.fare); if (pass) pass.disabled = short(q.dayPass); if (error?.data?.error === 'TAXI_PRICE') { plazaDialog.close(); openTaxi(from); } }
