@@ -9875,7 +9875,8 @@ async function requestHandler(req, res) {
       const paidIds = [];
       for (const [id, v] of Object.entries(owedOf(matDoc))) {
         const e = v?.e || errandOfId(id); if (!e) { console.log(`[errand] owed ${id}: its errand not found -- kept`); continue; }
-        const out = await pointStore.claimEvent({ eventId: id, userId: account, amount: errandPay(e, before), title: `주민 심부름 · ${IslandErrands.title(e)}` }).then((o) => { paidIds.push(id); return o; }, () => null); if (out?.applied) notifyPointsChanged([account]);
+        /* (1.10.403 Codex 391~400 #17: what it was worth when handed over -- a price or a friendship's tier changed since does not change it) */
+        const out = await pointStore.claimEvent({ eventId: id, userId: account, amount: Number.isFinite(v?.pay) ? v.pay : errandPay(e, before), title: `주민 심부름 · ${typeof v?.title === 'string' ? v.title : IslandErrands.title(e)}` }).then((o) => { paidIds.push(id); return o; }, () => null); if (out?.applied) notifyPointsChanged([account]);
       }
       await pointStore.questApply(account, 'errandmat', (d) => { const owed = owedOf(d); for (const id of paidIds) delete owed[id]; return { doc: { day: mDay, given: d.day === mDay ? (d.given || {}) : {}, owed } }; }).catch(() => {});
       matDoc = (await pointStore.questDoc(account, 'errandmat')).doc || {};
@@ -9883,7 +9884,7 @@ async function requestHandler(req, res) {
     const matGiven = (id) => matDoc.day === mDay && Boolean(matDoc.given?.[id]);
     for (const e of errands) if (e.kind === 'material' && !done.has(e.id) && matGiven(e.id)) goods.set(e.good, Math.max(e.count, goods.get(e.good) || 0));
     let r = IslandErrands.talk(errands, errandStages.get(key) || {}, done, n, goods);
-    if (r?.take && r.pay.kind === 'material') { if (!matGiven(r.pay.id)) { const e = r.pay; const out = await pointStore.questApply(account, 'errandmat', (d, bag) => (d.day === mDay && d.given?.[e.id] ? null : bagCount(bag, e.good) < e.count ? { error: 'MISSING' } : { doc: { day: mDay, owed: owedOf(d) /* (395 #4: a day gone by's unpaid kept) */, given: { ...(d.day === mDay ? d.given : {}), [e.id]: { at: nowMs(), e: { id: e.id, kind: e.kind, from: e.from, to: e.to, good: e.good, count: e.count, far: e.far || 0 } } } }, take: { itemId: e.good, qty: e.count } })).catch(() => null); /* (383 #4: the errand kept with them -- paid on a later day if not today) */ if (!out?.doc?.given?.[e.id]) r = null; } }
+    if (r?.take && r.pay.kind === 'material') { if (!matGiven(r.pay.id)) { const e = r.pay; const out = await pointStore.questApply(account, 'errandmat', (d, bag) => (d.day === mDay && d.given?.[e.id] ? null : bagCount(bag, e.good) < e.count ? { error: 'MISSING' } : { doc: { day: mDay, owed: owedOf(d) /* (395 #4: a day gone by's unpaid kept) */, given: { ...(d.day === mDay ? d.given : {}), [e.id]: { at: nowMs(), e: { id: e.id, kind: e.kind, from: e.from, to: e.to, good: e.good, count: e.count, far: e.far || 0 }, pay: errandPay(e, before), title: IslandErrands.title(e) } } }, take: { itemId: e.good, qty: e.count } })).catch(() => null); /* (1.10.403 Codex 391~400 #17: the pay as it was at the hand-over kept with it) */ /* (383 #4: the errand kept with them -- paid on a later day if not today) */ if (!out?.doc?.given?.[e.id]) r = null; } }
     else if (r?.take) { const used = await pointStore.islandUse({ userId: account, requestId: useId(r.pay.id), itemId: r.take }); if (!used.applied && !used.already) r = null; } // (gone meanwhile)
     let reward = 0; const gains = [{ n, delta: IslandCast.GAIN.talk, daily: true }]; // v1.10.91 호감도
     if (r) {
