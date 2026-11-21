@@ -13,6 +13,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.392 N4-b 택시 정류장 · 택시 부르기 · 거리 요금(notes n4-plan-20261120 §5-2·§5-5, 결정 40 A · 41-3 A, 에셋 163 표지)
+
+- 길 위 자리(island-taxi.js ROADSTOPS): ① 배 타는 곳 s 52.3, ② 물가 거리 92.1, ③ 박물관·잔치마루 177.2(건널목에서 9 m), ⑤ 툇마루섬 갈림길 365 — 차는 길가 칸(오른쪽 차선 + 1.2 m), 표지는 그 2.2 m 밖. ④ 달끝나루는 자리 물음(건널목 6 m 규칙) 뒤에.
+- 두 자리 사이 길(driveBetween), 빈 차 이동은 손님 없는 타기(`empty`, 문 여닫기 없음). 부르면 가장 가까운 종점의 앞 차가 옴(sendCar), 정류장에서 15초 기다림, 손님을 정류장(또는 정류장에서 꽉 찬 종점)에 내려 준 차는 가장 가까운 빈 종점으로(goEmpty).
+- 서버: POST /api/island/taxi/call { stop } — 이미 서 있으면 ready, 아니면 보냄 또는 줄(내 순서), 표지에서 10 m 넘게 벗어나면 부름 지움. GET/POST /api/island/taxi는 정류장에서도, 목적지 목록은 모든 자리.
+- 요금: taxi:per100 250(가까운 100 m) · taxi:minFare 500 · taxi:dayPass 8000. 대청마당 ↔ 마을 404 m = 1,000P 그대로.
+- 화면: 정류장 표지(에셋 163 taxi_stop_sign, plate 앞뒤 면에 정류장 이름), 「택시 부르기」 창, 표지 막는 원.
+- 시험: island-taxi-call(부르기 → 정류장끼리 타기 → 빈 종점으로, 자리 뜨면 취소), island-taxi-stops e2e, 요금·하루권 시험 고침.
+
 ## v1.10.391 N4-a 택시 종점 2대 · 목적지 고르기 · 오른쪽 차선 · 한 줄 다리(notes n4-plan-20261120 §5-1, 사용자 N4 §8)
 
 - 차 무리(island-taxi.js createFleet/takeCar/settle/etaAt): 종점마다 2대(앞 칸 = 지금 자리, 뒤 칸 = 같은 방향 4.5 m 뒤), 앞 차가 떠나면 뒤 차가 당겨 섬. 내려 준 차는 손님이 내릴 때 그 종점에 2대 미만이면 머물러 빈 칸으로(3초), 아니면 빈 차로 돌아가 집 종점의 빈 칸으로. 자리 틀: ride.car·seat.
@@ -28,11 +37,3 @@
 - 서버: 0.5초 틱, 바뀔 때만 SSE `boats`, 들어올 때 한 번·자세 응답에도. `POST /api/island/boat/board`·`/leave`, `GET /api/island/boats`, 시험 `/api/test/boats {scale}`. 탄 사람은 자리 위치(호랑이·자리 비움·밀어내기 목록 밖), 끊기면 자리 비움, 내리면 뜬 판 위.
 - 화면: 배 4척(에셋 134, 대역 상자), 흔들림, 양옆 이름판 「자연 구역 탐방선」, 배마다 선장(주민 모습·모자, 셔츠 색 다름, 40 m 안), 탄 사람 의자에 앉음, 팻말 문구(배 N척 / 곧 출발 N초 / 배 오는 중 N초 · 내 순서).
 - 시험: test/island-boat.test.js(물길·대는 자리·규칙·자세), tests/e2e/island-boat.spec.js(타고 건너 내리기, 2/2로 돌아옴).
-
-## v1.10.389 N3-a 높은 윤슬다리 + 별마루섬 부두·부두 문(사용자 결정 27A·37, 에셋 133, notes n3-plan-20261120 §4-1)
-
-- 동쪽 윤슬다리: 에셋 133 `dalmaru.bridge_yunseul_high`, 56 m 제 길이(배율 1), 끝 x 31.35 / 87.35. 판 높이 = base + 0.43 + hbProfile(u)(꼭대기 평평 13 m, 비탈 0.27), 가운데 바다 위 7.02 m. 끝은 걷는 땅(길 둑 포함)에 맞춰 섞음: 서쪽 2 m, 동쪽 4 m(땅이 0.73 m 낮음, 경사 0.45 이하). 모델은 fit으로 끝을 같이 굽힘. 길 둑은 옛 42 m 그대로(`bank`).
-- 비탈 옆 막기: 판이 옆 땅보다 0.4 m 넘게 높은 뭍 위, 다리 줄에서 ±3.25 m에 0.4 m 원 0.5 m마다(`guard`), 대역 벽.
-- 택시 다리 상자 31~88. 건널목 (36.4,140.5)→(25.5,140.6), (88.4,138.9)→(92.8,135.6). 역무원 철이 (83,137)→(89,146).
-- 별마루섬 부두(DOCK2): 배 타는 곳 모델 한 벌, 뜬 판 (223.6,197) 남북, 건널판 동쪽. DOCKS 목록으로 걸음. 부두 문: isle2-props 목책 #194 → fence_gate(호랑이 안전지대 12 m 자동). 문은 다가가면 열림(문 여럿). 지도·미니맵에 부두·부두 문.
-- 시험: test/n3a-bridge-dock.test.js 새로, isle2-props 문 2개, island-taxi 다리 옆 원 건너뜀, station-ground 다리 판 옆은 둑에서 뺌, 땅 지도 다시 만듦, GLB 예산 파일별 예외.
