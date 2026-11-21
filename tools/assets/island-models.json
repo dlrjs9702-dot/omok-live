@@ -4840,6 +4840,14 @@
       "precompressed": true
     },
     {
+      "out": "dalmaru-v1/ferry.glb",
+      "src": "ferry134:01. High/ferry.glb",
+      "sha256": "0fb19eb4fe68b022f7b5b8f5ab9012c3338d5b05c8050c171774eadc7bd72677",
+      "lowSrc": "ferry134:02. Low/ferry_low.glb",
+      "lowSha256": "484344ece370b0ad54865c862e6e3b7ed1b06d004ed04191959ec0cea5c1de6b",
+      "precompressed": true
+    },
+    {
       "out": "dalmaru-v1/dock_boat.glb",
       "src": "flicker150:01. High/dalmaru-v1/dock_boat.glb",
       "sha256": "32e968385a1864be36b4381d08aa7cdd72ef02d0c705cf6b3c11c8c2fe9c1995",
@@ -15735,6 +15743,7 @@
     "tiger159": "159. Game Island tiger attacks 2026-11-20",
     "storehouse160": "160. Game Island yard storehouse 2026-11-20",
     "petbike161": "161. Game Island pet bike 2026-11-20",
-    "yunseul133": "133. Game Island high yunseul bridge 2026-11-15"
+    "yunseul133": "133. Game Island high yunseul bridge 2026-11-15",
+    "ferry134": "134. Game Island ferry 2026-11-15"
   }
 }

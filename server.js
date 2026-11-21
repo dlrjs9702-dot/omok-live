@@ -218,6 +218,7 @@ const groundCover = (() => {
 const { poseTime } = require('./lib/plaza-pose-time');
 const IslandTrain = require('./public/plaza/island-train.js'); // v1.10.47 관광열차
 const IslandTaxi = require('./public/plaza/island-taxi.js'); // v1.10.271 섬 택시
+const IslandBoat = require('./public/plaza/island-boat.js'); // 1.10.390 N3-b 자연 구역 탐방선
 const IslandBets = require('./public/plaza/island-bets.js'); // v1.10.278 주민 내기
 // (총괄's lines, notes story/resident-bet-lines-20261108.json: each islander's own words over IslandBets' defaults, their tail)
 const BET_LINES = Object.fromEntries(require('./lib/island-bet-lines.json').lines.map((r) => [r.n, { offer: r.propose, pick: r.pick, goal: r.goal, win: r.iWin, lose: r.youWin, draw: r.draw, revenge: r.revenge, busy: r.duty, emote: r.emote || {} }]));
@@ -746,6 +747,7 @@ function releaseSessionToken(token, { message = null, voluntary = false } = {}) 
   freeSeat(token); // v1.10.44
   trainRiders.delete(token); trainVisitors.delete(token); // v1.10.47
   taxiRides.delete(token); // v1.10.271 (the next visit starts at the other stop: each pose of the ride noted it there)
+  IslandBoat.drop(boatFleet, token); boatDone.delete(token); // 1.10.390 (their seat free at once, out of any queue)
   let cancelledInvitation = false;
   for (const [id, invite] of invitations) {
     if (invite.fromToken === token || invite.toToken === token) {
@@ -1737,7 +1739,7 @@ const PLAZA_STALE_MS = 15000;
 /* (380 자리 비움, 총괄 결정 11 「1분으로」: a minute with no move and no action the server sees (383 Codex #8: not the page's own count) -- the
    server marks one away: drawn see-through with 「자리 비움」, and the others pass through them (here and on every screen). Tests shorten it.) */
 let plazaAwayMs = 60000;
-const plazaAway = (e, now = nowMs()) => Boolean(e && Number.isFinite(e.activeAt) && !e.ride && !e.taxi && !e.platform && now - e.activeAt >= plazaAwayMs);
+const plazaAway = (e, now = nowMs()) => Boolean(e && Number.isFinite(e.activeAt) && !e.ride && !e.taxi && !e.boat && !e.platform && now - e.activeAt >= plazaAwayMs);
 const STREAM_GRACE_MS = 4000; // (a lobby stream closed: how long a page that still poses -- every 3 s standing -- keeps its visit)
 const PLAZA_BOUND = IslandTerrain.ISLAND_RADIUS; // v1.10.0: the whole island (130; 달마루섬 200)
 const plazaPresence = new Map(); // session token -> { id, name, look, title, x, z, yaw, moving, at }
@@ -1760,7 +1762,7 @@ function plazaSeparate(token, x, z, prev) {
     if (len2 > 1e-8) {
       let tHit = 1;
       for (const [other, entry] of plazaPresence) {
-        if (other === token || entry.ride || entry.platform || entry.taxi || plazaAway(entry)) continue; /* (v1.10.271: a taxi passes people by; 380 one away too) */
+        if (other === token || entry.ride || entry.platform || entry.taxi || entry.boat || plazaAway(entry)) continue; /* (v1.10.271: a taxi passes people by; 380 one away too; 390 a boat's riders) */
         const fx = prev.x - entry.x; const fz = prev.z - entry.z;
         const c = fx * fx + fz * fz - PLAZA_SERVER_MIN * PLAZA_SERVER_MIN;
         if (c <= 0) continue; // already overlapping at the start: the separation below handles it
@@ -1775,7 +1777,7 @@ function plazaSeparate(token, x, z, prev) {
   for (let pass = 0; pass < 4; pass += 1) {
     let moved = false;
     for (const [other, entry] of plazaPresence) {
-      if (other === token || entry.ride || entry.platform || entry.taxi || plazaAway(entry)) continue; /* (v1.10.271: a taxi passes people by; 380 one away too) */
+      if (other === token || entry.ride || entry.platform || entry.taxi || entry.boat || plazaAway(entry)) continue; /* (v1.10.271: a taxi passes people by; 380 one away too; 390 a boat's riders) */
       let dx = x - entry.x; let dz = z - entry.z; let d = Math.hypot(dx, dz);
       if (d >= PLAZA_SERVER_MIN) continue;
       if (d < 1e-4) { dx = (prev?.x ?? x + 1) - entry.x; dz = (prev?.z ?? z) - entry.z; d = Math.hypot(dx, dz); }
@@ -2163,7 +2165,7 @@ function plazaSnapshot() {
   // v1.10.2: chatId (the same public id lobby chat messages carry) lets each screen put a message over its sender
   // t is the sender's bounded, server-aligned draw time (old clients use receipt time).
   // Authoritative freshness and interactions still use entry.at, the server receipt time.
-  return { trainService: trainService(), taxiStops: taxiStopsView() /* (Codex 311-320 #7: the cars going back empty, their road clocks, to every screen at once) */, players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet, bike, home, held, taxi, snack, activeAt, run }) => ({ run: Boolean(run) || undefined, away: plazaAway({ activeAt, ride, taxi, platform }) /* (380 자리 비움) */, snack: snack && nowMs() < snack.until ? snack.id : null, id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, taxi: taxi || null,platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null, bike: bike || null, home: home || null, held: held || null })) }; // (자전거: the colour ridden; 묶음 4: whose house)
+  return { trainService: trainService(), taxiStops: taxiStopsView() /* (Codex 311-320 #7: the cars going back empty, their road clocks, to every screen at once) */, players: [...plazaPresence.values()].map(({ id, chatId, name, look, title, champion, hoguking, x, z, yaw, moving, at, poseAt, carry, act, actN, actAt, actMs, actTarget, seat, ride, platform, space, delinquent, fish, pet, bike, home, held, taxi, boat, snack, activeAt, run }) => ({ run: Boolean(run) || undefined, away: plazaAway({ activeAt, ride, taxi, boat, platform }) /* (380 자리 비움) */, snack: snack && nowMs() < snack.until ? snack.id : null, id, chatId, name, look, title, champion: Boolean(champion), hoguking: Boolean(hoguking), delinquent: Boolean(delinquent), ride: ride || null, taxi: taxi || null, boat: boat || null /* (1.10.390: which boat, which seat) */, platform: platform || null, space: space || 'island', x, z, yaw, moving, t: poseAt || at, carry: carry || null, act: act || null, actN: actN || 0, actAt, actMs, actTarget, seat: seat || null, fish: fish || null, pet: pet || null, bike: bike || null, home: home || null, held: held || null })) }; // (자전거: the colour ridden; 묶음 4: whose house)
 }
 function dropPlazaPresence(token) { const session = sessions.get(token); if (session) session.plazaGeneration = (session.plazaGeneration || 0) + 1; if (session && islandEvents.residentBye(`talk:${session.plazaId}`)) broadcastIsland('residents', { list: islandEvents.residents() }); /* (A-6: off the island, the talk ends) */ weedPulls.delete(token); unstuckAt.delete(token); quarryPulls.delete(token); resourcePulls.delete(token); freeSeat(token); trainRiders.delete(token); trainVisitors.delete(token); townhallInside.delete(token); storeInside.delete(token); furnitureInside.delete(token); petshopInside.delete(token); fashionInside.delete(token); homeInside.delete(token); homeFloor.delete(token); jailInside.delete(token); museumInside.delete(token); exchangeInside.delete(token); denInside.delete(token); jailInmates.delete(token); jailFreed.delete(token); jailEssays.delete(token); if (plazaPresence.delete(token)) plazaDirty = true; }
 // (사용자 제보 2026-10-25) a 「가까이」 refusal says, in the log, where the server had me: [near] what, my space and floor,
@@ -2208,7 +2210,7 @@ const tigerTicker = setInterval(() => {
   if (!tigerSim.isOn()) return;
   const I = IslandTerrain.dalmaru?.NEW_ISLE; if (!I) return; const people = []; let near = false;
   for (const [token, p] of plazaPresence) {
-    if ((p.space || 'island') !== 'island' || p.ride || p.platform || p.taxi || trainRiders.has(token) || taxiRides.has(token) || !Number.isFinite(p.x) || !Number.isFinite(p.z)) continue;
+    if ((p.space || 'island') !== 'island' || p.ride || p.platform || p.taxi || p.boat || trainRiders.has(token) || taxiRides.has(token) || !Number.isFinite(p.x) || !Number.isFinite(p.z)) continue; /* (390: in a boat too) */
     if (Math.hypot(p.x - I.x, p.z - I.z) < I.r + 160) near = true; if (IslandTerrain.onIsle2(p.x, p.z)) people.push({ token, x: p.x, z: p.z, t: p.poseAt || p.at }); /* (tiger review #2: the pose's own time -- their pace by it) */
   }
   const events = tigerFrozen ? [] : tigerSim.tick(nowMs(), people); /* (tests' photos: held where they were put) */
@@ -2273,7 +2275,7 @@ const worksToday = (n) => { const d = rosterDay(); return d && IslandRoster.post
 const fixedPost = (n) => Object.entries(IslandRoster.FIXED).find(([, m]) => m === n)?.[0] || null;
 const postToday = (n) => counterToday(n) ?? stationToday(n) ?? worksToday(n) ?? fixedPost(n);
 const talkable = (n) => Number.isInteger(n) && Boolean(IslandCast.RESIDENTS[n]) && (walksToday(n) || postToday(n) != null);
-const islandEvents = createIslandEvents({ now: () => nowMs(), occupied:()=>[...plazaPresence.values()].filter(p=>!p.ride&&!p.platform&&!p.taxi), working: (n) => !walksToday(n) }); // (C2: only one walking today) // (v1.10.215: a walker at a counter today is no event's)
+const islandEvents = createIslandEvents({ now: () => nowMs(), occupied:()=>[...plazaPresence.values()].filter(p=>!p.ride&&!p.platform&&!p.taxi&&!p.boat), working: (n) => !walksToday(n) }); // (C2: only one walking today) // (v1.10.215: a walker at a counter today is no event's)
 /* (385: both made by now -- kept for the next start when they were not read; BOOT_CACHE_ONLY (postinstall, tools/warm-boot-cache.js) stops here) */
 const bootCacheUsed = Boolean(bootCache) && IslandTerrain.nature() === bootCache.nature;
 if (!bootCacheUsed && !process.env.BOOT_CACHE_ONLY && process.env.BOOT_CACHE !== 'off' && process.env.NODE_ENV !== 'test') BootCache.write({ nature: IslandTerrain.nature(), natureBlocks: IslandTerrain.natureBlockCount?.() ?? 0, grid: IslandNpcs.packGrid() });
@@ -2684,7 +2686,7 @@ function taxiWay(bare, road, look) {
 // should come to stand), or null
 function taxiBlocker(ride, way, now, across = TAXI_LOOK.across) {
   for (const [token, e] of plazaPresence) {
-    if (e.ride || e.platform || e.taxi || taxiRides.get(token) === ride || !Number.isFinite(e.x) || now - (e.at || 0) > 5000 || (e.space && e.space !== 'island')) continue;
+    if (e.ride || e.platform || e.taxi || e.boat || taxiRides.get(token) === ride || !Number.isFinite(e.x) || now - (e.at || 0) > 5000 || (e.space && e.space !== 'island')) continue;
     const rel = (p) => { const dx = e.x - p.x; const dz = e.z - p.z; return { along: dx * Math.sin(p.yaw) + dz * Math.cos(p.yaw), across: dx * Math.cos(p.yaw) - dz * Math.sin(p.yaw) }; };
     const hit = way.findIndex((p) => { const r = rel(p); return Math.abs(r.across) < across && Math.abs(r.along) < TAXI_LOOK.nose; });
     if (hit < 0) continue;
@@ -2736,6 +2738,21 @@ function taxiTick() {
   }
 }
 setInterval(taxiTick, 100).unref?.();
+// 1.10.390 N3-b 자연 구역 탐방선 (public/plaza/island-boat.js; notes n3-plan §4-2, 사용자 결정 37): the four boats in memory -- a restart has two at each
+// dock. Twice a second their clock moves on; what changed goes to the island's screens as one `boats` (each screen draws them on its own clock).
+// The riders: where their seat is (the plaza pose); at the end of the unloading, on the float by their boat's door (boatDone, the next pose).
+let boatFleet = IslandBoat.createFleet({ now: nowMs() });
+const boatDone = new Map(); // session token -> { dock, x, z } where they stepped off
+const BOAT_NEAR = 9; // (from the float's middle: one at the dock -- the float 12 m long)
+const boatAtDock = (p, dock) => Boolean(p) && (p.space || 'island') === 'island' && Math.hypot(p.x - IslandBoat.DOCKS[dock].float.x, p.z - IslandBoat.DOCKS[dock].float.z) <= BOAT_NEAR;
+const boatsView = (now = nowMs()) => IslandBoat.view(boatFleet, now);
+function boatTick() {
+  const now = nowMs(); const r = IslandBoat.tick(boatFleet, now, { canBoard: (token, dock) => sessions.has(token) && boatAtDock(plazaPresence.get(token), dock) && !taxiRides.has(token) });
+  for (const o of r.released) { boatDone.set(o.token, { dock: o.dock, x: Math.round(o.x * 100) / 100, z: Math.round(o.z * 100) / 100 }); const p = plazaPresence.get(o.token); if (p) p.boat = null; }
+  for (const o of r.boarded) { const p = plazaPresence.get(o.token); if (p) { p.boat = { id: o.id, seat: o.seat }; p.bike = null; } freeSeat(o.token); }
+  if (r.changed) { plazaDirty = true; broadcastIsland('boats', boatsView(now)); }
+}
+setInterval(boatTick, 500).unref?.();
 function trainService() { const snapshot = trainTraffic.advance(trainNow()); IslandTrain.setService(snapshot); return snapshot; }
 const trainNow = () => nowMs() + trainShift;
 const trainDocked = (stopId, id = null, line = null) => { trainService(); const candidates = IslandTrain.TRAINS.map((t) => IslandTrain.trainAt(t.id, trainNow())).filter((st) => st.stop && st.wait > 0.7 && st.wait <= IslandTrain.DWELL - 0.7 && (!stopId || st.stop === stopId) && (id === null || st.id === id) && (!line || st.line === line)); return candidates[0] || null; };
@@ -2744,9 +2761,12 @@ function freeSeat(token) { for (const [id, t] of seatTaken) if (t === token) sea
    spot more than 8 m off, or 3 minutes past its bite) and a seat left behind (its seat more than 4 m off me) are let go here
    instead: a lost answer or a closed page left them, and they kept the taxi refused) */
 const seatSince = new Map(); // session token -> when its seat was taken
-const TAXI_BUSY_WORDS = { train: '기차를 타고 있을 때는 택시를 탈 수 없어요.', platform: '승강장에서는 택시를 탈 수 없어요. 승강장에서 나와 주세요.', fishing: '낚시하는 중에는 택시를 탈 수 없어요.', seat: '앉아 있을 때는 택시를 탈 수 없어요. 일어나서 다시 해 주세요.', room: '게임 방에 있을 때는 택시를 탈 수 없어요.' };
+const TAXI_BUSY_WORDS = { train: '기차를 타고 있을 때는 택시를 탈 수 없어요.', platform: '승강장에서는 택시를 탈 수 없어요. 승강장에서 나와 주세요.', fishing: '낚시하는 중에는 택시를 탈 수 없어요.', seat: '앉아 있을 때는 택시를 탈 수 없어요. 일어나서 다시 해 주세요.', room: '게임 방에 있을 때는 택시를 탈 수 없어요.', boat: '탐방선을 타고 있을 때는 택시를 탈 수 없어요.' };
+const BOAT_BUSY_WORDS = Object.fromEntries(Object.entries(TAXI_BUSY_WORDS).map(([k, v]) => [k, v.replace('택시를', '탐방선을')])); // (1.10.390: the same reasons, the boat's words)
+BOAT_BUSY_WORDS.boat = '이미 탐방선을 타고 있어요.'; BOAT_BUSY_WORDS.taxi = '택시를 타고 있을 때는 탐방선을 탈 수 없어요.';
 function taxiBusyOf(session, here, now = nowMs()) {
   const token = session.token; const age = (at) => (Number.isFinite(at) ? Math.round((now - at) / 1000) : null);
+  if (IslandBoat.riderOf(boatFleet, token)) return { reason: 'boat', ageS: null }; /* (1.10.390) */
   if (trainRiders.has(token)) return { reason: 'train', ageS: age(trainRiders.get(token).at) };
   if (trainVisitors.has(token)) return { reason: 'platform', ageS: age(trainVisitors.get(token).at) };
   const cast = fishCasts.get(token);
@@ -6187,6 +6207,7 @@ async function requestHandler(req, res) {
     tigerCaughtReplay(pointAccountForSession(session)).catch(() => {}); /* (tiger review #4: a catch this account has not seen yet) */
     sseWrite(res, 'statues', statueSnapshot()); // v1.10.5: the donation statues on show
     sseWrite(res, 'islandEvents', { list: adminEventsView(), at: nowMs(), entry: true }); // (364 섬 이벤트: those running, told on entry)
+    sseWrite(res, 'boats', boatsView()); // (1.10.390 탐방선: the four boats as they are, once on entry)
 
     const heartbeat = setInterval(() => {
       const current = sessions.get(session.token);
@@ -6243,6 +6264,8 @@ async function requestHandler(req, res) {
     // v1.10.271 섬 택시: in the taxi I am where the road's clock says; once the ride is over, at the other stop's step out
     let taxi = taxiRides.get(session.token) || null; let taxiDone = null;
     if (taxi && IslandTaxi.rideOver(taxi, nowMs())) { /* (317: on the road's clock -- later by every wait) */ taxiDone = IslandTaxi.arrivalOf(taxi); taxiRides.delete(session.token); taxi = null; }
+    // 1.10.390 탐방선: in a boat I am where my seat is (the boats' clock); just off one, on the float by its door
+    const boatSeat = IslandBoat.riderOf(boatFleet, session.token); const boatOut = boatSeat ? null : boatDone.get(session.token) || null; if (boatOut) boatDone.delete(session.token);
     // R4 구치소: a visit's first pose -- one owing the tax (not passed today) starts in the cell
     // (Codex 검토 #4: left the island while an await ran -- `left` -- a late pose brings nothing back, the cell neither)
     const left = () => sessions.get(session.token) !== session || getCurrentRoom(session) || generation !== (session.plazaGeneration || 0);
@@ -6267,7 +6290,10 @@ async function requestHandler(req, res) {
       else if (IslandTerrain.inRoom(bx, bz, 0) && passesGate(session)) townhallInside.add(session.token);
     }
     let spot;
-    if (taxi || taxiDone) { // (v1.10.271: cut off mid-ride, the next visit begins at the other stop)
+    if (boatSeat || boatOut) { // (1.10.390: cut off mid-crossing, the next visit begins on the float it left from -- the seat let go then)
+      const p = boatSeat ? IslandBoat.seatAt(IslandBoat.poseAt(boatSeat.boat, nowMs(), boatFleet.scale), boatSeat.seat) : boatOut; spot = { x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100 };
+      const out = boatSeat ? IslandBoat.exitOf(boatSeat.boat.at || boatSeat.boat.from, -1) : boatOut; plazaLastPos.set(session.token, { x: out.x, z: out.z }); notePlazaSpot(account, out.x, out.z);
+    } else if (taxi || taxiDone) { // (v1.10.271: cut off mid-ride, the next visit begins at the other stop)
       const p = taxi ? IslandTaxi.poseAt(taxi, nowMs()) : taxiDone; spot = { x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100 };
       const out = taxi ? IslandTaxi.arrivalOf(taxi) : taxiDone; plazaLastPos.set(session.token, { x: out.x, z: out.z }); notePlazaSpot(account, out.x, out.z);
     } else if (jailInside.has(session.token)) { // (as the 민원실 below; one shut in, in the cell)
@@ -6346,7 +6372,7 @@ async function requestHandler(req, res) {
     const receivedAt = nowMs();
     const poseAt = poseTime(body.t, plazaPresence.get(session.token)?.poseAt, receivedAt);
     const pet = await petFor(account, session.token);
-    const bike = BIKE_COLORS.includes(body.bike) && !storeInside.has(session.token) && !townhallInside.has(session.token) && !jailInside.has(session.token) && !ride && !taxi && !platform && (await bikeColors(account)).includes(body.bike) ? body.bike : null; // (자전거: theirs, out on the island)
+    const bike = BIKE_COLORS.includes(body.bike) && !storeInside.has(session.token) && !townhallInside.has(session.token) && !jailInside.has(session.token) && !ride && !taxi && !boatSeat && !platform && (await bikeColors(account)).includes(body.bike) ? body.bike : null; // (자전거: theirs, out on the island)
     if (left()) return sendError(res, 409, 'PLAZA_LEFT', '광장을 떠났습니다.'); // (Codex 검토 #4, after the last await)
     const held = heldNewer(); // (after the last await: where I am stays, answered as it is)
     if (held) spot = { x: held.x, z: held.z };
@@ -6361,6 +6387,7 @@ async function requestHandler(req, res) {
       carry: islandEvents.carryOf(account), // v1.10.32 운반: a lost thing in their hands (the server's own record)
       platform, ride: ride ? { id: ride.id, seat: ride.seat } : null, // v1.10.47
       taxi: taxi || null /* (317: the ride itself -- its road clock, warp, and its wait, blockedAt, as the server moves them) */, // v1.10.271 (the road and its clock: every screen draws the same)
+      boat: boatSeat ? { id: boatSeat.boat.id, seat: boatSeat.seat } : null, // 1.10.390 (the boats' own clock and seats: every screen draws the same)
       snack: (() => { const s = plazaPresence.get(session.token)?.snack; return s && nowMs() < s.until && !ride && !taxi ? s : null; })(), /* (1.10.325 크리스마스 마켓: the snack in my hand till its time is up) */
       home: homeInside.has(session.token) ? ((l) => (l && floorOf(session.token) === 2 ? `${l}:2` : l || null))(homeCache.get(homeInside.get(session.token))?.lot) : null, /* (R8: the 2층 is `<lot>:2` -- one sees the people on the same floor) */ // (묶음 4: which house, by its lot -- one sees the people in the same one)
       space: jailInside.has(session.token) ? 'jail' : museumInside.has(session.token) ? 'museum' : exchangeInside.has(session.token) ? 'exchange' : denInside.has(session.token) ? 'den' : homeInside.has(session.token) ? 'home' : townhallInside.has(session.token) ? 'townhall' : petshopInside.has(session.token) ? 'petshop' : furnitureInside.has(session.token) ? 'furniture' : fashionInside.has(session.token) ? 'fashion' : storeInside.has(session.token) ? 'store' : 'island', // v1.10.84, v1.10.92, 묶음 2·2-2
@@ -6372,13 +6399,13 @@ async function requestHandler(req, res) {
         return { act: act === 'sit' && !seat ? null : act, actN: Number.isSafeInteger(body.actN) && body.actN >= 0 ? body.actN : 0, seat }; })(),
     });
     if (!held) plazaDirty = true;
-    const corrected = !ride && !taxi && !held && (spot.x !== wanted.x || spot.z !== wanted.z);
+    const corrected = !ride && !taxi && !boatSeat && !held && (spot.x !== wanted.x || spot.z !== wanted.z);
     const quests = questEntries(account); // v1.10.37 연계 퀘스트
     if (quests.track.some((t) => !t.ready && t.to && Math.hypot(t.to.x - spot.x, t.to.z - spot.z) <= 4.5)) islandProgress('at', account, 1, { x: spot.x, z: spot.z });
     if ((plazaPresence.get(session.token)?.space || 'island') === 'island') storyArrive(account, spot); // (S1: a story's place)
     const taxNote = await taxNoteOf(account); // (주민세 고지서: a bill whose last day is tomorrow -- said once that day)
     const stockNews = await stockNewsFor(session.token, account).catch(() => null); /* (102A: my companies' news, its hour posted) */
-    return sendJson(res, 200, { ok: true, taxNote, ...(stockNews ? { stockNews } : {}), id: session.plazaId, x: spot.x, z: spot.z, corrected, taxiStops: taxiStopsView(), jail: jailInside.has(session.token) ? { inmate: jailMode(session.token) } : null, townhallPass: passesGate(session), ride: ride ? { id: ride.id, seat: ride.seat } : null, taxi: taxi || null /* (317: the ride itself -- its road clock, warp, and its wait, blockedAt, as the server moves them) */, ...(taxiDone ? { taxiDone } : {}), platform, trainShift, trainService: trainService(), events: [...islandEvents.nearby(spot.x, spot.z, account), ...quests.entries], residents: islandEvents.residents(), quests: quests.track, now: nowMs() }); // v1.10.11: the events near me; v1.10.12: the server clock (islanders)
+    return sendJson(res, 200, { ok: true, taxNote, ...(stockNews ? { stockNews } : {}), id: session.plazaId, x: spot.x, z: spot.z, corrected, taxiStops: taxiStopsView(), jail: jailInside.has(session.token) ? { inmate: jailMode(session.token) } : null, townhallPass: passesGate(session), ride: ride ? { id: ride.id, seat: ride.seat } : null, boat: boatSeat ? { id: boatSeat.boat.id, seat: boatSeat.seat } : null, boatOut, boats: boatsView() /* (390: a page whose scene came after the stream's first `boats`) */, taxi: taxi || null /* (317: the ride itself -- its road clock, warp, and its wait, blockedAt, as the server moves them) */, ...(taxiDone ? { taxiDone } : {}), platform, trainShift, trainService: trainService(), events: [...islandEvents.nearby(spot.x, spot.z, account), ...quests.entries], residents: islandEvents.residents(), quests: quests.track, now: nowMs() }); // v1.10.11: the events near me; v1.10.12: the server clock (islanders)
   }
   // v1.9.4 상시 등반 도전 ------------------------------------------------------------------------------------
   if (pathname === '/api/climb' && req.method === 'GET') {
@@ -8671,6 +8698,38 @@ async function requestHandler(req, res) {
     taxiRides.set(session.token, ride); freeSeat(session.token);
     here.taxi = ride; here.bike = null; plazaDirty = true;
     return sendJson(res, 200, { ok: true, taxi: ride, fare: paid, pay, pass: pay === 'pass', to: stop.to, now: nowMs() });
+  }
+  // 1.10.390 N3-b 자연 구역 탐방선: the boats as they are (and where I stand in a queue); board at a dock -- free (사용자 결정 37-2); off again before it goes
+  if (pathname === '/api/island/boats' && req.method === 'GET') {
+    const session = requireSession(req, res); if (!session) return;
+    const mine = IslandBoat.riderOf(boatFleet, session.token); const place = Object.fromEntries(Object.entries(boatFleet.queues).map(([d, q]) => [d, q.findIndex((e) => e.token === session.token) + 1]));
+    return sendJson(res, 200, { ok: true, boats: boatsView(), mine: mine ? { id: mine.boat.id, seat: mine.seat } : null, place });
+  }
+  if (pathname === '/api/island/boat/board' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const body = await parseJson(req);
+    const dock = String(body.dock || ''); if (!IslandBoat.DOCKS[dock]) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+    const here = plazaPresence.get(session.token);
+    if (!boatAtDock(here, dock)) return sendError(res, 409, 'TOO_FAR', '선착장 가까이 가서 다시 시도해 주세요.');
+    if (taxiRides.has(session.token)) return sendError(res, 409, 'BOAT_BUSY', BOAT_BUSY_WORDS.taxi, { reason: 'taxi' });
+    { const busy = taxiBusyOf(session, here); if (busy) { console.log(`[boat] busy reason=${busy.reason}`); return sendError(res, 409, 'BOAT_BUSY', BOAT_BUSY_WORDS[busy.reason] || BOAT_BUSY_WORDS.boat, { reason: busy.reason }); } }
+    if (here.bike) return sendError(res, 409, 'BOAT_BIKE', '자전거에서 내려 주세요.');
+    const now = nowMs(); const r = IslandBoat.board(boatFleet, dock, session.token, now);
+    if (r.error) return sendError(res, 409, r.error === 'RIDING' ? 'BOAT_BUSY' : 'BAD_REQUEST', r.error === 'RIDING' ? BOAT_BUSY_WORDS.boat : '잘못된 요청입니다.');
+    if (r.queued) { broadcastIsland('boats', boatsView(now)); return sendJson(res, 200, { ok: true, queued: true, place: r.place, etaS: Math.ceil(r.etaMs / 1000), boats: boatsView(now) }); }
+    here.boat = { id: r.boat.id, seat: r.seat }; here.bike = null; freeSeat(session.token); plazaDirty = true; console.log(`[boat] board ${dock} ${r.boat.id}#${r.seat}`);
+    broadcastIsland('boats', boatsView(now));
+    return sendJson(res, 200, { ok: true, boat: here.boat, boats: boatsView(now), now });
+  }
+  if (pathname === '/api/island/boat/leave' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const now = nowMs();
+    const r = IslandBoat.leave(boatFleet, session.token, now); if (r.error) return sendError(res, 409, 'BOAT_SAILING', '배가 떠난 뒤에는 내릴 수 없어요. 건너편에서 내려요.');
+    const here = plazaPresence.get(session.token);
+    if (r.was) { const out = IslandBoat.exitOf(r.was.dock, -1); boatDone.set(session.token, { dock: r.was.dock, x: Math.round(out.x * 100) / 100, z: Math.round(out.z * 100) / 100 }); if (here) here.boat = null; plazaDirty = true; }
+    broadcastIsland('boats', boatsView(now)); return sendJson(res, 200, { ok: true, left: Boolean(r.was), boats: boatsView(now) });
+  }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/boats' && req.method === 'POST') { // tests: the fleet afresh (two and two), its crossings `scale` times quicker
+    const body = await parseJson(req); const scale = Math.max(1, Math.min(40, Number(body.scale) || 1)); for (const b of boatFleet.boats) for (const t of b.seats) if (t) { const p = plazaPresence.get(t); if (p) p.boat = null; }
+    boatFleet = IslandBoat.createFleet({ now: nowMs(), scale }); boatDone.clear(); broadcastIsland('boats', boatsView()); return sendJson(res, 200, { ok: true, boats: boatsView() });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/taxi-run' && req.method === 'POST') { const body = await parseJson(req); taxiTestRunMs = Math.max(0, Math.min(120000, Number(body.ms) || 0)); if (body.back !== false) taxiStopOut.clear(); /* (294: every car at its stop) */ return sendJson(res, 200, { ok: true, ms: taxiTestRunMs }); }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/train-shift' && req.method === 'POST') { // tests: the trains' clock moved on (ms)
