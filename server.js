@@ -2697,7 +2697,7 @@ let taxiTestRunMs = 3000; // (tests: the road in 3 s; /api/test/taxi-run sets it
 // no room aside (a bridge, a crossing, someone there too) see-through, slowly through, solid again once past. It always moves on
 const TAXI_LOOK = { across: 0.85 + 0.3 + 0.35, nose: 1.95, gap: 3, walk: 1.2, honk: 1000, creep: 3000, pass: 0.85 + 0.35 + 0.1, side: 1.5 };
 const shiftWay = (way, off) => (off ? way.map((p) => IslandTaxi.shifted(p, off)) : way);
-const TAXI_BRIDGE = IslandTaxi.BRIDGE; const taxiNarrow = (way) => way.some((p) => (p.x >= TAXI_BRIDGE.x0 && p.x <= TAXI_BRIDGE.x1 && p.z >= TAXI_BRIDGE.z0 && p.z <= TAXI_BRIDGE.z1) || IslandTaxi.CROSSINGS.some((c) => Math.hypot(p.x - c.x, p.z - c.z) < IslandTaxi.CROSS_HALF + 1.5));
+const taxiNarrow = (way) => way.some((p) => IslandTaxi.onBridgeBox(p.x, p.z) /* (397: either one-lane bridge) */ || IslandTaxi.CROSSINGS.some((c) => Math.hypot(p.x - c.x, p.z - c.z) < IslandTaxi.CROSS_HALF + 1.5));
 // (the way ahead: the car's own poses on its time table, 100 ms apart, till `look` metres on -- round a corner too; someone in
 // any of their boxes is in its way)
 function taxiWay(bare, road, look) {
@@ -2737,7 +2737,8 @@ function taxiTick() {
        looked at over 25 m whatever its pace, so standing it still sees the bridge) */
     let bridgeStand = -1; { const onB = (q) => IslandTaxi.onBridgeBox(q.x, q.z, 2); const p0 = IslandTaxi.carAt(bare, road);
       if (p0 && !onB(p0)) { const bway = taxiWay(bare, road, 25); const enter = bway.findIndex(onB);
-        if (enter > 0) { const dir = Math.sign(Math.sin(bway[enter].yaw)); const meeting = [...new Set([...fleetRides, ...taxiRides.values()])].some((o) => { if (o === ride) return false; const q = IslandTaxi.carAt(o, now); return Boolean(q) && onB(q) && ['start', 'run', 'stop', 'back'].includes(q.phase) && Math.sign(Math.sin(q.yaw)) !== dir; });
+        /* (1.10.397 N4-c: two one-lane bridges -- a car the other way on the same one) */
+        if (enter > 0) { const dir = Math.sign(Math.sin(bway[enter].yaw)); const which = IslandTaxi.bridgeOf(bway[enter].x, bway[enter].z, 2); const meeting = [...new Set([...fleetRides, ...taxiRides.values()])].some((o) => { if (o === ride) return false; const q = IslandTaxi.carAt(o, now); return Boolean(q) && IslandTaxi.bridgeOf(q.x, q.z, 2) === which && ['start', 'run', 'stop', 'back'].includes(q.phase) && Math.sign(Math.sin(q.yaw)) !== dir; });
           if (meeting) { let k = enter; let gone = 0; while (k > 0 && gone < 6) { gone += Math.hypot(bway[k].x - bway[k - 1].x, bway[k].z - bway[k - 1].z); k -= 1; } bridgeStand = k; } } } }
     const ahead = taxiBlocker(ride, way, now); /* (someone on the road's middle in front: still going by them) */
     const who = dodge?.mode === 'ghost' ? null : dodge ? taxiBlocker(ride, shiftWay(way, dodge.off), now, TAXI_LOOK.pass) : ahead; let want = 1; let standAt = who ? who.stand : 0;

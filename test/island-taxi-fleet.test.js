@@ -7,24 +7,24 @@ const assert = require('node:assert/strict');
 const X = require('../public/plaza/island-taxi.js');
 
 const run = (fleet, rides, until, step = 250) => { for (let now = 0; now <= until; now += step) { for (const r of rides.filter((x) => x.at === now)) r.out = X.takeCar(fleet, r.from, r.ride = { from: r.from, startedAt: now, runMs: 3000 }, now); X.settle(fleet, now); check(fleet); } };
-const check = (fleet) => { for (const id of Object.keys(X.STOPS)) { const st = X.standingAt(fleet, id); assert.ok(st.length <= 2); assert.equal(new Set(st.map((c) => c.place)).size, st.length, `${id}: one car a place`); assert.ok(X.countAt(fleet, id) <= 3); } assert.equal(fleet.cars.length, 4); };
+const check = (fleet) => { for (const id of Object.keys(X.STOPS)) { const st = X.standingAt(fleet, id); assert.ok(st.length <= 2); assert.equal(new Set(st.map((c) => c.place)).size, st.length, `${id}: one car a place`); assert.ok(X.countAt(fleet, id) <= 3); } assert.equal(fleet.cars.length, 6); /* (1.10.397: three terminals) */ };
 const standing = (fleet) => Object.keys(X.STOPS).map((id) => X.standingAt(fleet, id).length).join('/');
 
 test('택시 N4-a: 종점마다 2대, 앞 차가 떠나면 뒤 차가 당겨 섬', () => {
-  const f = X.createFleet(0); assert.equal(standing(f), '2/2');
+  const f = X.createFleet(0); assert.equal(standing(f), '2/2/2');
   const r = X.takeCar(f, 'plaza', { from: 'plaza', startedAt: 0, runMs: 3000 }, 0); assert.equal(r.car.id, 't1');
   const st = X.standingAt(f, 'plaza'); assert.equal(st.length, 1); assert.equal(st[0].place, 0, 'pulled up'); assert.ok(st[0].pulledAt === 0 || st[0].pulledAt >= 0);
   assert.equal(r.car.ride.stay, undefined, 'decided as the rider gets out');
   for (let now = 0; now < X.durationOf(r.car.ride) + 100; now += 100) X.settle(f, now);
   assert.equal(r.car.ride.stay, false, 'isle has two: back empty'); assert.equal(r.car.ride.park, 1, 'home: the place behind');
-  const f2 = X.createFleet(0); const r2 = X.takeCar(f2, 'plaza', { from: 'plaza', startedAt: 0, runMs: 3000 }, 0); r2.undo(); assert.equal(standing(f2), '2/2'); assert.equal(X.standingAt(f2, 'plaza')[0].id, 't1');
-  return; assert.equal(standing(f), '2/2'); assert.equal(X.standingAt(f, 'plaza')[0].id, 't1');
+  const f2 = X.createFleet(0); const r2 = X.takeCar(f2, 'plaza', { from: 'plaza', startedAt: 0, runMs: 3000 }, 0); r2.undo(); assert.equal(standing(f2), '2/2/2'); assert.equal(X.standingAt(f2, 'plaza')[0].id, 't1');
+  return; assert.equal(standing(f), '2/2/2'); assert.equal(X.standingAt(f, 'plaza')[0].id, 't1');
 });
 test('택시 N4-a: 한쪽에서만 타면 빈 차로 돌아와 2/2, 엇갈려 타면 둘 다 머물러 2/2, 연달아 둘이면 둘째도 바로', () => {
-  { const f = X.createFleet(0); const rides = [{ at: 0, from: 'plaza' }]; run(f, rides, 60000); assert.equal(standing(f), '2/2'); }
-  { const f = X.createFleet(0); const rides = [{ at: 0, from: 'plaza' }, { at: 0, from: 'isle' }]; run(f, rides, 60000); assert.ok(rides.every((r) => r.ride.stay), 'crossed: both stay'); assert.equal(standing(f), '2/2'); }
+  { const f = X.createFleet(0); const rides = [{ at: 0, from: 'plaza' }]; run(f, rides, 60000); assert.equal(standing(f), '2/2/2'); }
+  { const f = X.createFleet(0); const rides = [{ at: 0, from: 'plaza' }, { at: 0, from: 'isle' }]; run(f, rides, 60000); assert.ok(rides.every((r) => r.ride.stay), 'crossed: both stay'); assert.equal(standing(f), '2/2/2'); }
   { const f = X.createFleet(0); const rides = [{ at: 0, from: 'plaza' }, { at: 500, from: 'plaza' }, { at: 1000, from: 'plaza' }]; run(f, rides, 90000);
-    assert.ok(rides[0].out && rides[1].out, 'two cars'); assert.equal(rides[2].out, null, 'the third: none standing'); assert.equal(standing(f), '2/2'); }
+    assert.ok(rides[0].out && rides[1].out, 'two cars'); assert.equal(rides[2].out, null, 'the third: none standing'); assert.equal(standing(f), '2/2/2'); }
 });
 test('택시 N4-a 차선: 길 가운데에서 오른쪽 1.15 m, 양끝 8 m와 다리 위는 가운데로', () => {
   const t = X.tableOf('plaza'); const mid = t.offs[Math.floor(t.offs.length / 3)]; assert.ok(Math.abs(mid - X.LANE) < 1e-9);
@@ -34,4 +34,22 @@ test('택시 N4-a 차선: 길 가운데에서 오른쪽 1.15 m, 양끝 8 m와 �
   const ride = { from: 'plaza', startedAt: 0 }; const d = t.total / 3; let pTo = null; for (let ms = 0; ms < X.durationOf(ride); ms += 50) { const p = X.poseAt(ride, ms); if (p.d >= d) { pTo = p; break; } }
   const back = { from: 'plaza', startedAt: 0 }; const T0 = X.durationOf(back) + X.TURN; let pBack = null; for (let ms = T0; ms < T0 + 60000; ms += 50) { const p = X.carAt(back, ms); if (p && p.phase === 'back' && p.d <= d) { pBack = p; break; } }
   assert.ok(pTo && pBack); assert.ok(Math.abs(Math.hypot(pTo.x - pBack.x, pTo.z - pBack.z) - 2 * X.LANE) < 0.6, `${Math.hypot(pTo.x - pBack.x, pTo.z - pBack.z)}`);
+});
+
+// 1.10.397 N4-c (notes n4-plan §5-3): the third terminal 별마루섬 입구 at EXT's end -- every two places a drive with no gap, at the drive's end the
+// place it is to; the road between them along the trunk (마을's spur added); on both one-lane bridges and through the wide gate the lane's middle
+test('택시 N4-c: 세 번째 종점·정류장 ⑥⑦ — 모든 두 자리 사이 길(끊김 없음, 끝은 그 자리), 거리·요금, 두 한 줄 다리는 가운데', () => {
+  const ids = X.PLACE_IDS(); assert.deepEqual(ids.slice(-3), ['villageMid', 'villageEast', 'head']); assert.ok(ids.includes('isle'));
+  assert.equal(Math.round(X.distanceOf('plaza', 'isle') * 10) / 10, Math.round(X.ROAD_LEN * 10) / 10, 'the two old ends as before');
+  assert.ok(Math.abs(X.distanceOf('plaza', 'head') - X.TRUNK_LEN) < 1e-9); assert.ok(Math.abs(X.distanceOf('isle', 'head') - (X.TRUNK_LEN - X.sOf('isle') + X.SPUR)) < 1e-9);
+  assert.equal(X.fareByRoad('plaza', 'isle'), 1000); assert.equal(X.fareByRoad('plaza', 'head'), 1750);
+  for (const a of ids) for (const b of ids) { if (a === b) continue;
+    const road = X.driveBetween(a, b); for (let i = 1; i < road.length; i += 1) assert.ok(Math.hypot(road[i][0] - road[i - 1][0], road[i][1] - road[i - 1][1]) < 20, `${a}->${b} a gap at ${i}`);
+    const end = road[road.length - 1]; const want = X.isTerminal(b) ? X.dropOf(b) : X.curbOf(b); assert.ok(Math.hypot(end[0] - want.x, end[1] - want.z) < 1e-6, `${a}->${b} ends there`);
+    const t = X.tableOf(a, 0, b); assert.ok(t.total > 0 && Number.isFinite(t.runMs)); }
+  const t = X.tableOf('plaza', 0, 'head');
+  const offAt = (x, z) => { let best = null; t.road.forEach(([px, pz], i) => { const e = Math.hypot(px - x, pz - z); if (!best || e < best.e) best = { e, o: t.offs[i] }; }); return best.o; };
+  assert.equal(offAt(196, 226), 0, '별마루다리: the middle'); assert.equal(offAt(228.2, 225.9), 0, 'through the wide gate: the middle'); assert.equal(offAt(59, 140), 0, '윤슬다리: the middle');
+  assert.ok(offAt(30, 236) > 1, 'the village street: its own lane');
+  assert.equal(X.bridgeOf(196, 226), 1); assert.equal(X.bridgeOf(59, 140), 0); assert.equal(X.bridgeOf(30, 236), -1);
 });
