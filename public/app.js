@@ -6142,10 +6142,31 @@
   }
   // v1.10.271 섬 택시 (notes docs/taxi-20261104.md 2절): SPACE by a stop -- where to and what it costs (1.10.327: a ride or the day's pass),
   // 타기 greyed with why when the points are short; the server takes the fare and gives the ride, the island draws it
+  // 1.10.392 N4-b 「택시 부르기」 (notes n4-plan §4·§5-2): at a road stop with no car standing -- the nearest one comes empty (its seconds), or
+  // none free: my place in the queue; walked 10 m off the sign the call is let go (the server). Once it stands there, SPACE again: 어디로 갈까요?
+  function openTaxiCall(stop, q) {
+    const X = window.IslandTaxi; const card = document.createElement('div'); card.className = 'mirrorCard taxiCard';
+    const line = document.createElement('p'); line.className = 'lookMeta taxiLine'; line.textContent = `🚕 ${X.labelOf(stop)} 정류장`;
+    const status = document.createElement('p'); status.className = 'lookMeta taxiStatus';
+    const say = (r) => { status.textContent = r.place ? `택시를 기다리는 중이에요 · 내 순서 ${r.place}번째` : `🚕 택시 오는 중 · 약 ${Math.max(1, r.etaS ?? r.awayS ?? 1)}초`; };
+    if (q.called) say({ place: q.called.place, awayS: q.awayS }); else status.textContent = '여기에 택시가 없어요. 부르면 가장 가까운 택시가 와요.';
+    const row = document.createElement('div'); row.className = 'taxiActions';
+    const call = document.createElement('button'); call.type = 'button'; call.className = 'primary'; call.id = 'taxiCallBtn'; call.textContent = '택시 부르기'; call.disabled = Boolean(q.called);
+    const close = document.createElement('button'); close.type = 'button'; close.className = 'secondary'; close.id = 'taxiCloseBtn'; close.textContent = '닫기'; close.addEventListener('click', () => plazaDialog.close());
+    call.addEventListener('click', async () => {
+      call.disabled = true;
+      try { const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
+        const r = await api('/api/island/taxi/call', { method: 'POST', body: JSON.stringify({ stop }) });
+        if (r.ready) { plazaDialog.close(); openTaxi(stop); return; } say(r); showToast(r.queued ? `택시를 기다려요 · 내 순서 ${r.place}번째` : `🚕 택시를 불렀어요 · 약 ${r.etaS}초`, 2600);
+      } catch (error) { status.textContent = error.message; call.disabled = false; }
+    });
+    row.append(call, close); card.append(line, status, row); openPlazaWindow('🚕 택시 부르기', [card]); call.focus({ preventScroll: true });
+  }
   async function openTaxi(from) {
     let q; let balance = null;
     try { const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {}); q = await api(`/api/island/taxi?from=${encodeURIComponent(from)}`); balance = (await api('/api/points')).balance; } catch (error) { showToast(error.message); return; }
-    const X = window.IslandTaxi; const to = X.STOPS[q.to]?.label || '';
+    const X = window.IslandTaxi; const to = X.labelOf ? X.labelOf(q.to) : X.STOPS[q.to]?.label || '';
+    if (X.ROADSTOPS?.[from] && !q.cars) { openTaxiCall(from, q); return; } /* (392 N4-b: no car at a road stop -- call one) */
     const card = document.createElement('div'); card.className = 'mirrorCard taxiCard';
     /* (1.10.327 택시 요금, 사용자: a ride's base fare or the day's pass -- with the pass, 「오늘 자유이용권 ✓」 and 타기 only) */
     const won = (n) => `${Number(n).toLocaleString('ko-KR')}P`;
@@ -6160,7 +6181,7 @@
     if (short(q.fare)) status.textContent = `포인트가 모자라요(${won(q.fare)})`;
     if (q.awayS > 0) { ride.disabled = true; if (pass) pass.disabled = true; status.textContent = `택시가 돌아오는 중이에요 · 약 ${q.awayS}초`; } /* (294 7: one car a stop -- out, coming back) */
     /* (1.10.391 N4-a 「어디로 갈까요?」: where one can go from here, each with its fare -- picked, the line and 타기 say it; one now, the stops in N4-b) */
-    const dests = Array.isArray(q.dests) && q.dests.length ? q.dests : [{ id: q.to, label: to, fare: q.fare }]; let pick = dests[0];
+    const dests = Array.isArray(q.dests) && q.dests.length ? q.dests : [{ id: q.to, label: to, fare: q.fare }]; let pick = dests.find((d) => d.id === q.to) || dests[0]; /* (392: the other terminal picked at a terminal, as before) */
     const list = document.createElement('div'); list.className = 'taxiDests'; list.setAttribute('role', 'radiogroup'); list.setAttribute('aria-label', '어디로 갈까요?');
     const choose = (d) => { pick = d; for (const b of list.children) b.setAttribute('aria-checked', String(b.dataset.to === d.id)); line.textContent = `${d.label}까지 갈까요?${q.pass ? ' · 오늘 자유이용권 ✓' : ''}`; if (!q.pass) ride.textContent = `한 번 타기 · ${won(d.fare)}`; };
     for (const d of dests) { const b = button(`taxiDest-${d.id}`, `${d.label} · ${won(d.fare)}`, 'ghost taxiDest'); b.dataset.to = d.id; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(d === pick)); b.addEventListener('click', () => choose(d)); list.append(b); }

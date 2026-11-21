@@ -2277,6 +2277,16 @@
     "dalmaru-v1/ferry_low.glb": {
       "nodes": 12,
       "reason": "1.10.390 N3-b assets 134 자연 구역 탐방선: one mesh and its ten named marks kept (seat_1~4, board_L/R, gate_L/R, captain, mast_top -- ferry.json; the game reads the numbers, the names stay for checks)"
+    },
+    "taxi-v1/taxi_stop_sign.glb": {
+      "meshes": 2,
+      "nodes": 4,
+      "reason": "1.10.392 N4-b assets 163 정류장 표지: the post and its `plate` (both faces, its own UVs for the game's words -- gltfpack -kv -vtf) two meshes, the plate a node of its own"
+    },
+    "taxi-v1/taxi_stop_sign_low.glb": {
+      "meshes": 2,
+      "nodes": 4,
+      "reason": "1.10.392 N4-b assets 163 정류장 표지: the post and its `plate` (both faces, its own UVs for the game's words -- gltfpack -kv -vtf) two meshes, the plate a node of its own"
     }
   },
   "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files.",

@@ -2663,6 +2663,21 @@ const stuckRefuse = (session) => (tigerSim.isOn() && tigerSim.state().some((t) =
 // 1.10.391 N4-a (notes n4-plan §4·§5-1): two cars a stop -- the fleet (IslandTaxi.createFleet/takeCar/settle): a ride takes a stop's front car;
 // as its rider gets out it stays there if that stop has fewer than two, else goes back empty; in memory, a restart has two at each stop
 let taxiFleet = IslandTaxi.createFleet(nowMs());
+// 1.10.392 N4-b 「택시 부르기」: session token -> { stop, at, queued } -- each sent a car in the order called (taxiDispatch); let go once in a car,
+// 10 m off the sign, or gone
+const taxiCalls = new Map();
+const taxiQueuePlace = (token) => { let k = 0; for (const [t, c] of taxiCalls) { if (c.queued) k += 1; if (t === token) return c.queued ? k : 0; } return 0; };
+function taxiDispatch(now = nowMs()) {
+  const testRun = process.env.NODE_ENV === 'test' && taxiTestRunMs ? taxiTestRunMs : 0; taxiFleet.runMs = testRun || undefined;
+  for (const [token, c] of taxiCalls) {
+    const p = plazaPresence.get(token); const sign = IslandTaxi.curbOf(c.stop).sign;
+    if (!sessions.has(token) || !p || (p.space || 'island') !== 'island' || Math.hypot(p.x - sign.x, p.z - sign.z) > 10) { taxiCalls.delete(token); plazaDirty = true; continue; } /* (walked off: let go) */
+    if (!c.queued) continue;
+    const coming = taxiFleet.cars.some((k) => (k.ride && k.ride.empty && IslandTaxi.toOf(k.ride) === c.stop) || (!k.ride && k.at === c.stop));
+    if (coming) { c.queued = false; continue; } /* (one there or on its way for this stop already) */
+    if (IslandTaxi.sendCar(taxiFleet, c.stop, now, testRun)) { c.queued = false; plazaDirty = true; }
+  }
+}
 const taxiAwayMs = (from, now = nowMs()) => { IslandTaxi.settle(taxiFleet, now); return Math.max(0, IslandTaxi.etaAt(taxiFleet, from, now)); };
 const taxiStopsView = () => IslandTaxi.fleetView(taxiFleet); /* (391: the cars -- standing where, out on which ride -- to every screen) */
 let taxiTestRunMs = 3000; // (tests: the road in 3 s; /api/test/taxi-run sets it -- 0 the real road, for photos on the bridge)
@@ -2701,6 +2716,7 @@ let taxiTickAt = 0;
 function taxiTick() {
   const now = nowMs(); const late = taxiTickAt ? Math.min(1500, Math.max(0, now - taxiTickAt - 100)) : 0; taxiTickAt = now; /* (a busy server's tick late: looks that much further) */
   if (IslandTaxi.settle(taxiFleet, now)) plazaDirty = true; /* (391: a ride just over decides where its car goes; a car back in its place) */
+  if (taxiCalls.size) taxiDispatch(now); /* (392: calls waiting for a car, and callers walked off) */
   const fleetRides = taxiFleet.cars.filter((c) => c.ride).map((c) => c.ride);
   for (const ride of new Set([...fleetRides, ...taxiRides.values()])) {
     if (ride.runMs) continue;
@@ -5165,7 +5181,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.391' });
+    return sendJson(res, 200, { ok: true, version: '1.10.392' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -8676,19 +8692,22 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return;
     const account = pointAccountForSession(session); const body = req.method === 'POST' ? await parseJson(req) : {};
     const from = String((req.method === 'GET' ? new URL(req.url, 'http://x').searchParams.get('from') : body.from) || '');
-    if (!IslandTaxi.STOPS[from]) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
-    /* (1.10.327 택시 요금, 사용자: everyone pays -- the base fare a ride, or the day's pass (that Seoul day, any number of rides),
-       the pass's claim the account and the day: bought once a day, and what says I have it) */
-    const fare = IslandTaxi.fareOf({ fare: Economy.value('taxi:fare'), from, to: IslandTaxi.STOPS[from].to }); const dayPass = Math.max(0, Math.round(Number(Economy.value('taxi:dayPass')) || 0));
+    if (!IslandTaxi.STOPS[from] && !IslandTaxi.ROADSTOPS[from]) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+    /* (1.10.327 택시 요금, 사용자: everyone pays -- a ride's fare, or the day's pass (that Seoul day, any number of rides), the pass's claim the
+       account and the day: bought once a day, and what says I have it. 1.10.392 N4-b 결정 40 A: the fare by the road's length -- taxi:per100 a
+       100 m (the nearest), at least taxi:minFare; the pass taxi:dayPass 8,000P) */
+    const per100 = Economy.value('taxi:per100'); const minFare = Economy.value('taxi:minFare'); const dayPass = Math.max(0, Math.round(Number(Economy.value('taxi:dayPass')) || 0));
     const passDay = kstDate(nowMs()); const passClaim = `taxipass:${account}:${passDay}`; const hasPass = Boolean(await pointStore.settlementOf(passClaim));
-    /* (1.10.391 N4-a 「어디로 갈까요?」: the places one can go from here and what each costs -- one now, the other end; N4-b adds the stops) */
-    const dests = [{ id: IslandTaxi.STOPS[from].to, label: IslandTaxi.STOPS[IslandTaxi.STOPS[from].to].label, fare }];
-    if (req.method === 'GET') return sendJson(res, 200, { ok: true, from, to: IslandTaxi.STOPS[from].to, fare, dayPass, pass: hasPass, awayS: Math.ceil(taxiAwayMs(from) / 1000), dests, cars: IslandTaxi.standingAt(taxiFleet, from).length });
-    if (body.to != null && !dests.some((d) => d.id === body.to)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+    /* (1.10.391 N4-a 「어디로 갈까요?」; 392: every other place on the road, each with its fare) */
+    const dests = IslandTaxi.PLACE_IDS().filter((id) => id !== from).map((id) => ({ id, label: IslandTaxi.labelOf(id), fare: IslandTaxi.fareByRoad(from, id, per100, minFare) }));
+    const to = body.to != null ? String(body.to) : IslandTaxi.STOPS[from]?.to || dests[0].id; const dest = dests.find((d) => d.id === to); const fare = dest ? dest.fare : dests[0].fare;
+    const stop = IslandTaxi.STOPS[from] ? IslandTaxi.stopOf(from) : { ...IslandTaxi.curbOf(from), label: IslandTaxi.labelOf(from) }; const called = taxiCalls.get(session.token);
+    if (req.method === 'GET') return sendJson(res, 200, { ok: true, from, to, fare, dayPass, pass: hasPass, awayS: Math.ceil(taxiAwayMs(from) / 1000), dests, cars: IslandTaxi.standingAt(taxiFleet, from).length, ...(IslandTaxi.ROADSTOPS[from] ? { called: called?.stop === from ? { place: called.queued ? taxiQueuePlace(session.token) : 0 } : null } : {}) });
+    if (!dest) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     const pay = hasPass ? 'pass' : body.pay === 'pass' ? 'pass' : 'fare';
-    const stop = IslandTaxi.stopOf(from); const here = plazaPresence.get(session.token);
+    const here = plazaPresence.get(session.token);
     if (taxiRides.has(session.token)) return sendError(res, 409, 'TAXI_RIDING', '이미 택시를 타고 있어요.');
-    if (!here || (here.space || 'island') !== 'island' || Math.hypot(here.x - stop.x, here.z - stop.z) > 5.5) return sendError(res, 409, 'TOO_FAR', '택시 정류장 가까이 가서 다시 시도해 주세요.');
+    if (!here || (here.space || 'island') !== 'island' || Math.hypot(here.x - stop.x, here.z - stop.z) > (IslandTaxi.STOPS[from] ? 5.5 : 6.5)) return sendError(res, 409, 'TOO_FAR', '택시 정류장 가까이 가서 다시 시도해 주세요.');
     { const busy = taxiBusyOf(session, here); if (busy) { console.log(`[taxi] busy reason=${busy.reason} age=${busy.ageS ?? '-'}s`); return sendError(res, 409, 'TAXI_BUSY', TAXI_BUSY_WORDS[busy.reason], { reason: busy.reason }); } }
     if (here.bike) return sendError(res, 409, 'TAXI_BIKE', '자전거에서 내려 주세요.');
     const startedAt = nowMs();
@@ -8697,23 +8716,40 @@ async function requestHandler(req, res) {
     // (v1.10.283 Codex #3: two at once -- the second is refused before anything is paid)
     if (taxiPaying.has(session.token)) return sendError(res, 409, 'TAXI_RIDING', '이미 택시를 타고 있어요.');
     taxiPaying.add(session.token);
-    const ride = { from, startedAt, ...(process.env.NODE_ENV === 'test' && taxiTestRunMs ? { runMs: taxiTestRunMs } : {}) };
+    const ride = { from, to, startedAt, ...(process.env.NODE_ENV === 'test' && taxiTestRunMs ? { runMs: taxiTestRunMs } : {}) };
     const grab = IslandTaxi.takeCar(taxiFleet, from, ride, startedAt); if (!grab) { taxiPaying.delete(session.token); const away = taxiAwayMs(from, startedAt); return sendError(res, 409, 'TAXI_AWAY', `택시가 돌아오는 중이에요 · 약 ${Math.ceil(away / 1000)}초`, { awayS: Math.ceil(away / 1000) }); }
     let took = false; /* (294: the stop's car taken before the fare -- one of two at once; 391: its front car, the one behind pulled up) */
     let paid = 0;
     try {
       const price = hasPass ? 0 : pay === 'pass' ? dayPass : fare;
       if (price > 0) {
-        const out = await pointStore.charge(pay === 'pass' ? { userId: account, claimId: passClaim, price, title: `섬 택시 자유이용권 · ${passDay.slice(5)}` } : { userId: account, claimId: `taxi:${account}:${startedAt}`, price, title: `섬 택시 · ${stop.label} → ${IslandTaxi.STOPS[stop.to].label}` }).catch(() => null);
+        const out = await pointStore.charge(pay === 'pass' ? { userId: account, claimId: passClaim, price, title: `섬 택시 자유이용권 · ${passDay.slice(5)}` } : { userId: account, claimId: `taxi:${account}:${startedAt}`, price, title: `섬 택시 · ${IslandTaxi.labelOf(from)} → ${IslandTaxi.labelOf(to)}` }).catch(() => null);
         if (!out) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
         if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', `포인트가 모자라요(${price.toLocaleString('ko-KR')}P)`);
         if (out.applied) { paid = price; notifyPointsChanged([account]); } /* (a pass already bought today -- by another screen at once: not again) */
       }
       took = true;
     } finally { taxiPaying.delete(session.token); if (!took) grab.undo(); else plazaDirty = true; }
-    taxiRides.set(session.token, ride); freeSeat(session.token);
+    taxiRides.set(session.token, ride); freeSeat(session.token); taxiCalls.delete(session.token); /* (392: my call answered) */
     here.taxi = ride; here.bike = null; plazaDirty = true;
-    return sendJson(res, 200, { ok: true, taxi: ride, fare: paid, pay, pass: pay === 'pass', to: stop.to, now: nowMs() });
+    return sendJson(res, 200, { ok: true, taxi: ride, fare: paid, pay, pass: pay === 'pass', to, now: nowMs() });
+  }
+  // 1.10.392 N4-b 「택시 부르기」 (notes n4-plan §4·§5-2): by a road stop's sign -- the nearest car standing at a terminal comes empty (its seconds
+  // said); none standing, in the queue (my place said) and sent the first one free. One there already: get in. Walked 10 m off the sign, the call
+  // is let go (taxiTick); the car waits 15 s for its caller (IslandTaxi.WAIT)
+  if (pathname === '/api/island/taxi/call' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const body = await parseJson(req); const stopId = String(body.stop || '');
+    if (!IslandTaxi.ROADSTOPS[stopId]) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
+    const here = plazaPresence.get(session.token); const sign = IslandTaxi.curbOf(stopId).sign;
+    if (!here || (here.space || 'island') !== 'island' || Math.hypot(here.x - sign.x, here.z - sign.z) > 5) return sendError(res, 409, 'TOO_FAR', '정류장 표지 가까이 가서 다시 시도해 주세요.');
+    if (taxiRides.has(session.token)) return sendError(res, 409, 'TAXI_RIDING', '이미 택시를 타고 있어요.');
+    { const busy = taxiBusyOf(session, here); if (busy) return sendError(res, 409, 'TAXI_BUSY', TAXI_BUSY_WORDS[busy.reason], { reason: busy.reason }); }
+    const now = nowMs(); IslandTaxi.settle(taxiFleet, now);
+    if (IslandTaxi.standingAt(taxiFleet, stopId).length) return sendJson(res, 200, { ok: true, ready: true, etaS: 0 });
+    taxiCalls.set(session.token, { stop: stopId, at: now, queued: true }); taxiDispatch(now);
+    const call = taxiCalls.get(session.token); const etaS = Math.ceil(IslandTaxi.etaAt(taxiFleet, stopId, now) / 1000);
+    console.log(`[taxi] call ${stopId} ${call.queued ? 'queued' : 'sent'}`);
+    return sendJson(res, 200, { ok: true, ready: false, etaS, queued: call.queued, place: call.queued ? taxiQueuePlace(session.token) : 0 });
   }
   // 1.10.390 N3-b 자연 구역 탐방선: the boats as they are (and where I stand in a queue); board at a dock -- free (사용자 결정 37-2); off again before it goes
   if (pathname === '/api/island/boats' && req.method === 'GET') {
@@ -8747,7 +8783,7 @@ async function requestHandler(req, res) {
     const body = await parseJson(req); const scale = Math.max(1, Math.min(40, Number(body.scale) || 1)); for (const b of boatFleet.boats) for (const t of b.seats) if (t) { const p = plazaPresence.get(t); if (p) p.boat = null; }
     boatFleet = IslandBoat.createFleet({ now: nowMs(), scale }); boatDone.clear(); broadcastIsland('boats', boatsView()); return sendJson(res, 200, { ok: true, boats: boatsView() });
   }
-  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/taxi-run' && req.method === 'POST') { const body = await parseJson(req); taxiTestRunMs = Math.max(0, Math.min(120000, Number(body.ms) || 0)); if (body.back !== false) taxiFleet = IslandTaxi.createFleet(nowMs()); /* (294: every car at its stop; 391: two at each) */ return sendJson(res, 200, { ok: true, ms: taxiTestRunMs }); }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/taxi-run' && req.method === 'POST') { const body = await parseJson(req); taxiTestRunMs = Math.max(0, Math.min(120000, Number(body.ms) || 0)); if (body.back !== false) { taxiFleet = IslandTaxi.createFleet(nowMs()); taxiCalls.clear(); } /* (294: every car at its stop; 391: two at each; 392: no calls) */ return sendJson(res, 200, { ok: true, ms: taxiTestRunMs }); }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/train-shift' && req.method === 'POST') { // tests: the trains' clock moved on (ms)
     const body = await parseJson(req); trainShift = Number.isFinite(Number(body.ms)) ? Number(body.ms) : 0;
     trainTraffic = IslandTrain.createTraffic(trainNow());
@@ -11036,7 +11072,7 @@ async function main() {
   bootMark('before-listen');
   /* (1.10.376 별마루섬 호랑이: their ground made after the start in 20 ms slices, as 별마루섬's open table -- the tigers wait till it is) */
   if (process.env.NODE_ENV !== 'test') setTimeout(() => { const step = () => { try { if (!tigerSim.warm(20)) setImmediate(step); } catch (error) { console.error('호랑이 땅 만들기 실패:', error.message); } }; step(); }, 6000).unref?.();
-  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.391 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.392 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

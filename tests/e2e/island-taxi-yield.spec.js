@@ -22,8 +22,9 @@ test('섬 택시 비켜 가기: 건널목에 선 사람 → 빵·비켜 주세�
     // 빵 and 비켜 주세요, on the one in its way's screen
     await expect.poll(async () => { const c = await car(b.page); return Boolean(c?.horn && c?.ask); }, { timeout: 40000, intervals: [100] }).toBe(true); /* (b warped once and left still: a warp is a new place on the server -- the wait starts over) */
     // see-through on both screens, in the same place
-    await expect.poll(async () => { const [ca, cb] = await Promise.all([car(page), car(b.page)]); return Boolean(ca?.ghost && cb?.ghost); }, { timeout: 45000, intervals: [100] }) /* (a car seeing them far off stands short first, then creeps up: the 3 s from its last stop) */.toBe(true);
-    const [ca, cb] = await Promise.all([car(page), car(b.page)]); expect(Math.hypot(ca.x - cb.x, ca.z - cb.z)).toBeLessThan(1.5); expect(ca.rate).toBeLessThan(0.3);
+    /* (one look at both screens: see-through on both, creeping, in the same place -- 1.10.392: in its right-hand lane it is by them sooner, so the three are
+       read together, not one after another) */
+    await expect.poll(async () => { const [ca, cb] = await Promise.all([car(page), car(b.page)]); return Boolean(ca?.ghost && cb?.ghost && ca.rate < 0.3 && Math.hypot(ca.x - cb.x, ca.z - cb.z) < 1.5); }, { timeout: 45000, intervals: [100] }) /* (a car seeing them far off stands short first, then creeps up: the 3 s from its last stop) */.toBe(true);
     // past them: solid again, and on at its pace
     await expect.poll(async () => { const c = await car(page); return c ? !c.ghost && c.rate > 0.9 : true; }, { timeout: 30000 }).toBe(true);
   } finally { await post(request, '/api/test/taxi-run', a.token, { ms: 3000 }); await b.context.close(); await a.context.close(); }
