@@ -51,7 +51,7 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
   // the server then said TOO_FAR (run 39702592847). Each try: the server's places now -- another insect when that one is
   // gone (a new layout) -- its spot, SPACE (the phone: the hint) only when that insect is what it reaches -- in one call --
   // and the server's answer; again until it is 200)
-  let last = null; let caught = null; let missed = false;
+  let last = null; let caught = null; let missed = false; const passed = new Set(); /* (1.10.396 CI mobile-2 20:00 KST: two snow scorpionflies on trunks, no spot within a metre of either -- it went back and forth between the two for 40 s; every one missed is passed over) */
   // (CI #278: a flyer went out of the swing's fan in the 450 ms before the net comes down on the slow runner, every try --
   // the crawlers and those on a trunk first, as island-tool-swing, and another one after a miss)
   const slow = (b) => (/^dragonfly/.test(b.species) ? 2 : /^butterfly|firefly/.test(b.species) ? 1 : 0);
@@ -63,7 +63,7 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
     if (late) { caught = JSON.parse(await late.text()); target = { ...target, id: late.request().postDataJSON()?.id || caught.id }; return 200; }
     events = await eventsNow();
     const now = await insectsNow(); const t = now.find((o) => o.id === target.id);
-    if (missed || slow(target) > 0) { const next = pick([...now].sort((p, q) => slow(p) - slow(q)), missed ? target.id : null); if (next) target = next; missed = false; }
+    if (missed || slow(target) > 0) { if (missed) passed.add(target.id); const next = pick([...now].filter((o) => !passed.has(o.id)).sort((p, q) => slow(p) - slow(q))); if (next) target = next; missed = false; }
     else if (!t || !by(now, t)) { const next = pick(now); if (!next) return (last = 'no insect with a spot'); last = `${target.id} ${t ? 'no spot' : 'gone'} -> ${next.id}`; target = next; }
     const at = by(now, target); if (!at) return (last = `${target.id} no spot`);
     await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [at.x, at.z]); await page.waitForTimeout(400);
