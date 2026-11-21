@@ -264,7 +264,7 @@ test('가려도 내 캐릭터 보이기: 숲속에서 나무가 가리면 내 �
   /* (1.10.371 §3 숲의 빛·공기: in the wood its fog nearer, the leaves falling, and by day the shafts -- at night the fireflies) */
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().forestAir().wood), { timeout: 15000 }).toBeGreaterThan(0.2);
   const air = await page.evaluate(() => ({ ...window.PlazaDebug().forestAir(), phase: window.PlazaDebug().time().phase }));
-  expect(air.fogFar, JSON.stringify(air)).toBeLessThan(165); expect(air.fogNear).toBeLessThan(65); expect(air.leaves).toBeGreaterThan(0);
+  expect(air.fogFar, JSON.stringify(air)).toBeLessThan(165); expect(air.fogNear).toBeLessThan(65); if (T.seasonAt(found[0], found[1], Date.now()) === 'winter') expect(air.leaves).toBe(0); else expect(air.leaves).toBeGreaterThan(0); /* (1.10.398: none falling in the winter, by design -- forest-air; the wood's zone turned winter on 11-22) */
   if (air.phase === 'night') expect(air.fireflies).toBeGreaterThan(0); else expect(air.shafts).toBeGreaterThan(0);
   /* (379 사용자 「별마루에서만 사용하고 달마루섬에서는 해당 기법을 건물에만」: on 달마루섬 a tree on the line leaves the trees whole -- no hole) */
   { const main = []; for (let x = -170; x <= -70; x += 10) for (let z = -40; z <= 60; z += 10) if (T.walkable(x, z) && !T.onIsle2?.(x, z)) main.push([x, z]);
