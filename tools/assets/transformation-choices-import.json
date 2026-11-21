@@ -15,9 +15,9 @@
       "lod": "high",
       "out": "characters/ip-characters/ironman.glb",
       "source": "ip-characters/models/ironman.current.high.glb",
-      "sha256": "dcef3fe8ccf2d49b260d454e44276a790431e6f07493a840a3692a098934250b",
-      "triangles": 69590,
-      "bytes": 3290160
+      "sha256": "a3ff7c9e7318d30da15ef61b559c5a3168e3c9168ad620eba929d6a9f73d52d1",
+      "triangles": 76415,
+      "bytes": 3445772
     },
     {
       "id": "ironman",
@@ -25,9 +25,9 @@
       "lod": "low",
       "out": "characters/ip-characters/ironman_low.glb",
       "source": "ip-characters/models/ironman.current.low.glb",
-      "sha256": "52c48ec99bb39bc1fef4ef155e97a9784cf0102e6e7a6036900841f324a04b1d",
-      "triangles": 22876,
-      "bytes": 1123000
+      "sha256": "1694805a01c8d04e06d53f752fc28949d8638395f8301d0894a633077ea98657",
+      "triangles": 25490,
+      "bytes": 1183388
     },
     {
       "id": "superman",
@@ -55,9 +55,9 @@
       "lod": "high",
       "out": "characters/ip-characters/batman.glb",
       "source": "ip-characters/models/batman.current.high.glb",
-      "sha256": "b36f4fecc31072a5873af9313909e0efcb1eb9ae3d7b43eb09c86d7bd3b7dca8",
+      "sha256": "0b9a80c22a3567613db9b08a0e05be9b277f9d476f6ecd63ee12ff17f9156a6d",
       "triangles": 54722,
-      "bytes": 2660304
+      "bytes": 2920364
     },
     {
       "id": "batman",
@@ -65,9 +65,9 @@
       "lod": "low",
       "out": "characters/ip-characters/batman_low.glb",
       "source": "ip-characters/models/batman.current.low.glb",
-      "sha256": "f49ed496f1d1599a897b9c3f9465bba2434b559531df5527d4eb635f27beeac6",
+      "sha256": "e6f04931555e692ed57d5c9d706cb3a5eb0670cbb5b8e476c3c963b96c7e605d",
       "triangles": 16948,
-      "bytes": 883432
+      "bytes": 952256
     },
     {
       "id": "spiderman",
