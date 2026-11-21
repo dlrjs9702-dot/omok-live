@@ -161,5 +161,5 @@ test('섬 택시 못 타는 이유: 게임 방은 그 이유로 막고, 멀리 �
   for (const [dx, dz] of [[0.5, 0.5], [-0.8, 0.6], [0.9, -0.7], [-1.2, -1.0], [1.5, 0]]) { at = (await req('/api/plaza/state', b, { x: P.out.x + dx, z: P.out.z + dz, yaw: 0, moving: false })).data; if (at && Math.hypot(at.x - S.x, at.z - S.z) <= 5) break; }
   assert.ok(Math.hypot(at.x - S.x, at.z - S.z) <= 5.5, JSON.stringify(at));
   assert.equal((await req('/api/rooms', b, { gameType: 'othello', visibility: 'public' })).status, 201);
-  const busy = await req('/api/island/taxi', b, { from: 'plaza' }); assert.equal(busy.data.error, 'TAXI_BUSY'); assert.equal(busy.data.reason, 'room', JSON.stringify(busy.data)); assert.match(busy.data.message, /게임 방/);
+  const busy = await req('/api/island/taxi', b, { from: 'plaza' }); assert.equal(busy.data.error, 'TAXI_BUSY', JSON.stringify({ busy: busy.data, at, stop: { x: S.x, z: S.z } })); assert.equal(busy.data.reason, 'room', JSON.stringify(busy.data)); assert.match(busy.data.message, /게임 방/);
 });

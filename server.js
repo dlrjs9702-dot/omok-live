@@ -8766,6 +8766,7 @@ async function requestHandler(req, res) {
     { const price = hasPass ? 0 : pay === 'pass' ? dayPass : fare; if (body.fare != null && !(Number(body.fare) >= price)) return sendError(res, 409, 'TAXI_PRICE', '요금이 바뀌었어요. 다시 확인해 주세요.'); } /* (never more than shown; less -- a pass bought on another screen -- is fine) */
     const here = plazaPresence.get(session.token);
     if (taxiRides.has(session.token)) return sendError(res, 409, 'TAXI_RIDING', '이미 택시를 타고 있어요.');
+    if (getCurrentRoom(session)) return sendError(res, 409, 'TAXI_BUSY', TAXI_BUSY_WORDS.room, { reason: 'room' }); /* (1.10.403: in a game room -- said so wherever its plaza place is; it went first to 「too far」 at times: a room taken lets the plaza place go) */
     if (!here || (here.space || 'island') !== 'island' || Math.hypot(here.x - stop.x, here.z - stop.z) > (IslandTaxi.STOPS[from] ? 5.5 : 6.5) || taxiLeapt(here)) return sendError(res, 409, 'TOO_FAR', '택시 정류장 가까이 가서 다시 시도해 주세요.'); /* (403 #12: not by a leap) */
     { const busy = taxiBusyOf(session, here); if (busy) { console.log(`[taxi] busy reason=${busy.reason} age=${busy.ageS ?? '-'}s`); return sendError(res, 409, 'TAXI_BUSY', TAXI_BUSY_WORDS[busy.reason], { reason: busy.reason }); } }
     if (here.bike) return sendError(res, 409, 'TAXI_BIKE', '자전거에서 내려 주세요.');
