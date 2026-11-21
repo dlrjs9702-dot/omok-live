@@ -57,6 +57,23 @@ test('택시 Codex #9: 한 정류장에서 둘이 부르면 차도 둘', async (
   assert.equal(coming.length, 2, '두 대가 옴');
 });
 
+// 1.10.403 Codex 391~400 #12: a stop reached by a leap (further than a bike could go since the last pose) is not reached for 3 s -- calling or
+// getting in; then as ever
+test('택시 Codex #12: 급이동으로 온 정류장에서는 3초 동안 부르기·타기 안 됨', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'taxi-leap-')); rmAtExit(dir);
+  const server = await boot(t, dir); const { req } = server;
+  const a = await server.enter(await server.issue('급이동')); await req('/api/test/points-credit', a, { amount: 100000 });
+  await req('/api/test/taxi-run', a, { ms: 3000 }); await req('/api/test/taxi-leap', a, { on: true });
+  try {
+    const board = X.boardOf('museum'); const P = X.stopOf('plaza');
+    await req('/api/plaza/state', a, { x: P.out.x, z: P.out.z, yaw: 0, moving: false }); await sleep(3100);
+    await req('/api/plaza/state', a, { x: board.x, z: board.z, yaw: 0, moving: false }); /* (177 m in a moment) */
+    const leapt = await req('/api/island/taxi/call', a, { stop: 'museum' }); assert.equal(leapt.data.error, 'TOO_FAR', JSON.stringify(leapt.data));
+    await sleep(3100); await req('/api/plaza/state', a, { x: board.x + 0.2, z: board.z, yaw: 0, moving: false });
+    const later = await req('/api/island/taxi/call', a, { stop: 'museum' }); assert.equal(later.status, 200, JSON.stringify(later.data));
+  } finally { await req('/api/test/taxi-leap', a, { on: false }); }
+});
+
 // 1.10.403 Codex 391~400 #6: the fare's claim is the page's request -- the same request again (no answer the first time) is not a second fare;
 // a request that already started its ride starts no other
 test('택시 Codex #6: 같은 요청은 한 번만 결제, 이미 탄 요청으로 다시 타기는 막음', async (t) => {

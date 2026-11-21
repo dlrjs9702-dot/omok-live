@@ -2746,8 +2746,12 @@ function taxiTick() {
     let bridgeStand = -1; { const onB = (q) => IslandTaxi.onBridgeBox(q.x, q.z, 2); const p0 = IslandTaxi.carAt(bare, road);
       if (p0 && !onB(p0)) { const bway = taxiWay(bare, road, 25); const enter = bway.findIndex(onB);
         /* (1.10.397 N4-c: two one-lane bridges -- a car the other way on the same one) */
-        if (enter > 0) { const dir = Math.sign(Math.sin(bway[enter].yaw)); const which = IslandTaxi.bridgeOf(bway[enter].x, bway[enter].z, 2); const meeting = [...new Set([...fleetRides, ...taxiRides.values()])].some((o) => { if (o === ride) return false; const q = IslandTaxi.carAt(o, now); return Boolean(q) && IslandTaxi.bridgeOf(q.x, q.z, 2) === which && ['start', 'run', 'stop', 'back'].includes(q.phase) && Math.sign(Math.sin(q.yaw)) !== dir; });
-          if (meeting) { let k = enter; let gone = 0; while (k > 0 && gone < 6) { gone += Math.hypot(bway[k].x - bway[k - 1].x, bway[k].z - bway[k - 1].z); k -= 1; } bridgeStand = k; } } } }
+        /* (1.10.403 Codex 391~400 #11: two the other ways coming up to it in one tick -- neither on it yet, both went on and met in its middle. A car going on
+           holds the bridge for its way (ride.bridgeHold) from 25 m before it till past it; one the other way, on it or holding it, has the next wait) */
+        if (enter > 0) { const dir = Math.sign(Math.sin(bway[enter].yaw)); const which = IslandTaxi.bridgeOf(bway[enter].x, bway[enter].z, 2); const meeting = [...new Set([...fleetRides, ...taxiRides.values()])].some((o) => { if (o === ride) return false; if (o.bridgeHold && o.bridgeHold.which === which && o.bridgeHold.dir !== dir) return true; const q = IslandTaxi.carAt(o, now); return Boolean(q) && IslandTaxi.bridgeOf(q.x, q.z, 2) === which && ['start', 'run', 'stop', 'back'].includes(q.phase) && Math.sign(Math.sin(q.yaw)) !== dir; });
+          if (meeting) { if (ride.bridgeHold) ride.bridgeHold = null; let k = enter; let gone = 0; while (k > 0 && gone < 6) { gone += Math.hypot(bway[k].x - bway[k - 1].x, bway[k].z - bway[k - 1].z); k -= 1; } bridgeStand = k; }
+          else if (!ride.bridgeHold || ride.bridgeHold.which !== which) ride.bridgeHold = { which, dir }; }
+        else if (ride.bridgeHold) ride.bridgeHold = null; /* (past it) */ } }
     const ahead = taxiBlocker(ride, way, now); /* (someone on the road's middle in front: still going by them) */
     const who = dodge?.mode === 'ghost' ? null : dodge ? taxiBlocker(ride, shiftWay(way, dodge.off), now, TAXI_LOOK.pass) : ahead; let want = 1; let standAt = who ? who.stand : 0;
     if (bridgeStand >= 0 && !who) { want = 0; standAt = bridgeStand; if (!ride.bridgeWait) { ride.bridgeWait = now; plazaDirty = true; } } /* (391: no horn, no creeping by -- it waits its turn) */
@@ -2790,6 +2794,10 @@ const BOAT_NEAR = 9; // (from the float's middle: one at the dock -- the float 1
 /* (1.10.395 Codex 7, 총괄: only where the server judges -- a pose that leapt further than a bike could go since the last one (leapAt,
    set in the pose) is not at the dock for 3 s: one cannot jump onto the float and board at once) */
 const BOAT_LEAP_MS = 3000;
+/* (1.10.403 Codex 391~400 #12: the taxi the same -- a stop reached by a leap is not reached for 3 s, calling or getting in. The tests move people about
+   by leaps all the time: there only when a test asks for it, /api/test/taxi-leap) */
+let taxiLeapStrict = false;
+const taxiLeapt = (p) => (process.env.NODE_ENV !== 'test' || taxiLeapStrict) && nowMs() - (p?.leapAt || 0) < BOAT_LEAP_MS;
 const boatAtDock = (p, dock) => Boolean(p) && (p.space || 'island') === 'island' && Math.hypot(p.x - IslandBoat.DOCKS[dock].float.x, p.z - IslandBoat.DOCKS[dock].float.z) <= BOAT_NEAR && !(nowMs() - (p.leapAt || 0) < BOAT_LEAP_MS);
 /* (1.10.395 Codex 11: who may board -- the same for the board button and the queue: not in a taxi, not fishing, seated, on the train or in a room, not on a bike) */
 const boatRefusal = (session, here) => (taxiRides.has(session.token) ? 'taxi' : (taxiBusyOf(session, here)?.reason || (here?.bike ? 'bike' : null)));
@@ -8738,7 +8746,7 @@ async function requestHandler(req, res) {
     { const price = hasPass ? 0 : pay === 'pass' ? dayPass : fare; if (body.fare != null && !(Number(body.fare) >= price)) return sendError(res, 409, 'TAXI_PRICE', '요금이 바뀌었어요. 다시 확인해 주세요.'); } /* (never more than shown; less -- a pass bought on another screen -- is fine) */
     const here = plazaPresence.get(session.token);
     if (taxiRides.has(session.token)) return sendError(res, 409, 'TAXI_RIDING', '이미 택시를 타고 있어요.');
-    if (!here || (here.space || 'island') !== 'island' || Math.hypot(here.x - stop.x, here.z - stop.z) > (IslandTaxi.STOPS[from] ? 5.5 : 6.5)) return sendError(res, 409, 'TOO_FAR', '택시 정류장 가까이 가서 다시 시도해 주세요.');
+    if (!here || (here.space || 'island') !== 'island' || Math.hypot(here.x - stop.x, here.z - stop.z) > (IslandTaxi.STOPS[from] ? 5.5 : 6.5) || taxiLeapt(here)) return sendError(res, 409, 'TOO_FAR', '택시 정류장 가까이 가서 다시 시도해 주세요.'); /* (403 #12: not by a leap) */
     { const busy = taxiBusyOf(session, here); if (busy) { console.log(`[taxi] busy reason=${busy.reason} age=${busy.ageS ?? '-'}s`); return sendError(res, 409, 'TAXI_BUSY', TAXI_BUSY_WORDS[busy.reason], { reason: busy.reason }); } }
     if (here.bike) return sendError(res, 409, 'TAXI_BIKE', '자전거에서 내려 주세요.');
     const startedAt = nowMs();
@@ -8777,7 +8785,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res); if (!session) return; const body = await parseJson(req); const stopId = String(body.stop || '');
     if (!IslandTaxi.ROADSTOPS[stopId]) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     const here = plazaPresence.get(session.token); const sign = IslandTaxi.curbOf(stopId).sign;
-    if (!here || (here.space || 'island') !== 'island' || Math.hypot(here.x - sign.x, here.z - sign.z) > 5) return sendError(res, 409, 'TOO_FAR', '정류장 표지 가까이 가서 다시 시도해 주세요.');
+    if (!here || (here.space || 'island') !== 'island' || Math.hypot(here.x - sign.x, here.z - sign.z) > 5 || taxiLeapt(here)) return sendError(res, 409, 'TOO_FAR', '정류장 표지 가까이 가서 다시 시도해 주세요.'); /* (403 #12: not by a leap) */
     if (taxiRides.has(session.token)) return sendError(res, 409, 'TAXI_RIDING', '이미 택시를 타고 있어요.');
     { const busy = taxiBusyOf(session, here); if (busy) return sendError(res, 409, 'TAXI_BUSY', TAXI_BUSY_WORDS[busy.reason], { reason: busy.reason }); }
     const now = nowMs(); IslandTaxi.settle(taxiFleet, now);
@@ -8819,6 +8827,7 @@ async function requestHandler(req, res) {
     const body = await parseJson(req); const scale = Math.max(1, Math.min(40, Number(body.scale) || 1)); for (const b of boatFleet.boats) for (const t of b.seats) if (t) { const p = plazaPresence.get(t); if (p) p.boat = null; }
     boatFleet = IslandBoat.createFleet({ now: nowMs(), scale }); boatDone.clear(); broadcastIsland('boats', boatsView()); return sendJson(res, 200, { ok: true, boats: boatsView() });
   }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/taxi-leap' && req.method === 'POST') { const body = await parseJson(req); taxiLeapStrict = body.on === true; return sendJson(res, 200, { ok: true, on: taxiLeapStrict }); } /* (403 #12) */
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/taxi-run' && req.method === 'POST') { const body = await parseJson(req); taxiTestRunMs = Math.max(0, Math.min(120000, Number(body.ms) || 0)); if (body.back !== false) { taxiFleet = IslandTaxi.createFleet(nowMs()); taxiCalls.clear(); } /* (294: every car at its stop; 391: two at each; 392: no calls) */ return sendJson(res, 200, { ok: true, ms: taxiTestRunMs }); }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/train-shift' && req.method === 'POST') { // tests: the trains' clock moved on (ms)
     const body = await parseJson(req); trainShift = Number.isFinite(Number(body.ms)) ? Number(body.ms) : 0;
