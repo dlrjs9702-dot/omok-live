@@ -5854,7 +5854,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // frame (at once past 1 s: a first reading, a sleep); the server's own judging keeps serverOffset
   const VIEW_EASE = 2; let viewOffset = null;
   const stepViewClock = () => { viewOffset = TX.easeClock(viewOffset, serverOffset, VIEW_EASE); };
-  const viewNow = () => Date.now() + (viewOffset ?? serverOffset);
+  /* (1.10.403 문제 기록 조사 ③(가), notes issues-taxi-resident-20261122: Date.now is whole milliseconds -- a car at 16 m/s went 0.24~0.30 m a frame
+     where even is 0.267; the frame's own time (requestAnimationFrame's, fractional) on a wall clock eased to Date.now 1 ms a frame -- even steps) */
+  let frameAt = 0; let frameWall = null; let wallBase = null;
+  const stepFrameClock = (ts) => { wallBase = TX.easeClock(wallBase, Date.now() - ts, 1); frameAt = ts; frameWall = ts + wallBase; };
+  const viewNow = () => (frameWall !== null && performance.now() - frameAt < 100 ? frameWall : Date.now()) + (viewOffset ?? serverOffset); /* (between frames, or a debug call long after one: the wall clock) */
   // (문제 기록 3회차 후속) the islanders' map a few ms at a time (island-npcs buildGridSlice: made at once it held the page
   // 1.5 s and more), then they come out -- on a timer between frames, not a slice a frame: a row is one slice where frames
   // are slow (CI's software drawing, a phone), and a frame each made it a minute and more (#283 CI, plaza 배회 NPC); the
@@ -6495,7 +6499,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   function frame(now) {
     const t0 = performance.now();
-    raf = requestAnimationFrame(frame); viewReady = true; stepViewClock(); /* (294) */
+    raf = requestAnimationFrame(frame); viewReady = true; stepViewClock(); /* (294) */ stepFrameClock(Number.isFinite(now) ? now : t0); /* (403) */
     placeMoved();
     const real = (now - (last || now)) / 1000; const dt = Math.min(0.05, real); last = now; clock += dt;
     camDt = Math.min(0.25, real); // v1.10.21: turning keeps to the clock on a slow PC (the animation step is capped)
