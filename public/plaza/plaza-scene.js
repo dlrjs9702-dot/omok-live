@@ -1450,8 +1450,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
     const seatOf = (bs) => { const o = boatObjs.find((x) => x.id === bs.id); return o?.pose ? BT.seatAt(o.pose, bs.seat) : null; };
     if (myBoat && live) { const b = boatsState.boats.find((x) => x.id === myBoat.id); if (b && b.n > myBoat.n) { const at = b.outAt || b.at; const e = BT.DOCKS[at] ? BT.exitOf(at, b.outAt ? b.outBerth : b.berth) : null; setMyBoat(null); if (e) { me.root.position.set(e.x, heightAt(e.x, e.z), e.z); correction = null; } } } /* (395 Codex 9: where it let me off -- it may have taken the next four and gone in the same tick) */ /* (let off: on the float at once -- the server's word follows with the next pose) */
+    /* (1.10.398 에셋 검사 2회차 「승객 둘이 겹침·이름표 겹침」: the seats are the model's, 1.1 m apart -- the right-hand two's tags a little higher,
+       so two side by side are read; back as it was once off) */
+    const lift = (c, seat) => { const want = seat !== null && seat % 2 === 1; if (!c?.tag || Boolean(c.tagLift) === want) return; c.tagLift = want; fitTag(c); if (want) c.tag.position.y += 0.42; };
     if (myBoat) { const s = seatOf(myBoat); if (s) { me.root.position.set(s.x, s.y, s.z); me.root.rotation.y = s.yaw; me.targetYaw = s.yaw; } }
-    for (const [, o] of others) if (o.boatSeat) { const s = seatOf(o.boatSeat); if (s) { o.c.root.position.set(s.x, s.y, s.z); o.c.root.rotation.y = s.yaw; } }
+    lift(me, myBoat ? myBoat.seat : null);
+    for (const [, o] of others) { if (o.boatSeat) { const s = seatOf(o.boatSeat); if (s) { o.c.root.position.set(s.x, s.y, s.z); o.c.root.rotation.y = s.yaw; } } lift(o.c, o.boatSeat ? o.boatSeat.seat : null); }
   }
   function setMyBoat(bs) {
     const next = bs && Number.isInteger(bs.seat) ? { id: bs.id, seat: bs.seat, n: boatsState?.boats?.find((b) => b.id === bs.id)?.n ?? 0 } : null; if (Boolean(next) === Boolean(myBoat) && (!next || (next.id === myBoat.id && next.seat === myBoat.seat))) return;
