@@ -107,7 +107,7 @@
   const sOf = (id) => (id === 'plaza' ? 0 : id === 'isle' ? SJ : id === 'head' ? TRUNK_LEN : ROADSTOPS[id]?.s ?? NaN); /* (397: 마을 at its corner on the trunk -- distanceOf adds its spur) */
   const toOf = (ride) => ride.to || STOPS[ride.from]?.to; // (a ride's end: named, or the other terminal as before 392)
   // a stop's curb: the car's spot at the road's side by its sign, facing the way from 대청마당; its sign 1.2 m further out
-  function curbOf(id) { const r = ROADSTOPS[id]; const p = atS(r.s); const c = (LANE + 1.2) * r.side; const so = (r.signOut ?? 2.2) * r.side; return { x: p.x + Math.cos(p.yaw) * c, z: p.z - Math.sin(p.yaw) * c, yaw: p.yaw, sign: { x: p.x + Math.cos(p.yaw) * (c + so), z: p.z - Math.sin(p.yaw) * (c + so), yaw: p.yaw - (Math.PI / 2) * r.side } }; } /* (397 ⑥⑦: on the village street the sign on its walk -- signOut 1.0, the yards' fences behind) */
+  function curbOf(id) { const r = ROADSTOPS[id]; const p = atS(r.s); const c = (LANE + 1.2) * r.side; const so = (r.signOut ?? 2.2) * r.side; return { x: p.x + Math.cos(p.yaw) * c, z: p.z - Math.sin(p.yaw) * c, yaw: p.yaw, sign: { x: p.x + Math.cos(p.yaw) * (c + so), z: p.z - Math.sin(p.yaw) * (c + so), yaw: p.yaw - (Math.PI / 4) * r.side } }; } /* (1.10.398 에셋 검사 2회차 「길에서 옆면만」: its plate turned 45° -- read coming along the road and from across it, both faces) */ /* (397 ⑥⑦: on the village street the sign on its walk -- signOut 1.0, the yards' fences behind) */
   // the road between two places: its start (a terminal's front place, or a stop's curb), the road's points past 10 m of a terminal end and
   // 6 m of a stop, its end (a terminal's drop spot by its shelter, or a stop's curb). Between the two terminals: the drive as before
   function driveBetween(from, to) {

@@ -38,5 +38,14 @@ export function seeThrough(m, cliff = false) {
 }
 // (380) the coast's cliffs' batches: by SEE.cliff
 export const SEE_CLIFF_IDS = /^angular\.cliff_/;
+/* (1.10.398 사용자 결정 55 A 「달마루섬에서는 건물, 절벽 등에만」 -- 380 left the buildings out): the island's big fixed buildings, attached one by one
+   (asset-loader attach), and what sits on them (a roof, banner, awning, a worn house's marks, a house's dress) -- by SEE.cliff as the cliffs; no
+   rooms, signs, small facilities or 별마루섬 pieces. A new building's id goes here */
+export const SEE_BUILDING_IDS = /^(facility\.(games|records|admin|townhall|store|jail|stocks|climb)|cottage(\.\d+)?|home\.(hut|house|manor2?)__\w+|decay\.\w+\.(hut|house|manor2?)|xmas\.house_dress\.\w+|together\.museum_exterior|gamehall\.record_tower|train\.platform|dalmaru\.(lighthouse_choseung|facade_townhall|facade_mall)|story\.lighthouse_hatch|games\.(roof|banner|marquee)|store\.(window|awning)|yard\.storehouse_\d\.\w+)$/;
+// every mesh of an object its SEE.cliff copy (not the basic, sprite, point or line ones -- their shaders have no view position for the hole)
+export function seeBuilding(object) {
+  const one = (m) => (!m || m.isMeshBasicMaterial || m.isSpriteMaterial || m.isPointsMaterial || m.isLineBasicMaterial ? m : seeThrough(m, true));
+  object?.traverse((o) => { if (o.isMesh) o.material = Array.isArray(o.material) ? o.material.map(one) : one(o.material); });
+}
 // the targets whose batches see through: the trees and bushes everywhere, 별마루섬's big ones and 별지기 느티 (not their far pictures)
 export const SEE_IDS = /^(nature\.tree|angular\.tree_|tree\.harvest|tree\.fruitLayer|forest\.tree_(big_fir|big_pine|big_oak|ancient)$|nature\.bush|angular\.bush)/;

@@ -10,7 +10,7 @@ import { GLTFLoader } from '/vendor/three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from '/vendor/three/addons/libs/meshopt_decoder.module.js';
 import { clone as cloneObject } from '/vendor/three/addons/utils/SkeletonUtils.js';
 import { mergeGeometries } from '/vendor/three/addons/utils/BufferGeometryUtils.js';
-import { seeThrough, SEE_IDS, SEE_CLIFF_IDS } from './see-through.js'; // (1.10.369 §6 가려도 내 캐릭터 보이기)
+import { seeThrough, seeBuilding, SEE_IDS, SEE_CLIFF_IDS, SEE_BUILDING_IDS } from './see-through.js'; // (1.10.369 §6 가려도 내 캐릭터 보이기)
 import { preparePlatformSurfaces, prepareTownhallSurfaces } from './platform-surfaces.js';
 
 const P = globalThis.AssetPipeline;
@@ -133,12 +133,14 @@ const depthOf = (o) => { const m = o.material; if (!m || Array.isArray(m) || m.a
   // v1.10.17: kept as a record, so a change of season can swap the model (setDay).
   // v1.10.29 `onSwap(entry | null)`: told when the model comes in (its registry entry) or goes (null), for game parts
   // that sit on the look (the map board's picture moves onto the model's panel).
-  function attach(ids, holder, procedural, onSwap = null) { const rec = { ids, holder, procedural, onSwap, url: null, object: null }; attaches.push(rec); applyAttach(rec); }
+  /* (1.10.398 결정 55 A: a building's -- its stand-in now, its model as it comes -- seen through by SEE.cliff; its holder listed for the camera's line) */
+  const seeHolders = [];
+  function attach(ids, holder, procedural, onSwap = null) { const rec = { ids, holder, procedural, onSwap, url: null, object: null }; rec.see = [].concat(ids).some((id) => SEE_BUILDING_IDS.test(id)); if (rec.see) { seeHolders.push(holder); if (procedural) seeBuilding(procedural); } attaches.push(rec); applyAttach(rec); }
   // (Codex PR #401 P2) a holder thrown away (the yard's trophies drawn again): its records, its model's LOD and own geometry
   // go -- a model still loading for it finds no record and is dropped
   function detach(holder) {
     for (let i = attaches.length - 1; i >= 0; i -= 1) {
-      const rec = attaches[i]; if (rec.holder !== holder) continue; attaches.splice(i, 1);
+      const rec = attaches[i]; if (rec.holder !== holder) continue; attaches.splice(i, 1); { const k = seeHolders.indexOf(holder); if (k >= 0) seeHolders.splice(k, 1); }
       if (rec.object) { holder.remove(rec.object); const k = lods.indexOf(rec.object); if (k >= 0) lods.splice(k, 1); for (const g of fittedOwn.get(rec.object) || []) g.dispose(); rec.object = null; }
       rec.onSwap = null; rec.dropped = true;
     }
@@ -192,6 +194,7 @@ const depthOf = (o) => { const m = o.material; if (!m || Array.isArray(m) || m.a
     } else if (home) { home.using.delete(rec); if (!proc.parent) home.parent.add(proc); }
   }
   function swapAttach(rec, object, entry = null) {
+    if (rec.see && object) { seeBuilding(object.isLOD ? object.levels[0].object : object); rec.holder.userData.seeRev = (rec.holder.userData.seeRev || 0) + 1; } /* (398 결정 55: before the night glass and onSwap take its materials -- the High level only, as the trees) */
     noteGlass(object);
     if (rec.object) { rec.holder.remove(rec.object); const i = lods.indexOf(rec.object); if (i >= 0) lods.splice(i, 1); for (const g of fittedOwn.get(rec.object) || []) g.dispose(); }
     rec.object = object; if (object) rec.holder.add(object);
@@ -241,7 +244,7 @@ const depthOf = (o) => { const m = o.material; if (!m || Array.isArray(m) || m.a
     roofSnow(entry).then((snow) => {
       if (disposed || !snow || rec.object !== object) return;
       const group = new THREE.Group(); group.name = 'roofSnow'; group.userData.kind = snow.kind;
-      const mesh = new THREE.Mesh(snow.geometry, snow.material); mesh.receiveShadow = true; group.add(mesh);
+      const mesh = new THREE.Mesh(snow.geometry, rec.see ? seeThrough(snow.material, true) : snow.material); mesh.receiveShadow = true; group.add(mesh); /* (398: a building's roof snow holed with it) */
       if (object.isLOD) place(group, entry); // a LOD's levels carry the entry's scale and turn; a single model carries them itself
       object.add(group); rec.snow = group; group.visible = lookOf(rec.zone) === 'winter'; invalidateOcclusion(rec.holder);
     }).catch((error) => onError(entry.url, error));
@@ -1181,7 +1184,7 @@ const depthOf = (o) => { const m = o.material; if (!m || Array.isArray(m) || m.a
       at: rec.cells[0]?.matrices[0] ? [rec.cells[0].matrices[0].elements[12], rec.cells[0].matrices[0].elements[14]] : null }; // one copy's place (tests)
   });
   const attachDebug = () => attaches.map((rec) => ({ ids: [].concat(rec.ids), zone: rec.zone, look: lookOf(rec.zone), url: rec.url, ...(rec.snowEntry ? { snow: rec.snow ? (rec.snow.visible ? rec.snow.userData.kind : 'hidden') : 'none' } : {}) }));
-  return { pending: () => Math.max(0, managerCount.started - managerCount.ended) + cache.pending() /* (368 로딩 안정화: models and their pictures still on the way) */, ambientCounts: () => ambientState?.counts || {}, wearLodCounts: () => ({ high: wearing.filter((w) => w.isHigh).length, low: wearing.filter((w) => !w.isHigh).length }) /* (v1.10.213: the characters with a Low file, which copy shows) */, creature, setSwapMaterials: (map) => { Object.assign(swapMats, map || {}); } /* (1.10.377) */, attach, detach, dress, wear, face, props, hat, xmasDress /* (1.10.336) */, release, batch, shownOf, refill, unbatch, hold, letGo, handOver, reseat, update, setDay, setNight, setQuality, setFade, once, ambient, tick, dispose, debug: () => ({ fade: { on: fadeOn, fading, started: fadeStarts },
+  return { seeHolders: () => seeHolders /* (398 결정 55) */, pending: () => Math.max(0, managerCount.started - managerCount.ended) + cache.pending() /* (368 로딩 안정화: models and their pictures still on the way) */, ambientCounts: () => ambientState?.counts || {}, wearLodCounts: () => ({ high: wearing.filter((w) => w.isHigh).length, low: wearing.filter((w) => !w.isHigh).length }) /* (v1.10.213: the characters with a Low file, which copy shows) */, creature, setSwapMaterials: (map) => { Object.assign(swapMats, map || {}); } /* (1.10.377) */, attach, detach, dress, wear, face, props, hat, xmasDress /* (1.10.336) */, release, batch, shownOf, refill, unbatch, hold, letGo, handOver, reseat, update, setDay, setNight, setQuality, setFade, once, ambient, tick, dispose, debug: () => ({ fade: { on: fadeOn, fading, started: fadeStarts },
     // (Codex 281~290 #2: each batch filled again with its own matrix -- how many came out different; 0 once the fades are done)
     fillSame: () => { let bad = 0; for (const rec of batches) for (const p of rec.placed || []) { const ims = [...p.groups.values()].flatMap((g) => [...g.high, ...(g.low || [])]); const was = ims.map((im) => [im.count, im.instanceMatrix.array.slice(0, im.count * 16)]); entryMatrix(rec.entry, local); fill(p); if (ims.some((im, k) => im.count !== was[k][0] || im.instanceMatrix.array.slice(0, im.count * 16).some((v, j) => Math.abs(v - was[k][1][j]) > 1e-4))) bad += 1; } return bad; },
     lodsNear: (x, z, r = 80, n = 8) => lods.filter((l) => l.parent && l.levels.length > 1).map((l) => { l.getWorldPosition(placeOf); return { x: +placeOf.x.toFixed(1), z: +placeOf.z.toFixed(1), d: Math.hypot(placeOf.x - x, placeOf.z - z), levels: l.levels.map((v) => +v.distance.toFixed(1)), at: l.userData.lodAt ?? null, fading: Boolean(l.userData.lodRun), name: l.levels[0].object.name || l.parent?.name || '' }; }).filter((l) => l.d <= r).sort((a, b) => a.d - b.d).slice(0, n), glass: { materials: glassMats.size, flat: flatGlass, lit: [...glassMats].filter((m) => m.emissiveIntensity > 0).length + (nightGlow.value > 0 ? flatGlass : 0) }, shown: { ...shown }, files: cache.status(), lods: lods.length, quality, day, batches: batchDebug(), attaches: attachDebug(), played: { ...played }, playing: playing.length, wearing: wearing.map((w) => ({ high: w.isHigh, transformation: w.c.transformation || null, transformationMode: w.c.transformationMode || null, nativeRig: w.c.nativeRig || null, parts: w.c.wardrobe || [], fitted: w.c.fitted || {}, meshes: { high: w.high.length, low: w.low.length } })), ambient: ambientState ? { kinds: Object.keys(ambientState.kinds), drawn: { ...ambientState.counts } } : null }) };

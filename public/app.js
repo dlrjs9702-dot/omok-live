@@ -6178,7 +6178,9 @@
     const status = document.createElement('p'); status.className = 'lookMeta taxiStatus';
     const row = document.createElement('div'); row.className = 'taxiActions';
     const button = (id, text, cls) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.id = id; b.textContent = text; return b; };
-    const ride = button('taxiRideBtn', q.pass ? '타기' : `한 번 타기 · ${won(q.fare)}`, 'primary'); const pass = q.pass ? null : button('taxiPassBtn', `오늘 자유이용권 · ${won(q.dayPass)}`, 'secondary');
+    /* (1.10.398 에셋 검사 2회차: 타기 says where -- 「○○행 타기」) */
+    const rideText = (d) => (q.pass ? `${d.label}행 타기` : `${d.label}행 타기 · ${won(d.fare)}`);
+    const ride = button('taxiRideBtn', rideText({ label: to, fare: q.fare }), 'primary'); const pass = q.pass ? null : button('taxiPassBtn', `오늘 자유이용권 · ${won(q.dayPass)}`, 'secondary');
     const close = button('taxiCloseBtn', '닫기', 'secondary'); close.addEventListener('click', () => plazaDialog.close());
     const short = (price) => !q.pass && price > 0 && Number.isFinite(balance) && balance < price;
     if (short(q.fare)) ride.disabled = true; if (pass && short(q.dayPass)) pass.disabled = true;
@@ -6187,7 +6189,7 @@
     /* (1.10.391 N4-a 「어디로 갈까요?」: where one can go from here, each with its fare -- picked, the line and 타기 say it; one now, the stops in N4-b) */
     const dests = Array.isArray(q.dests) && q.dests.length ? q.dests : [{ id: q.to, label: to, fare: q.fare }]; let pick = dests.find((d) => d.id === q.to) || dests[0]; /* (392: the other terminal picked at a terminal, as before) */
     const list = document.createElement('div'); list.className = 'taxiDests'; list.setAttribute('role', 'radiogroup'); list.setAttribute('aria-label', '어디로 갈까요?');
-    const choose = (d) => { pick = d; for (const b of list.children) b.setAttribute('aria-checked', String(b.dataset.to === d.id)); line.textContent = `${d.label}까지 갈까요?${q.pass ? ' · 오늘 자유이용권 ✓' : ''}`; if (!q.pass) ride.textContent = `한 번 타기 · ${won(d.fare)}`; };
+    const choose = (d) => { pick = d; for (const b of list.children) b.setAttribute('aria-checked', String(b.dataset.to === d.id)); line.textContent = `${d.label}까지 갈까요?${q.pass ? ' · 오늘 자유이용권 ✓' : ''}`; ride.textContent = rideText(d); };
     for (const d of dests) { const b = button(`taxiDest-${d.id}`, `${d.label} · ${won(d.fare)}`, 'ghost taxiDest'); b.dataset.to = d.id; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(d === pick)); b.addEventListener('click', () => choose(d)); list.append(b); }
     const go = async (pay) => {
       for (const b of [ride, pass]) if (b) b.disabled = true;
