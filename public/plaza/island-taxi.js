@@ -75,7 +75,9 @@
   function atS(s) { let i = 1; while (i < ROUTE.length - 1 && SR[i] < s) i += 1; const [ax, az] = ROUTE[i - 1]; const [bx, bz] = ROUTE[i]; const t = Math.max(0, Math.min(1, (s - SR[i - 1]) / (SR[i] - SR[i - 1] || 1))); return { x: ax + (bx - ax) * t, z: az + (bz - az) * t, yaw: Math.atan2(bx - ax, bz - az) }; }
   const ROADSTOPS = Object.freeze({
     dock: Object.freeze({ id: 'dock', label: '배 타는 곳', s: 52.3, side: 1 }), waterfront: Object.freeze({ id: 'waterfront', label: '물가 거리', s: 92.1, side: 1 }),
-    museum: Object.freeze({ id: 'museum', label: '박물관·잔치마루', s: 177.2, side: 1 }), isleFork: Object.freeze({ id: 'isleFork', label: '툇마루섬 갈림길', s: 365, side: 1 }),
+    museum: Object.freeze({ id: 'museum', label: '박물관·잔치마루', s: 177.2, side: 1 }),
+    /* (1.10.395 사용자 결정 50 A: ④ before the bend at (102, 110) -- 6.75 m from both crossings either side (s 218.3 and 231.8), about 35 m to 달끝역's way in) */
+    dalkkeut: Object.freeze({ id: 'dalkkeut', label: '달끝나루·달끝역', s: 225, side: 1 }), isleFork: Object.freeze({ id: 'isleFork', label: '툇마루섬 갈림길', s: 365, side: 1 }),
   });
   const isTerminal = (id) => Boolean(STOPS[id]); const labelOf = (id) => (STOPS[id] || ROADSTOPS[id])?.label || '';
   const sOf = (id) => (id === 'plaza' ? 0 : id === 'isle' ? ROAD_LEN : ROADSTOPS[id]?.s ?? NaN);
