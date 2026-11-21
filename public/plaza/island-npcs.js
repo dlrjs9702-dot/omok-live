@@ -95,10 +95,10 @@
     // step on, so a round crosses it rather than walking along it, and the strip 1.5~3.2 m beside it as cheap as a walk: the
     // islanders go beside the road and over it where they must (read when the grid is made: island-taxi.js is loaded by then)
     const TX = (typeof module === 'object' && module.exports ? require('./island-taxi.js') : (typeof self !== 'undefined' ? self : globalThis).IslandTaxi);
-    const route = TX?.ROUTE || []; const crossings = TX?.CROSSINGS || []; const half = TX?.CROSS_HALF ?? 2.2; const LANE = TX?.ROAD?.lane ?? 1.45; const ROADW = TX?.ROAD?.half ?? 3.2;
+    const roads = TX ? (TX.ROADS || [TX.ROUTE]) : []; const crossings = TX?.CROSSINGS || []; const half = TX?.CROSS_HALF ?? 2.2; const LANE = TX?.ROAD?.lane ?? 1.45; const ROADW = TX?.ROAD?.half ?? 3.2;
     /* (건널목: the road's middle within `half` of one is a walk to cross on; a bridge's deck stays as it was -- the way over the stream) */
     const crossingAt = (x, z) => crossings.some((c) => Math.hypot(x - c.x, z - c.z) < half + 0.75);
-    for (let s = 1; s < route.length; s += 1) {
+    for (const route of roads) for (let s = 1; s < route.length; s += 1) { /* (1.10.395 N4-c: the road on to 별마루섬 too) */
       const [ax, az] = route[s - 1]; const [bx, bz] = route[s]; const len2 = (bx - ax) ** 2 + (bz - az) ** 2 || 1e-9;
       const reach = ROADW + 0.6; const [i0, j0] = cellOf(Math.min(ax, bx) - reach, Math.min(az, bz) - reach); const [i1, j1] = cellOf(Math.max(ax, bx) + reach, Math.max(az, bz) + reach);
       for (let j = Math.max(0, j0); j <= Math.min(N - 1, j1); j += 1) for (let i = Math.max(0, i0); i <= Math.min(N - 1, i1); i += 1) {
@@ -212,9 +212,9 @@
   // neither side is a free cell; any other point as it is. T1 길 넓히기: a point on the lanes -> the middle of the walk beside them
   function offTaxiRoad(x, z) {
     const TX = (typeof module === 'object' && module.exports ? require('./island-taxi.js') : (typeof self !== 'undefined' ? self : globalThis).IslandTaxi);
-    const route = TX?.ROUTE || []; const LANE = TX?.ROAD?.lane ?? 1.3; const TO = TX?.ROAD ? TX.ROAD.lane + TX.ROAD.walk / 2 : 2.3;
+    const roads = TX ? (TX.ROADS || [TX.ROUTE]) : []; const LANE = TX?.ROAD?.lane ?? 1.3; const TO = TX?.ROAD ? TX.ROAD.lane + TX.ROAD.walk / 2 : 2.3;
     let best = null;
-    for (let s = 1; s < route.length; s += 1) {
+    for (const route of roads) for (let s = 1; s < route.length; s += 1) { /* (395: every road) */
       const [ax, az] = route[s - 1]; const [bx, bz] = route[s]; const L = Math.hypot(bx - ax, bz - az) || 1e-9; const u = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (z - az) * (bz - az)) / (L * L)));
       const px = ax + (bx - ax) * u; const pz = az + (bz - az) * u; const d = Math.hypot(x - px, z - pz); if (!best || d < best.d) best = { d, px, pz, nx: (bz - az) / L, nz: -(bx - ax) / L };
     }

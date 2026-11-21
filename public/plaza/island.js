@@ -697,7 +697,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
       /* (1.10.389 N3-a, assets 133: the high one at its own 56 m; its last 2 m eased onto the banks as deckAt is -- the model bent there to it) */
       if (b.high) h.userData.fit = (v) => { const u = Math.max(-b.half, Math.min(b.half, v.x)); v.y += deckAt({ b, u }) - b.base - b.modelTop(u); };
       /* (its ramps' guarded sides over land (dalmaru-island rampGuards): stand-in walls under the rails, each run one box -- the model's side arches stand there) */
-      if (b.high) for (const s of [-1, 1]) {
+      if (b.model) for (const s of [-1, 1]) { /* (396: the low model bridges' guarded sides too) */
         const us = (T.structureSolids?.() || []).filter((o) => o.guard && Math.abs(o.x - b.x) <= b.half + 1 && Math.sign(o.z - b.z) === s).map((o) => o.x - b.x).sort((p, q) => p - q);
         for (let i = 0; i < us.length;) { let j = i; while (j + 1 < us.length && us[j + 1] - us[j] < 0.6) j += 1;
           const u0 = Math.max(-b.half, us[i] - 0.4); const u1 = Math.min(b.half, us[j] + 0.4); const top = Math.max(deckAt({ b, u: u0 }), deckAt({ b, u: u1 })); const foot = Math.min(ground(b.x + u0, b.z + s * 3.25), ground(b.x + u1, b.z + s * 3.25)) - 0.2;
@@ -1018,6 +1018,9 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
   // a stand-in box of what blocks (its circles inside: dalmaru-walk) until its model comes; the swamps' mud drawn here, laid on the ground
   const P2 = globalThis.Isle2Props;
   if (P2 && maps2) {
+    /* (1.10.396 문제 기록 5218e442 · 1bca464b 「목책을 뚫고 지나감」, 검토 isle2-fence-bridge-whale: 별마루섬's pieces were drawn, never in my
+       solids -- the fence, its corners, the cave, the camp, the rock, the signs block me now as they block the tigers' ground) */
+    for (const c of P2.solids()) solids.push({ nature: true, ...c });
     const B = P2.BOXES; const WOOD = 0x8a6440; const STONE = 0x8f8a7c;
     const box = (kind, color) => { const [w, h, d, zc] = B[kind]; return mergeColored([part(new THREE.BoxGeometry(w, h, d), color, 0, h / 2, zc)]); };
     const rows = (list, kind, k) => list.filter((a) => a[3] === k).map(([x, z, yaw]) => ({ x, z, yaw, isle2: true }));

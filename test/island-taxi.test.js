@@ -158,14 +158,36 @@ test('T1 길 넓히기: 차선 2.3 m×2 + 인도 1.6 m×2, 그 안에 단단한 
   const solids = [...T.natureSolids(), ...T.structureSolids(), ...T.villageSolids(), ...P.benches, ...P.lamps, ...P.beds];
   for (const s of solids) { const edge = T.lineDist(s.x, s.z, R) - (s.r || 0.5); if (T.onBridge(s.x, s.z) || s.guard) continue; /* (1.10.389: the high bridge's ramp sides -- over it the road is its planks) */ assert.ok(edge > X.ROAD.half - 0.15, `${s.x.toFixed(1)},${s.z.toFixed(1)} in the road (${edge.toFixed(2)})`); }
   for (const o of [...P.benches, ...P.lamps, ...P.beds]) assert.ok(Math.hypot(o.x - R[0][0], o.z - R[0][1]) > 8 - 1.2, `${o.x},${o.z} by the 대청마당 stop`);
-  assert.ok(X.CROSSINGS.length >= 10 && X.CROSSINGS.length <= 12, `${X.CROSSINGS.length} crossings`);
-  for (const c of X.CROSSINGS) assert.ok(T.lineDist(c.x, c.z, R) < 0.1, `crossing ${c.x},${c.z} off the middle`);
+  const onR = X.CROSSINGS.filter((c) => T.lineDist(c.x, c.z, R) < 0.1); assert.ok(onR.length >= 10 && onR.length <= 12, `${onR.length} crossings`); /* (1.10.396: and the new road's six -- their own test) */
+  for (const c of X.CROSSINGS) assert.ok(X.ROADS.some((road) => T.lineDist(c.x, c.z, road) < 0.1), `crossing ${c.x},${c.z} off the middle`);
   for (const p of T.nature().lampSpots) assert.ok(T.lineDist(p.x, p.z, R) > X.ROAD.half + 0.3, `lamp ${p.x},${p.z} in the road`);
   const Paths = require('../public/plaza/island-paths.js'); const res = 512; const size = T.GROUND.size; const map = Paths.buildRoadMap(T, X, res);
   const at = (x, z) => { const i = Math.floor((x + size / 2) / (size / res)); const j = Math.floor((z + size / 2) / (size / res)); const k = (j * res + i) * 3; return { off: (map[k] / 255 * 2 - 1) * Paths.ROAD_RANGE, on: map[k + 1] > 127, cross: map[k + 2] / 255 }; };
   const mid = at(0.6, -30); assert.ok(mid.on && Math.abs(mid.off) < 0.8, JSON.stringify(mid)); assert.ok(!at(0.6 + 6, -30).on, 'painted 6 m out');
   assert.ok(at(36.4, 140.5).cross > 0.9 || !at(36.4, 140.5).on, 'the bridge end crossing'); assert.ok(at(0.8, -13.7).cross > 0.9, 'the 배 타는 곳 crossing');
   assert.ok(!at(60, 140).on, 'painted on the bridge'); assert.ok(!at(6, -53).on, 'painted on 대청마당');
+});
+// 1.10.396 N4-c 별마루섬 가는 길 (notes n4-plan-20261120 §5-3): from the corner before 툇마루섬 마을's stop to 10.5 m inside 별마루다리's wide
+// gate -- every point on walkable ground or a bridge, no slope over 0.3 a metre off the bridges; nothing solid in its 3.9 m but the village
+// street's lamps on its walks (3.3 m out, the yards' fences right behind) and the wide gate's own posts and wings (the road narrows through
+// it); no yard of any of the three sizes within 3.9 m; six crossings on it; the ground's road map paints it
+test('N4-c 별마루섬 가는 길: 걸을 수 있는 땅·다리, 경사 0.3 아래, 길 안 단단한 것은 마을 거리 가로등·넓은 문뿐, 마당 울타리 밖, 건널목 6, 땅 지도', () => {
+  const E = X.EXT; const P2 = require('../public/plaza/isle2-props.js'); const Y = require('../public/plaza/island-yard.js');
+  assert.deepEqual(E[0], X.ROUTE[X.ROUTE.length - 3]); assert.equal(X.ROADS[1], E);
+  let len = 0; for (let i = 1; i < E.length; i += 1) { const [ax, az] = E[i - 1]; const [bx, bz] = E[i]; const L = Math.hypot(bx - ax, bz - az); assert.ok(L <= 4.01, `points ${i} ${L.toFixed(2)} apart`); len += L;
+    for (let d = 0; d < L; d += 0.5) { const x = ax + ((bx - ax) * d) / L; const z = az + ((bz - az) * d) / L; assert.ok(ok(x, z), `${x.toFixed(1)},${z.toFixed(1)} not walkable`);
+      if (!T.onBridge(x, z) && !T.onBridge(x + (bx - ax) / L, z + (bz - az) / L)) assert.ok(Math.abs(T.heightAt(x + (bx - ax) / L, z + (bz - az) / L) - T.heightAt(x, z)) <= 0.3 + 1e-6, `slope at ${x.toFixed(1)},${z.toFixed(1)}`); } }
+  assert.ok(len > 300 && len < 340, `${len}`);
+  const gate = P2.FENCE.find((f) => P2.FENCE_KINDS[f[3]] === 'fence_gate_wide'); const S = X.STREET;
+  const solids = [...T.natureSolids(), ...T.structureSolids(), ...T.villageSolids(), ...P2.solids()];
+  for (const s of solids) { const edge = T.lineDist(s.x, s.z, E) - (s.r || 0.5); if (edge > X.ROAD.half - 0.15 || T.onBridge(s.x, s.z) || s.guard) continue;
+    if (Math.hypot(s.x - gate[0], s.z - gate[1]) < 6) continue; /* (the gate and the pieces either side of it) */
+    const street = s.x >= S.x0 - 1 && s.x <= S.x1 + 1 && Math.abs(Math.abs(s.z - S.z) - S.lamp) < 0.05; assert.ok(street, `${s.x.toFixed(1)},${s.z.toFixed(1)} in the new road (${edge.toFixed(2)})`); }  for (const l of Y.LOTS) for (let lv = 1; lv <= Y.FENCE.length; lv += 1) { const [x0, x1, z0, z1] = Y.fenceOf(lv);
+    for (const [ex, ez] of E) { const { lx, lz } = Y.local(l, ex, ez); assert.ok(Math.max(x0 - lx, lx - x1, z0 - lz, lz - z1) >= X.ROAD.half - 1e-6, `${l.id} 울타리 ${lv}단계가 길 ${ex},${ez}에 ${X.ROAD.half} m 안`); } }
+  const onE = X.CROSSINGS.filter((c) => T.lineDist(c.x, c.z, E) < 0.1); assert.equal(onE.length, 6);
+  const Paths = require('../public/plaza/island-paths.js'); const res = 1024; const size = T.GROUND.size; const map = Paths.buildRoadMap(T, X, res);
+  const at = (x, z) => { const i = Math.floor((x + size / 2) / (size / res)); const j = Math.floor((z + size / 2) / (size / res)); const k = (j * res + i) * 3; return { on: map[k + 1] > 127, cross: map[k + 2] / 255 }; };
+  assert.ok(at(30, 236).on, 'the village street painted'); assert.ok(at(-20, 205).on, 'the neck painted'); assert.ok(at(42, 236).cross > 0.9, 'its crossing'); assert.ok(!at(30, 242.5).on, 'painted into a yard');
 });
 // v1.10.317 택시 서서 기다리기: the road's clock -- no warp the table's own time; a change set LEAD ms ahead, eased over its ramp,
 // never backwards and never a jump; standing (0) the car stays where it stopped; creeping (a little) it goes on slowly; the

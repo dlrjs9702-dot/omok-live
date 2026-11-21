@@ -49,7 +49,7 @@ const SIGN = (() => { const nx = -Math.sin(gate.yaw); const nz = -Math.cos(gate.
 // ---- 136's two signs (1.10.377): the reserve's board just inside the gate beside the walk, facing whoever comes in (its title); the trail
 // post at the camp's edge by the walk from the bridge, its three arrows turned to point nearest the camp, the lookout and 별마루다리 ----
 const SIGN_RESERVE = (() => { const nx = Math.sin(gate.yaw); const nz = Math.cos(gate.yaw); const tx = Math.cos(gate.yaw); const tz = -Math.sin(gate.yaw);
-  for (const side of [3.2, -3.2, 3.8, -3.8, 4.6, -4.6]) { const x = gate.x + nx * 4 + tx * side; const z = gate.z + nz * 4 + tz * side; if (T.walkable(x, z) && T.walkDist(x, z) > 0.9 && D.newIsleCoast(x, z) > IN + 0.5) return [r2(x), r2(z), r3(gate.yaw)]; }
+  for (const side of [3.2, -3.2, 3.8, -3.8, 4.6, -4.6, 5.4, -5.4]) { const x = gate.x + nx * 4 + tx * side; const z = gate.z + nz * 4 + tz * side; if (T.walkable(x, z) && T.walkDist(x, z) > 0.9 && D.newIsleCoast(x, z) > IN + 0.5 && !(T.roadDist && T.roadDist(x, z) < 3.9 + 1.2)) return [r2(x), r2(z), r3(gate.yaw)]; } /* (1.10.395: off the taxi's road in -- its band and the board's half) */
   return null; })();
 const SIGN_TRAIL = (() => {
   const B = T.ISLE2_BRIDGE_HEAD; let at = null;

@@ -29,6 +29,11 @@ test('반려동물: 서버가 기억해 섬에 들어오면 처음부터 같이 
   { const [me, pet] = await a.page.evaluate(() => { const d = window.PlazaDebug(); return [{ x: d.x, z: d.z }, d.pets().find((x) => x.key === 'me')]; }); expect(Math.hypot(pet.x - me.x, pet.z - me.z)).toBeLessThan(1.2); } /* (in the crate before the rider) */
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('KeyB'); await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().cycling), { timeout: 15000 }).toBe(null);
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().pets().find((x) => x.key === 'me')?.role), { timeout: 20000 }).toBe('follow');
+  /* (1.10.396, 검토 notes pet-unnamed-invisible-20261121 · Codex 381~390 #15: a pet with no name -- '' from the server, null kept -- was made again
+     every frame and never drawn; now it settles and stands, Idle, on the other screen too) */
+  expect((await post(request, '/api/test/pet', a.token, { kind: 'kitten', name: '' })).status).toBe(200);
+  await expect.poll(() => a.page.evaluate(() => { const p = window.PlazaDebug().pets().find((x) => x.key === 'me'); return p ? `${p.name || ''}|${p.clip}` : null; }), { timeout: 20000 }).toBe('|Idle');
+  await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().pets().find((p) => p.key === id)?.clip, aId), { timeout: 30000 }).toBe('Idle');
   expect((await post(request, '/api/island/pet', a.token, { kind: null })).status).toBe(200);
   await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().pets().some((p) => p.key === id), aId), { timeout: 30000 }).toBe(false);
   for (const w of [a, b]) await expectNoScriptError(w.page);

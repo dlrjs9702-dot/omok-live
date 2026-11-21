@@ -29,13 +29,15 @@ test('별마루섬 호랑이: 경고, 잡히면 물건 2개를 잃고 시장님 
     // first out of his sight (45 m) till his file is in, then 10 m off: he comes -- the warning on
     await post(request, '/api/test/tigers', who.token, { place: { id: 'ure', x: spot.x - 45, z: spot.z } });
     await expect.poll(() => page.evaluate(() => window.PlazaTigers()?.shown?.find((t) => t.id === 'ure')?.loaded), { timeout: 60000 }).toBe(true);
-    await page.evaluate(() => { window.__zzClips = []; window.__zzClipWatch = setInterval(() => { const c = window.PlazaTigers()?.list?.find((t) => t.id === 'ure')?.clip; if (c && window.__zzClips[window.__zzClips.length - 1] !== c) window.__zzClips.push(c); }, 80); }); /* (382: the clips he plays on the way) */
+    /* (382: the clips he plays on the way. 1.10.396 검토: the warning too, as it comes -- at 13 m/s from 18 m he has me in about 2 s, and on CI's slow
+       screen a poll missed it -- with its bar's state then) */
+    await page.evaluate(() => { window.__zzClips = []; window.__zzClipWatch = setInterval(() => { const c = window.PlazaTigers()?.list?.find((t) => t.id === 'ure')?.clip; if (c && window.__zzClips[window.__zzClips.length - 1] !== c) window.__zzClips.push(c); const w = window.PlazaTigers()?.warn?.id; if (w && !window.__zzWarn) { window.__zzWarn = w; window.__zzWarnOn = Boolean(document.getElementById('tigerWarn')?.classList.contains('on')); } }, 80); });
     /* (사용자 결정 27 A: caught while 자리 비움 too -- the away time shortened, standing still till he comes) */
     await post(request, '/api/test/away', who.token, { ms: 1500 }); await page.waitForTimeout(2200);
     await post(request, '/api/test/tigers', who.token, { place: { id: 'ure', x: spot.x - 18, z: spot.z } });
     const caught = page.waitForFunction(() => /잡혔어요/.test(document.getElementById('toast')?.textContent || ''), null, { timeout: 60000 });
-    await expect.poll(() => page.evaluate(() => window.PlazaTigers()?.warn?.id || null), { timeout: 20000 }).toBe('ure');
-    expect(await page.evaluate(() => document.getElementById('tigerWarn')?.classList.contains('on'))).toBe(true);
+    await expect.poll(() => page.evaluate(() => window.__zzWarn || null), { timeout: 20000 }).toBe('ure');
+    expect(await page.evaluate(() => window.__zzWarnOn)).toBe(true);
     // (377) caught: five seconds covered, 「이송 중」 -- then his words
     await expect.poll(() => page.evaluate(() => document.getElementById('tigerTransfer')?.classList.contains('on') ?? false), { timeout: 60000 }).toBe(true);
     expect(await page.evaluate(() => document.querySelector('#tigerTransfer .tigerTransferGo')?.textContent)).toBe('이송 중');
