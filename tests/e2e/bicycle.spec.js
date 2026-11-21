@@ -104,7 +104,7 @@ test('섬 택시: 대청마당 정류장에서 타기(1,000P) → 툇마루섬 �
     if (from === 'plaza') { await b.page.evaluate(([x, z]) => window.PlazaWarp(x, z), [s.out.x - 6, s.out.z - 4]); await shot('stop'); }
     await press(); const dialog = page.locator('#plazaDialog'); await expect(dialog.locator('.taxiLine')).toHaveText(`${to.label}까지 갈까요?`, { timeout: 15000 });
     /* (1.10.327 택시 요금: a ride 1,000P or the day's pass 5,000P -- there the first, back the pass) */
-    await expect(dialog.locator('#taxiRideBtn')).toHaveText('한 번 타기 · 1,000P'); await expect(dialog.locator('#taxiPassBtn')).toHaveText('오늘 자유이용권 · 8,000P'); /* (1.10.392 N4-b 결정 40 A: the pass 8,000P; 404 m by the road still 1,000P) */
+    await expect(dialog.locator('#taxiRideBtn')).toHaveText(`${to.label}행 타기 · 1,000P`); /* (1.10.398: where, on the button) */ await expect(dialog.locator('#taxiPassBtn')).toHaveText('오늘 자유이용권 · 8,000P'); /* (1.10.392 N4-b 결정 40 A: the pass 8,000P; 404 m by the road still 1,000P) */
     if (from === 'plaza') await page.evaluate(() => window.PlazaDebug().taxiTrace(true)); /* (294 6: the ride's frames) */
     const pass = from === 'isle'; const before = await balance(); await dialog.locator(pass ? '#taxiPassBtn' : '#taxiRideBtn').click();
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().train().taxi.ride?.from)).toBe(from); await expect(dialog).toBeHidden();
@@ -145,7 +145,7 @@ test('섬 택시: 대청마당 정류장에서 타기(1,000P) → 툇마루섬 �
   { /* (1.10.327) the day's pass held: 「오늘 자유이용권 ✓」, 타기 only -- closed without riding */
     const s = X.stopOf('plaza'); await expect.poll(async () => { await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [s.out.x, s.out.z]); await page.waitForTimeout(400); return page.locator('#plazaHint').textContent(); }, { timeout: 30000 }).toContain(X.STOPS.plaza.sign);
     await press(); const dialog = page.locator('#plazaDialog'); await expect(dialog.locator('.taxiLine')).toHaveText('툇마루섬 마을까지 갈까요? · 오늘 자유이용권 ✓', { timeout: 15000 });
-    await expect(dialog.locator('#taxiRideBtn')).toHaveText('타기'); await expect(dialog.locator('#taxiPassBtn')).toHaveCount(0); await shot('pass');
+    await expect(dialog.locator('#taxiRideBtn')).toHaveText('툇마루섬 마을행 타기'); await expect(dialog.locator('#taxiPassBtn')).toHaveCount(0); await shot('pass');
     await dialog.locator('#taxiCloseBtn').click(); await expect(dialog).toBeHidden();
   }
   // v1.10.285 (사용자 「승강장이랑 택시 둘다 그냥 뚫고 지나다닐 수 있고」): the shelter and the standing car block -- walked into, I stop at their edge
