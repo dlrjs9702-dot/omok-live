@@ -6969,8 +6969,9 @@ async function requestHandler(req, res) {
       /* (1.10.395 Codex 381~390 #13: the requests done kept a day by their time, not the last 20 -- a retry is still known after many moves) */
       const doneMap = Array.isArray(doc.done) ? Object.fromEntries(doc.done.map((d) => [d, nowMs()])) : (doc.done || {});
       if (rid && doneMap[rid]) return { error: 'DONE' };
-      const r = dir === 'put' ? IslandStorehouse.put(doc.items || [], bag, String(body.entryId || ''), Number(body.qty), IslandYard.STORE.SLOTS[stage - 1], doc.seq) : IslandStorehouse.take(doc.items || [], bag, String(body.entryId || ''), Number(body.qty), IslandItems.capOf(account), typeof body.itemId === 'string' ? body.itemId : null);
-      const now = nowMs(); const done = rid ? Object.fromEntries(Object.entries({ ...doneMap, [rid]: now }).filter(([, t]) => now - t < 86400000).slice(-300)) : doc.done;
+      const r = dir === 'put' ? IslandStorehouse.put(doc.items || [], bag, String(body.entryId || ''), Number(body.qty), IslandYard.STORE.SLOTS[stage - 1], doc.seq) : IslandStorehouse.take(doc.items || [], bag, String(body.entryId || ''), Number(body.qty), IslandItems.capOf(account), typeof body.itemId === 'string' ? body.itemId : null, doc.seq); /* (403 #15: the count kept on taking out too) */
+      /* (1.10.403 Codex 391~400 #14: kept the whole day -- the 300 most recent cut a busy day's older ones, and those moved again; 5,000 only against a flood) */
+      const now = nowMs(); const done = rid ? Object.fromEntries(Object.entries({ ...doneMap, [rid]: now }).filter(([, t]) => now - t < 86400000).slice(-5000)) : doc.done;
       return r.error ? { error: r.error } : { doc: { ...doc, items: r.items, ...(r.seq !== undefined ? { seq: r.seq } : {}), ...(rid ? { done } : {}) }, bagNext: r.bag };
     }).catch(() => null);
     if (!out) return sendError(res, 503, 'RETRY', '잠시 후 다시 해 주세요.');
