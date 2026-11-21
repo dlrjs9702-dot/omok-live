@@ -24,7 +24,9 @@ test('역 터: 승강기·들어가는 길 아래 평평(땅과 0.05 m 안), 둑
     // its rim is the beach's),
     // no other level ground (a building's, a lot's) within it, nothing growing on the bank
     const pad = T.PADS.find((p) => Math.hypot(p.x - (lift.x + ex) / 2, p.z - (lift.z + ez) / 2) < 0.01); if (!pad) continue;
-    let steep = 0; for (let a = 0; a < 48; a += 1) for (let d = 0; d < pad.r + 5; d += 0.5) { const x = pad.x + Math.cos((a / 48) * Math.PI * 2) * d; const z = pad.z + Math.sin((a / 48) * Math.PI * 2) * d; if ((1 - D.smooth(pad.r, pad.r + 5, d)) * Math.abs(pad.h - T.heightAt(x, z)) > 0.02 || d < pad.r + 1) steep = Math.max(steep, slope(x, z)); }
+    /* (1.10.389 N3-a: the high bridge's east end reaches into 달끝역's bank -- its planks' side is the bridge's, not the bank's) */
+    const bridged = (x, z) => [[0, 0], [0.25, 0], [-0.25, 0], [0, 0.25], [0, -0.25]].some(([a, b]) => T.onBridge(x + a, z + b));
+    let steep = 0; for (let a = 0; a < 48; a += 1) for (let d = 0; d < pad.r + 5; d += 0.5) { const x = pad.x + Math.cos((a / 48) * Math.PI * 2) * d; const z = pad.z + Math.sin((a / 48) * Math.PI * 2) * d; if (bridged(x, z)) continue; if ((1 - D.smooth(pad.r, pad.r + 5, d)) * Math.abs(pad.h - T.heightAt(x, z)) > 0.02 || d < pad.r + 1) steep = Math.max(steep, slope(x, z)); }
     if (steep > 0.85) problems.push(`${id}: 둑 ${steep.toFixed(2)}`);
     for (const q of T.PADS) if (q !== pad && Math.hypot(q.x - pad.x, q.z - pad.z) < q.r + pad.r + 5) problems.push(`${id}: 다른 터(${Math.round(q.x)},${Math.round(q.z)})`);
     for (const o of growing) if (Math.hypot(o.x - pad.x, o.z - pad.z) < pad.r + 5 && (Math.hypot(o.x - pad.x, o.z - pad.z) < pad.r + 0.5 || slope(o.x, o.z) >= 0.4)) problems.push(`${id}: 터·둑 위 (${o.x.toFixed(1)},${o.z.toFixed(1)})`);

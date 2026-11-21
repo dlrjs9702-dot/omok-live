@@ -693,7 +693,17 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     const r0 = deckAt({ b, u: -b.half }); const r1 = deckAt({ b, u: b.half }); // (2회차 4: a bridge whose ends meet different banks slopes, its rails with it)
     for (const side of [-1, 1]) { const rail = mesh(keep(new THREE.BoxGeometry(0.1, 0.1, Math.hypot(b.half * 2, r1 - r0))), post, side * (b.w / 2 - 0.1), Math.max(b.deck, (r0 + r1) / 2) + 0.9, 0, visual); rail.rotation.x = -Math.atan2(r1 - r0, b.half * 2); rail.castShadow = false; }
     if (b.model) { // (달마루섬 윤슬다리: its own model, whose arched deck is the one walked on -- deckAt)
-      const h = new THREE.Group(); h.position.set(b.x, b.base, b.z); h.rotation.y = Math.atan2(-b.uz, b.ux); h.scale.x = (b.half * 2) / 50; scene.add(h); assets?.attach(b.model, h, visual); continue;
+      const h = new THREE.Group(); h.position.set(b.x, b.base, b.z); h.rotation.y = Math.atan2(-b.uz, b.ux); h.scale.x = b.high ? 1 : (b.half * 2) / 50; scene.add(h);
+      /* (1.10.389 N3-a, assets 133: the high one at its own 56 m; its last 2 m eased onto the banks as deckAt is -- the model bent there to it) */
+      if (b.high) h.userData.fit = (v) => { const u = Math.max(-b.half, Math.min(b.half, v.x)); v.y += deckAt({ b, u }) - b.base - b.modelTop(u); };
+      /* (its ramps' guarded sides over land (dalmaru-island rampGuards): stand-in walls under the rails, each run one box -- the model's side arches stand there) */
+      if (b.high) for (const s of [-1, 1]) {
+        const us = (T.structureSolids?.() || []).filter((o) => o.guard && Math.abs(o.x - b.x) <= b.half + 1 && Math.sign(o.z - b.z) === s).map((o) => o.x - b.x).sort((p, q) => p - q);
+        for (let i = 0; i < us.length;) { let j = i; while (j + 1 < us.length && us[j + 1] - us[j] < 0.6) j += 1;
+          const u0 = Math.max(-b.half, us[i] - 0.4); const u1 = Math.min(b.half, us[j] + 0.4); const top = Math.max(deckAt({ b, u: u0 }), deckAt({ b, u: u1 })); const foot = Math.min(ground(b.x + u0, b.z + s * 3.25), ground(b.x + u1, b.z + s * 3.25)) - 0.2;
+          mesh(keep(new THREE.BoxGeometry(0.5, top - foot, u1 - u0)), post, -s * 3.25, (top + foot) / 2, (u0 + u1) / 2, visual); i = j + 1; }
+      }
+      assets?.attach(b.model, h, visual); continue;
     }
     // in the bridge's frame (z along it, the entry turns the model's length onto z and sizes it by `scale`)
     g.userData.fit = (v) => {
@@ -1375,6 +1385,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     if (I?.peak) out.push({ x: I.peak.x, z: I.peak.z, label: N.peak || '전망대 봉우리' });
     const C = D.CREEK?.pts; if (C?.length) { const [x, z] = C[Math.floor(C.length / 2)]; out.push({ x, z, label: N.creek || '개울' }); }
     const br = bridges.find((b) => b.isle2); if (br) out.push({ x: br.x, z: br.z, label: N.newBridge || '별마루다리' });
+    if (T.DOCK2) out.push({ x: T.DOCK2.x + 4, z: T.DOCK2.z, label: N.isle2Dock || '부두 · 부두 문' }); /* (1.10.389 N3-a: the dock and its gate, 9 m apart -- one name) */
     isle2Places = out; return out;
   }
 

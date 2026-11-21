@@ -211,6 +211,10 @@
   }
   const BRIDGE_Z = 140; // 윤슬다리 (assets 55 bridge.yunseul, 50 m): centred over the 45 m of water between 툇마루섬 and each cape, 2.5 m on land at each end
   const BRIDGES = [-1, 1].map((sgn) => ({ x: sgn * 59.35, z: BRIDGE_Z, length: 42, ends: [[sgn * 38.35, BRIDGE_Z], [sgn * 80.35, BRIDGE_Z]] })); // (the model is 50 m: drawn to this length)
+  /* (1.10.389 N3-a, 사용자 27A·37-3, assets 133: the east one high and long for the boats under it -- 56 m at the model's own length, a
+     flat-topped trapezoid 7.0 m over the sea; its ramps' last 9 m on land each side. `bank`: the road's bank keeps to the old 42 m, the
+     ground round its ends as it was) */
+  Object.assign(BRIDGES[1], { length: 56, ends: [[31.35, BRIDGE_Z], [87.35, BRIDGE_Z]], high: true, bank: 42 });
   // (N1 새 섬: the village's east shore (168.25) to the new island's west shore (224) over 55.8 m of water, 3 m on land each end --
   // the same 윤슬다리 model drawn to 61.75 m, 새 섬다리)
   BRIDGES.push({ x: 196.125, z: NEW_ISLE.bridgeZ, length: 61.75, ends: [[165.25, NEW_ISLE.bridgeZ], [227, NEW_ISLE.bridgeZ]], isle2: true });
@@ -223,6 +227,7 @@
     facadeTownhall: deg(RIDGE.inner - 2, 235), facadeMall: deg(RIDGE.inner - 2, 305),
     stairs: { from: deg(RIDGE.inner - 2, 226), to: deg(RIDGE.inner - 2, 210.5) }, // up the cliff face westward beside 관공서 (문제 기록 3회차 11: on along the ridge, its foot 2 m and more off the hall's front)
     lighthouse: { x: -96, z: 144 }, pier: { x: 98, z: 150, yaw: Math.PI * 0.75 }, dock: { x: 0, z: 3.5 }, // (its gangway onto the beach)
+    dock2: { x: 223.6, z: 197 }, // (1.10.389 N3-a 별마루섬 부두: its float's middle; the gangway east onto the beach -- dalmaru-island DOCK2)
     gamehall: { x: 56, z: -66 }, jail: { x: -66.4, z: -75.7 } /* (R4 구치소: by 관공서, level ground clear of the walks, its door south to the walk east of it) */, notice: { x: -42, z: -71 }, /* (묶음 5: 알림마루 -- one row along 대청마당's west edge, its middle) */ village: { x: -60, z: -30 }, contest: { x: 120, z: 18 }, museum: { x: 108, z: 58 }, farm: { x: -128, z: 50 },
     // 2단계 (2026-10-19): the rest of what stands by hand -- [x, z] or { x, z, face: [x, z] } (the point its front looks at)
     spawn: { x: -22, z: -60 }, // 첫 접속 자리: 알림마루's east side, on 대청마당
@@ -236,7 +241,7 @@
     mural: { x: -33, z: -105, face: [0, -84] } /* (1.10.325 54A: to the north-west 쉼터, facing the fountain) */, busk: { x: -6.4, z: -10.1, face: [0, 95] }, stones: { x: -103.5, z: 39 }, bookcart: { x: -25, z: -91, face: [-20, -86] }, /* (묶음 5: by the north-west garden, off 알림마루) */
     omokTable: { x: -94, z: -8, face: [-86, -4] }, birthday: { x: 9.9, z: -74.1, face: [0, -84] }, /* (1.10.346 155A C안: across the north walk from the 벼룩시장 board) */
     hallLamps: [[-4.1, -22], [5.0, -30], [-4.1, -38]], // the three lamps the electrician mends, beside the walk to the water (off it; T1 길 넓히기: at the taxi road's walk's outer edge, 4.5 m from its middle at x 0.5)
-    stationmaster: { x: 83, z: 137 }, // by 달끝역's way in
+    stationmaster: { x: 89, z: 146 }, // by 달끝역's way in (1.10.389 N3-a: from (83, 137) -- the high bridge's ramp stands there now; 2.2 m from the station's way in (88.3, 143.9), 3.5 m off the bridge's side, 6.7 off the road's middle, by the walk)
     // 5단계 the quest givers and the places they send one to (lib/island-quests.js; 지금 섬's own spots there)
     // October's fields (a scarecrow and a hay bale each), its brooms, hay and a cauldron by 거울호수 (island-halloween.js)
     halloween: { fields: [[-60, 20], [60, 20], [120, 40], [-8, 150], [-132, 30]], extras: [['broom', -112, -22, 0.6], ['broom', -96, 36, 2.1], ['hay', -122, 46, 1.2], ['cauldron', -82, -24, 1.57]] },
