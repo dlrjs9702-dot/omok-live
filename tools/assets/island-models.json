@@ -3277,9 +3277,9 @@
     {
       "out": "characters/ip-characters/ironman.glb",
       "src": "pets169:01. High/characters/ip-characters/ironman.glb",
-      "sha256": "759ab9669a0811684d204779ddb1d1b0a956d73e5efd743008c337269daa74c6",
+      "sha256": "a3ff7c9e7318d30da15ef61b559c5a3168e3c9168ad620eba929d6a9f73d52d1",
       "lowSrc": "pets169:02. Low/characters/ip-characters/ironman_low.glb",
-      "lowSha256": "93331379e40ab6b32dad6febb9d6b51a41d164a357bca611dda987e536aacba5",
+      "lowSha256": "1694805a01c8d04e06d53f752fc28949d8638395f8301d0894a633077ea98657",
       "precompressed": true
     },
     {
