@@ -2703,7 +2703,7 @@ function taxiWay(bare, road, look) {
 // should come to stand), or null
 function taxiBlocker(ride, way, now, across = TAXI_LOOK.across) {
   for (const [token, e] of plazaPresence) {
-    if (e.ride || e.platform || e.taxi || e.boat || taxiRides.get(token) === ride || !Number.isFinite(e.x) || now - (e.at || 0) > 5000 || (e.space && e.space !== 'island')) continue;
+    if (e.ride || e.platform || e.taxi || e.boat || taxiRides.get(token) === ride || !Number.isFinite(e.x) || now - (e.at || 0) > PLAZA_STALE_MS || (e.space && e.space !== 'island')) continue; /* (1.10.392 검토 taxi-yield-flake: 5 s let a screen stalled 2 s -- its pose every 3 s standing -- drop out of the road; the plaza keeps a pose 15 s) */
     const rel = (p) => { const dx = e.x - p.x; const dz = e.z - p.z; return { along: dx * Math.sin(p.yaw) + dz * Math.cos(p.yaw), across: dx * Math.cos(p.yaw) - dz * Math.sin(p.yaw) }; };
     const hit = way.findIndex((p) => { const r = rel(p); return Math.abs(r.across) < across && Math.abs(r.along) < TAXI_LOOK.nose; });
     if (hit < 0) continue;
