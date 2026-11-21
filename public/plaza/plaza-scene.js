@@ -6702,7 +6702,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (!myBoat && boatsState && BT && mySpace === 'island' && !taxiRide && !riding && !platform && !gather && !fishing) {
       const m = me.root.position;
       for (const d of Object.values(BT.DOCKS)) { if (Math.hypot(d.float.x - m.x, d.float.z - m.z) > 8) continue; const near = best && doorOf(best); if (near && !near.plain && Math.hypot(near.x - m.x, near.z - m.z) < 1.2) break;
-        const key = `boat:board:${d.id}`; eventDoors[key] = { x: m.x, z: m.z, name: `⛴ ${BT.signOf(boatsState, d.id, taxiNow(), boatPlace[d.id] || 0)} · 타기` }; best = key; break; }
+        const key = `boat:board:${d.id}`; eventDoors[key] = { x: m.x, z: m.z, name: `⛴ ${BT.signOf(boatsState, d.id, taxiNow(), boatPlace[d.id] || 0)} · ${d.other === 'byeol' ? '별마루섬' : '달마루섬'}행 타기` }; best = key; break; } /* (1.10.398 에셋 검사 2회차 「부두에서 행선지가 안 보임」: where it goes) */
     }
     if (boatNow) { const m = me.root.position; const to = BT.DOCKS[boatNow.to || BT.DOCKS[boatNow.at]?.other]?.label || '';
       eventDoors['boat:ride'] = ['hold', 'back'].includes(boatNow.phase) ? { x: m.x, z: m.z, name: `⛴ 내리기 · 곧 출발 ${Math.max(0, Math.ceil((boatNow.until - taxiNow()) / 1000))}초` } : boatNow.phase === 'sail' ? { x: m.x, z: m.z, name: `⛴ ${to}까지 가는 중`, plain: true } : { x: m.x, z: m.z, name: '⛴ 내리는 중', plain: true };
