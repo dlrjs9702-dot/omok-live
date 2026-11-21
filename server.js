@@ -2660,9 +2660,11 @@ function adminEventsTick(now = nowMs()) { // (every 15 s: a start or an end tell
 const stuckRefuse = (session) => (tigerSim.isOn() && tigerSim.state().some((t) => t.target === session.token && ['stalk', 'chase', 'pounce', 'attack'].includes(t.mode)) ? '호랑이가 쫓고 있어요! 지금은 쓸 수 없어요.' : null);
 // v1.10.294 7 (사용자 「그대로 한바퀴 돌아서 그 자리까지 가야 다른 사람도 탈 수 있게」): one car a stop -- stop id -> the ride its car is out on
 // (there and back empty, IslandTaxi.backOf); in memory: a restart has every car at its stop
-const taxiStopOut = new Map();
-const taxiAwayMs = (from, now = nowMs()) => { const r = taxiStopOut.get(from); const left = r ? IslandTaxi.backOf(r, now) - now : 0; if (left <= 0) taxiStopOut.delete(from); return Math.max(0, left); };
-const taxiStopsView = (now = nowMs()) => Object.fromEntries(Object.keys(IslandTaxi.STOPS).filter((id) => taxiAwayMs(id, now) > 0).map((id) => [id, taxiStopOut.get(id)]));
+// 1.10.391 N4-a (notes n4-plan §4·§5-1): two cars a stop -- the fleet (IslandTaxi.createFleet/takeCar/settle): a ride takes a stop's front car;
+// as its rider gets out it stays there if that stop has fewer than two, else goes back empty; in memory, a restart has two at each stop
+let taxiFleet = IslandTaxi.createFleet(nowMs());
+const taxiAwayMs = (from, now = nowMs()) => { IslandTaxi.settle(taxiFleet, now); return Math.max(0, IslandTaxi.etaAt(taxiFleet, from, now)); };
+const taxiStopsView = () => IslandTaxi.fleetView(taxiFleet); /* (391: the cars -- standing where, out on which ride -- to every screen) */
 let taxiTestRunMs = 3000; // (tests: the road in 3 s; /api/test/taxi-run sets it -- 0 the real road, for photos on the bridge)
 // v1.10.317 택시 서서 기다리기 (notes docs/taxi-yield-20261109.md A1~A3): ten times a second each car on the road looks ahead. Someone
 // on foot in its way -- across within the car's half width + 0.3 m and their own 0.35, ahead from its middle to 3 m past its nose
@@ -2698,7 +2700,9 @@ function taxiBlocker(ride, way, now, across = TAXI_LOOK.across) {
 let taxiTickAt = 0;
 function taxiTick() {
   const now = nowMs(); const late = taxiTickAt ? Math.min(1500, Math.max(0, now - taxiTickAt - 100)) : 0; taxiTickAt = now; /* (a busy server's tick late: looks that much further) */
-  for (const ride of new Set([...taxiStopOut.values(), ...taxiRides.values()])) {
+  if (IslandTaxi.settle(taxiFleet, now)) plazaDirty = true; /* (391: a ride just over decides where its car goes; a car back in its place) */
+  const fleetRides = taxiFleet.cars.filter((c) => c.ride).map((c) => c.ride);
+  for (const ride of new Set([...fleetRides, ...taxiRides.values()])) {
     if (ride.runMs) continue;
     const p = IslandTaxi.carAt(ride, now);
     if (!p || !['start', 'run', 'stop', 'back'].includes(p.phase)) { if (ride.blockedAt || ride.dodge) { ride.blockedAt = null; ride.dodge = null; plazaDirty = true; } continue; }
@@ -2707,9 +2711,16 @@ function taxiTick() {
     const brake = IslandTaxi.LEAD + IslandTaxi.RAMP / 2 + 200 + late * 2; /* (+ a late tick or two on a busy server) */ const vTable = speedAt(road); const vMax = Math.max(vTable, speedAt(road + brake)); /* (pulling away it is still speeding up as it brakes) */
     const look = TAXI_LOOK.gap + vMax * IslandTaxi.rateOf(ride, now) * (brake / 1000);
     const way = taxiWay(bare, road, look); const dodge = ride.dodge || null; const walk = vTable > 0.1 ? Math.min(1, TAXI_LOOK.walk / vTable) : 1;
+    /* (1.10.391 N4-a 172A: the bridge is one lane -- about to go on it while a car the other way is on it, it stands 6 m before it till that one is off;
+       looked at over 25 m whatever its pace, so standing it still sees the bridge) */
+    let bridgeStand = -1; { const onB = (q) => IslandTaxi.onBridgeBox(q.x, q.z, 2); const p0 = IslandTaxi.carAt(bare, road);
+      if (p0 && !onB(p0)) { const bway = taxiWay(bare, road, 25); const enter = bway.findIndex(onB);
+        if (enter > 0) { const dir = Math.sign(Math.sin(bway[enter].yaw)); const meeting = [...new Set([...fleetRides, ...taxiRides.values()])].some((o) => { if (o === ride) return false; const q = IslandTaxi.carAt(o, now); return Boolean(q) && onB(q) && ['start', 'run', 'stop', 'back'].includes(q.phase) && Math.sign(Math.sin(q.yaw)) !== dir; });
+          if (meeting) { let k = enter; let gone = 0; while (k > 0 && gone < 6) { gone += Math.hypot(bway[k].x - bway[k - 1].x, bway[k].z - bway[k - 1].z); k -= 1; } bridgeStand = k; } } } }
     const ahead = taxiBlocker(ride, way, now); /* (someone on the road's middle in front: still going by them) */
-    const who = dodge?.mode === 'ghost' ? null : dodge ? taxiBlocker(ride, shiftWay(way, dodge.off), now, TAXI_LOOK.pass) : ahead; let want = 1;
-    if (who) {
+    const who = dodge?.mode === 'ghost' ? null : dodge ? taxiBlocker(ride, shiftWay(way, dodge.off), now, TAXI_LOOK.pass) : ahead; let want = 1; let standAt = who ? who.stand : 0;
+    if (bridgeStand >= 0 && !who) { want = 0; standAt = bridgeStand; if (!ride.bridgeWait) { ride.bridgeWait = now; plazaDirty = true; } } /* (391: no horn, no creeping by -- it waits its turn) */
+    else if (who) {
       if (!ride.blockedAt) { ride.blockedAt = now; plazaDirty = true; } want = 0;
       if (now - ride.blockedAt >= TAXI_LOOK.creep) { /* (133A: 3 s -- by them, aside where the road has room, else see-through) */
         const me = way[0]; const e = plazaPresence.get(who.token); const a = e ? (e.x - me.x) * Math.cos(me.yaw) - (e.z - me.z) * Math.sin(me.yaw) : 0; const s = a >= 0 ? 1 : -1;
@@ -2722,6 +2733,7 @@ function taxiTick() {
       }
     } else {
       if (ride.blockedAt) { ride.blockedAt = null; plazaDirty = true; }
+      if (ride.bridgeWait && bridgeStand < 0) { ride.bridgeWait = null; plazaDirty = true; }
       if (dodge && !ahead) { /* (past them: back to the middle, solid again) */
         const at = now + IslandTaxi.LEAD; if (dodge.off || IslandTaxi.sideAt(ride, at)) ride.side = { at, from: IslandTaxi.sideAt(ride, at), to: 0, ms: IslandTaxi.RAMP };
         if (ride.ghost && !ride.ghost.until) ride.ghost = { ...ride.ghost, until: at };
@@ -2730,7 +2742,7 @@ function taxiTick() {
     }
     const was = ride.warp ? ride.warp.r1 : 1;
     if (want === 0) { /* (to a stand where `who.stand` says -- the ramp shortened to get there, never past it: a late tick still stops short) */
-      const at = now + IslandTaxi.LEAD; const tauAt = IslandTaxi.roadNow(ride, at); const r0 = IslandTaxi.rateOf(ride, at); const target = road + who.stand * 100;
+      const at = now + IslandTaxi.LEAD; const tauAt = IslandTaxi.roadNow(ride, at); const r0 = IslandTaxi.rateOf(ride, at); const target = road + standAt * 100;
       const ms = Math.max(120, Math.min(IslandTaxi.RAMP, (2 * (target - tauAt)) / Math.max(0.05, r0)));
       const planned = ride.warp && was === 0 ? ride.warp.tau + (ride.warp.r0 * ride.warp.ms) / 2 : Infinity;
       if (was !== 0 || planned > target + 40) { IslandTaxi.warpTo(ride, 0, now, ms); plazaDirty = true; }
@@ -8669,7 +8681,10 @@ async function requestHandler(req, res) {
        the pass's claim the account and the day: bought once a day, and what says I have it) */
     const fare = IslandTaxi.fareOf({ fare: Economy.value('taxi:fare'), from, to: IslandTaxi.STOPS[from].to }); const dayPass = Math.max(0, Math.round(Number(Economy.value('taxi:dayPass')) || 0));
     const passDay = kstDate(nowMs()); const passClaim = `taxipass:${account}:${passDay}`; const hasPass = Boolean(await pointStore.settlementOf(passClaim));
-    if (req.method === 'GET') return sendJson(res, 200, { ok: true, from, to: IslandTaxi.STOPS[from].to, fare, dayPass, pass: hasPass, awayS: Math.ceil(taxiAwayMs(from) / 1000) });
+    /* (1.10.391 N4-a 「어디로 갈까요?」: the places one can go from here and what each costs -- one now, the other end; N4-b adds the stops) */
+    const dests = [{ id: IslandTaxi.STOPS[from].to, label: IslandTaxi.STOPS[IslandTaxi.STOPS[from].to].label, fare }];
+    if (req.method === 'GET') return sendJson(res, 200, { ok: true, from, to: IslandTaxi.STOPS[from].to, fare, dayPass, pass: hasPass, awayS: Math.ceil(taxiAwayMs(from) / 1000), dests, cars: IslandTaxi.standingAt(taxiFleet, from).length });
+    if (body.to != null && !dests.some((d) => d.id === body.to)) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     const pay = hasPass ? 'pass' : body.pay === 'pass' ? 'pass' : 'fare';
     const stop = IslandTaxi.stopOf(from); const here = plazaPresence.get(session.token);
     if (taxiRides.has(session.token)) return sendError(res, 409, 'TAXI_RIDING', '이미 택시를 타고 있어요.');
@@ -8683,7 +8698,8 @@ async function requestHandler(req, res) {
     if (taxiPaying.has(session.token)) return sendError(res, 409, 'TAXI_RIDING', '이미 택시를 타고 있어요.');
     taxiPaying.add(session.token);
     const ride = { from, startedAt, ...(process.env.NODE_ENV === 'test' && taxiTestRunMs ? { runMs: taxiTestRunMs } : {}) };
-    taxiStopOut.set(from, ride); let took = false; /* (294: the stop's car taken before the fare -- one of two at once) */
+    const grab = IslandTaxi.takeCar(taxiFleet, from, ride, startedAt); if (!grab) { taxiPaying.delete(session.token); const away = taxiAwayMs(from, startedAt); return sendError(res, 409, 'TAXI_AWAY', `택시가 돌아오는 중이에요 · 약 ${Math.ceil(away / 1000)}초`, { awayS: Math.ceil(away / 1000) }); }
+    let took = false; /* (294: the stop's car taken before the fare -- one of two at once; 391: its front car, the one behind pulled up) */
     let paid = 0;
     try {
       const price = hasPass ? 0 : pay === 'pass' ? dayPass : fare;
@@ -8694,7 +8710,7 @@ async function requestHandler(req, res) {
         if (out.applied) { paid = price; notifyPointsChanged([account]); } /* (a pass already bought today -- by another screen at once: not again) */
       }
       took = true;
-    } finally { taxiPaying.delete(session.token); if (!took && taxiStopOut.get(from) === ride) taxiStopOut.delete(from); }
+    } finally { taxiPaying.delete(session.token); if (!took) grab.undo(); else plazaDirty = true; }
     taxiRides.set(session.token, ride); freeSeat(session.token);
     here.taxi = ride; here.bike = null; plazaDirty = true;
     return sendJson(res, 200, { ok: true, taxi: ride, fare: paid, pay, pass: pay === 'pass', to: stop.to, now: nowMs() });
@@ -8731,7 +8747,7 @@ async function requestHandler(req, res) {
     const body = await parseJson(req); const scale = Math.max(1, Math.min(40, Number(body.scale) || 1)); for (const b of boatFleet.boats) for (const t of b.seats) if (t) { const p = plazaPresence.get(t); if (p) p.boat = null; }
     boatFleet = IslandBoat.createFleet({ now: nowMs(), scale }); boatDone.clear(); broadcastIsland('boats', boatsView()); return sendJson(res, 200, { ok: true, boats: boatsView() });
   }
-  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/taxi-run' && req.method === 'POST') { const body = await parseJson(req); taxiTestRunMs = Math.max(0, Math.min(120000, Number(body.ms) || 0)); if (body.back !== false) taxiStopOut.clear(); /* (294: every car at its stop) */ return sendJson(res, 200, { ok: true, ms: taxiTestRunMs }); }
+  if (process.env.NODE_ENV === 'test' && pathname === '/api/test/taxi-run' && req.method === 'POST') { const body = await parseJson(req); taxiTestRunMs = Math.max(0, Math.min(120000, Number(body.ms) || 0)); if (body.back !== false) taxiFleet = IslandTaxi.createFleet(nowMs()); /* (294: every car at its stop; 391: two at each) */ return sendJson(res, 200, { ok: true, ms: taxiTestRunMs }); }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/train-shift' && req.method === 'POST') { // tests: the trains' clock moved on (ms)
     const body = await parseJson(req); trainShift = Number.isFinite(Number(body.ms)) ? Number(body.ms) : 0;
     trainTraffic = IslandTrain.createTraffic(trainNow());
@@ -11014,7 +11030,7 @@ async function main() {
   await starsFragmentFrom().catch((error) => console.warn(`[stars] fragmentFrom not read: ${error?.message || error}`)); /* (366: the switch to star fragments fixed at this version's first start; Codex 361~370 #6: not read -- asked again on a look) */
   setInterval(() => { try { adminEventsTick(); } catch (error) { console.error('[island-event] tick', error.message); } }, 15000).unref();
   { /* 1.10.363 메모리 (운영 OOM 11-18 13:18Z): a [mem] line every 5 min and at 80 % of the limit, with the biggest of these by entries */
-    const tracked = { petOf, bagSlots, boxSlots, stockNoticed, stockNewsSeen, fishModes, fishModeForced, sessions, activeGuestSessions, rooms, streams, lobbyStreams, rateLimits, invitations, islandInviteIntents, equippedSkinCache, eventAudience, rewardTestAccounts, codeRevs, vendorCache, hwatuCache, testNotices, photoUploading, accountTokens, setupTickets, liveEntryKeys, messengerStreams, climbs, errandStages, storyDocs, taxNoted, soloFirsts, plazaPresence, plazaLastPos, townhallInside, storeInside, furnitureInside, petshopInside, fashionInside, homeInside, homeFloor, yardLevels, farmDocs, petReadFailedAt, taxDebt, jailInside, exchangeInside, denInside, denBelow, museumInside, jailInmates, jailFreed, jailEssays, jailVeterans, visitNoted, resourcePulls, weedPulls, questCache, soloGames, reflexRuns, residentBets, betChains, puzzleStarts, cardRuns, herosurvRuns, plazaSpots, townhallPass, fishCasts, bigCatchAt, seatTaken, snowThrows, insectShown, showUsed, trainVisitors, trainRiders, taxiRides, taxiPaying, unstuckAt, taxiStopOut, talkNow, eventRounds, contestPasses, inflightEntryIds, expiredEntries };
+    const tracked = { petOf, bagSlots, boxSlots, stockNoticed, stockNewsSeen, fishModes, fishModeForced, sessions, activeGuestSessions, rooms, streams, lobbyStreams, rateLimits, invitations, islandInviteIntents, equippedSkinCache, eventAudience, rewardTestAccounts, codeRevs, vendorCache, hwatuCache, testNotices, photoUploading, accountTokens, setupTickets, liveEntryKeys, messengerStreams, climbs, errandStages, storyDocs, taxNoted, soloFirsts, plazaPresence, plazaLastPos, townhallInside, storeInside, furnitureInside, petshopInside, fashionInside, homeInside, homeFloor, yardLevels, farmDocs, petReadFailedAt, taxDebt, jailInside, exchangeInside, denInside, denBelow, museumInside, jailInmates, jailFreed, jailEssays, jailVeterans, visitNoted, resourcePulls, weedPulls, questCache, soloGames, reflexRuns, residentBets, betChains, puzzleStarts, cardRuns, herosurvRuns, plazaSpots, townhallPass, fishCasts, bigCatchAt, seatTaken, snowThrows, insectShown, showUsed, trainVisitors, trainRiders, taxiRides, taxiPaying, unstuckAt, talkNow, eventRounds, contestPasses, inflightEntryIds, expiredEntries };
     if (process.env.NODE_ENV !== 'test') require('./lib/mem-watch').createMemWatch({ limitMb: Number(process.env.MEMORY_LIMIT_MB) || 512, sizes: () => ({ ...Object.fromEntries(Object.entries(tracked).map(([k, m]) => [k, m.size])), sseClosed, sseSkipped }) }).tick();
   }
   bootMark('before-listen');

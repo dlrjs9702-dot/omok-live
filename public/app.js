@@ -6159,17 +6159,22 @@
     if (short(q.fare)) ride.disabled = true; if (pass && short(q.dayPass)) pass.disabled = true;
     if (short(q.fare)) status.textContent = `포인트가 모자라요(${won(q.fare)})`;
     if (q.awayS > 0) { ride.disabled = true; if (pass) pass.disabled = true; status.textContent = `택시가 돌아오는 중이에요 · 약 ${q.awayS}초`; } /* (294 7: one car a stop -- out, coming back) */
+    /* (1.10.391 N4-a 「어디로 갈까요?」: where one can go from here, each with its fare -- picked, the line and 타기 say it; one now, the stops in N4-b) */
+    const dests = Array.isArray(q.dests) && q.dests.length ? q.dests : [{ id: q.to, label: to, fare: q.fare }]; let pick = dests[0];
+    const list = document.createElement('div'); list.className = 'taxiDests'; list.setAttribute('role', 'radiogroup'); list.setAttribute('aria-label', '어디로 갈까요?');
+    const choose = (d) => { pick = d; for (const b of list.children) b.setAttribute('aria-checked', String(b.dataset.to === d.id)); line.textContent = `${d.label}까지 갈까요?${q.pass ? ' · 오늘 자유이용권 ✓' : ''}`; if (!q.pass) ride.textContent = `한 번 타기 · ${won(d.fare)}`; };
+    for (const d of dests) { const b = button(`taxiDest-${d.id}`, `${d.label} · ${won(d.fare)}`, 'ghost taxiDest'); b.dataset.to = d.id; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(d === pick)); b.addEventListener('click', () => choose(d)); list.append(b); }
     const go = async (pay) => {
       for (const b of [ride, pass]) if (b) b.disabled = true;
       try {
         const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
-        const r = await api('/api/island/taxi', { method: 'POST', body: JSON.stringify({ from, pay }) });
-        plaza.controller?.onTaxiEnd?.(() => showToast(`🚕 ${to}에 도착했어요`)); plaza.controller?.startTaxi?.(r.taxi);
+        const r = await api('/api/island/taxi', { method: 'POST', body: JSON.stringify({ from, to: pick.id, pay }) });
+        plaza.controller?.onTaxiEnd?.(() => showToast(`🚕 ${pick.label}에 도착했어요`)); plaza.controller?.startTaxi?.(r.taxi);
         plazaDialog.close(); if (r.fare) loadPoints(); if (r.fare && r.pass) showToast('🎫 오늘 자유이용권 ✓ · 오늘은 몇 번이든 타요', 3000); plazaStage.focus({ preventScroll: true });
-      } catch (error) { status.textContent = error.message; ride.disabled = short(q.fare); if (pass) pass.disabled = short(q.dayPass); }
+      } catch (error) { status.textContent = error.message; ride.disabled = short(pick.fare); if (pass) pass.disabled = short(q.dayPass); }
     };
     ride.addEventListener('click', () => go(q.pass ? 'pass' : 'fare')); pass?.addEventListener('click', () => go('pass'));
-    row.append(...[ride, pass, close].filter(Boolean)); card.append(line, status, row); openPlazaWindow('🚕 섬 택시', [card]); ride.focus({ preventScroll: true });
+    row.append(...[ride, pass, close].filter(Boolean)); card.append(line, list, status, row); openPlazaWindow('🚕 어디로 갈까요?', [card]); ride.focus({ preventScroll: true });
   }
   async function openPlaque(id) {
     try {

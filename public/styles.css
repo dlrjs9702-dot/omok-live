@@ -4000,3 +4000,7 @@ body.plazaMode .plazaDialog:not(.adminMode) :is(input,textarea)::placeholder{col
 #islandBagDialog .lookMeta{color:var(--isle-soft)}
 body.plazaMode .museumItem.empty{opacity:1;color:var(--isle-soft);border-style:dashed}
 body.plazaMode .tfRow small{opacity:1;color:var(--isle-soft)}
+/* 1.10.391 N4-a 택시 「어디로 갈까요?」: the places one can go, each a row with its fare; the one picked honey with a dark line (사용자 결정 43 ② A) */
+.taxiDests{display:grid;gap:6px;margin:6px 0 10px}
+.taxiDests .taxiDest{display:flex;justify-content:space-between;align-items:center;min-height:44px;padding:0 14px;text-align:left;font-weight:800}
+body.plazaMode .isle-sheet .taxiDests .taxiDest[aria-checked="true"]{background:var(--isle-select);border-color:var(--isle-tag);box-shadow:inset 0 0 0 1px var(--isle-tag);color:var(--isle-ink)}

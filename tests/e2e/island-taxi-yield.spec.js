@@ -18,7 +18,7 @@ test('섬 택시 비켜 가기: 건널목에 선 사람 → 빵·비켜 주세�
     await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
     await page.locator('#plazaDialog #taxiRideBtn').click();
     await expect.poll(() => page.evaluate(() => window.PlazaDebug().train().taxi.ride?.from)).toBe('plaza');
-    const car = (p) => p.evaluate(() => (window.PlazaDebug().taxiCars() || []).find((c) => c.key === 'plaza') || null);
+    const car = (p) => p.evaluate(() => (window.PlazaDebug().taxiCars() || [])[0] || null); /* (1.10.391 N4-a: the cars out, by car id -- one ride, the one car out) */
     // 빵 and 비켜 주세요, on the one in its way's screen
     await expect.poll(async () => { const c = await car(b.page); return Boolean(c?.horn && c?.ask); }, { timeout: 40000, intervals: [100] }).toBe(true); /* (b warped once and left still: a warp is a new place on the server -- the wait starts over) */
     // see-through on both screens, in the same place
