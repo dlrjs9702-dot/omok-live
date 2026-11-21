@@ -9268,6 +9268,14 @@
       "precompressed": true
     },
     {
+      "out": "byeolmaru-v1/fence_gate_wide.glb",
+      "src": "taxi163:01. High/byeolmaru-v1/fence_gate_wide.glb",
+      "sha256": "ed66ebdabb9599a2b2a75782fa71331a81669fc29aeb69776f3581922f2f1e17",
+      "lowSrc": "taxi163:02. Low/byeolmaru-v1/fence_gate_wide_low.glb",
+      "lowSha256": "eeb62b7dd224f1f469961cf307fe116a0edb7f3288e96fe5897ffe6c0b3c8e72",
+      "precompressed": true
+    },
+    {
       "out": "characters/motions/TaxiSit.glb",
       "src": "taxi99:01. High/motions/TaxiSit.glb",
       "sha256": "d0ab47c697a0b482641455ae7b81ae56d96239d474d4d5db1750d45ccdeafa93"

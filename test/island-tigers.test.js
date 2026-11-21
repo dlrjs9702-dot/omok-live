@@ -24,6 +24,9 @@ test('별마루섬 호랑이: 캠핑장·전망대·문 둘레 12 m는 안 들�
   assert.ok(g.cellCount() > 20000, `${g.cellCount()}`);
   assert.equal(g.huntable(I.camp.x, I.camp.z), false); assert.equal(g.huntable(I.peak.x, I.peak.z), false); assert.equal(g.open(I.camp.x, I.camp.z), false);
   const gate = P.FENCE.find((f) => P.FENCE_KINDS[f[3]] === 'fence_gate'); assert.equal(g.huntable(gate[0], gate[1]), false); assert.equal(g.open(gate[0] + 6, gate[1]), false);
+  /* (1.10.394 N4-c, notes n4-plan §5-4: the wide gate's round 16 m -- the taxi's stand inside it (238, 229.5), 9 x 6 m, none of it huntable) */
+  const wide = P.FENCE.find((f) => P.FENCE_KINDS[f[3]] === 'fence_gate_wide'); assert.equal(g.huntable(wide[0] + 15, wide[1] + 3), false);
+  for (let x = 238 - 4.5; x <= 238 + 4.5; x += 0.5) for (let z = 229.5 - 3; z <= 229.5 + 3; z += 0.5) assert.equal(g.huntable(x, z), false, `종점 ${x},${z}`);
   // one fleeing straight away (sliding aside where blocked), ticks of 0.1 s; 09시 KST: awake
   const chase = (speed, gap, now0 = Date.UTC(2026, 10, 20, 0, 0, 0)) => {
     const s = P.SWAMPS[1]; let px = s[0] + 18; let pz = s[1]; g.place('ure', px - gap, pz, now0); g.place('angae', I.x + 300, I.z, now0); g.setClockShift(0);

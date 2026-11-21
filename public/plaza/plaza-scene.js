@@ -1408,15 +1408,20 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // 1.10.377 N2a 별마루다리's people gate (assets 152 fence_gate: its leaf hinged at x -0.52, opened turning +Y): on its own with its nodes kept, the
   // leaf swinging open while anyone stands within 2.6 m of it and shut again after
   // (1.10.389 N3-a: and the 부두 문 by 별마루섬 부두 -- every gate in the list, the first 별마루다리's)
-  const isle2Gates = (globalThis.Isle2Props?.FENCE || []).filter((a) => globalThis.Isle2Props.FENCE_KINDS[a[3]] === 'fence_gate').map((f) => {
+  /* (1.10.394 N4-c, assets 163 fence_gate_wide: 별마루다리's gate the taxi's now -- 4.4 m between its posts, no bar over, two leaves (leaf_l
+     turning -1.45, leaf_r +1.45, both into the island), open while anyone is within 3.5 m or a taxi within 20 m; the ground inside cut for
+     them (dalmaru-terrain gateCut). Still first in the list) */
+  const isle2Gates = (globalThis.Isle2Props?.FENCE || []).filter((a) => /^fence_gate/.test(globalThis.Isle2Props.FENCE_KINDS[a[3]])).map((f) => {
+    const wide = globalThis.Isle2Props.FENCE_KINDS[f[3]] === 'fence_gate_wide';
     const g = new THREE.Group(); g.position.set(f[0], heightAt(f[0], f[1]), f[1]); g.rotation.y = f[2]; scene.add(g);
-    const v = new THREE.Group(); g.add(v); for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.24, 2.42, 0.24), mat(0x8a6440), s * 1.08, 1.21, 0, v); mesh(new THREE.BoxGeometry(2.4, 0.16, 0.2), mat(0x8a6440), 0, 2.34, 0, v);
-    assets.attach('byeolmaru.fence_gate', g, v);
-    let open = 0; let leaves = []; let lookedAt = 0;
-    return { g, at: { x: f[0], z: f[1] }, open: () => open, step(dt, people) {
-      const now = performance.now(); if (now - lookedAt > 1000) { lookedAt = now; leaves = []; g.traverse((o) => { if (o.name === 'leaf') leaves.push(o); }); }
-      const near = people.some((p) => Math.hypot(p.x - f[0], p.z - f[1]) < 2.6); open += ((near ? 1 : 0) - open) * (1 - Math.exp(-dt * 6));
-      for (const l of leaves) { l.rotation.y = open * 1.45; l.updateMatrix?.(); l.matrixAutoUpdate = true; }
+    const v = new THREE.Group(); g.add(v); const px = wide ? 2.4 : 1.08; for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.24, wide ? 2.5 : 2.42, 0.24), mat(0x8a6440), s * px, wide ? 1.25 : 1.21, 0, v); if (!wide) mesh(new THREE.BoxGeometry(2.4, 0.16, 0.2), mat(0x8a6440), 0, 2.34, 0, v);
+    if (wide) for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(1.16, 2.2, 0.45), mat(0x8a6440), s * 3.11, 1.1, 0, v); /* (its wings' stand-ins, over their circles: dalmaru-walk) */
+    assets.attach(wide ? 'byeolmaru.fence_gate_wide' : 'byeolmaru.fence_gate', g, v);
+    let open = 0; let leaves = []; let lookedAt = 0; const reach = wide ? 3.5 : 2.6;
+    return { g, at: { x: f[0], z: f[1] }, wide, open: () => open, step(dt, people, cars = []) {
+      const now = performance.now(); if (now - lookedAt > 1000) { lookedAt = now; leaves = []; g.traverse((o) => { if (o.name === 'leaf' || o.name === 'leaf_l' || o.name === 'leaf_r') leaves.push(o); }); }
+      const near = people.some((p) => Math.hypot(p.x - f[0], p.z - f[1]) < reach) || (wide && cars.some((c) => Math.hypot(c.x - f[0], c.z - f[1]) < 20)); open += ((near ? 1 : 0) - open) * (1 - Math.exp(-dt * 6));
+      for (const l of leaves) { l.rotation.y = (l.name === 'leaf_l' ? -1 : 1) * open * 1.45; l.updateMatrix?.(); l.matrixAutoUpdate = true; }
     } };
   });
   const isle2Gate = isle2Gates[0] || null;
@@ -6831,7 +6836,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       forestAir.step(dt, { me: { x: p.x, y: p.y, z: p.z }, sunDir: sunDirNow, phase, quality, lessMotion: Boolean(lessMotion?.matches), outdoors, season: globalThis.IslandTerrain.seasonAt?.(p.x, p.z, Date.now() + serverOffset) || 'summer', now, woodNow: island.isle2Wood?.() || 0, sound: !photoMode });
       woodLight();
       tigerView.step(dt, p, outdoors); /* (1.10.376 N2a-2 별마루섬 호랑이: tigers-view.js) */
-      for (const gate of isle2Gates) if (Math.hypot(p.x - gate.at.x, p.z - gate.at.z) < 60) { const people = [p]; for (const o of others.values()) people.push(o.c.root.position); gate.step(dt, people); } /* (1.10.377: the gate's leaf; 389: each gate's) */
+      for (const gate of isle2Gates) if (Math.hypot(p.x - gate.at.x, p.z - gate.at.z) < 60) { const people = [p]; for (const o of others.values()) people.push(o.c.root.position); gate.step(dt, people, taxiCars); } /* (1.10.377: the gate's leaf; 389: each gate's) */
       if (boatObjs.length) stepBoats(dt, p); /* (1.10.390 탐방선: the boats, their captains, the riders on their seats) */
     }
     farCull(camera.position.x, camera.position.z);

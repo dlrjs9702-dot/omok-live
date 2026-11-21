@@ -2042,6 +2042,16 @@
       "nodes": 6,
       "reason": "1.10.375 N2a-1 assets 152: the people's gate -- its leaf a mesh of its own (turned open by the game), stand_in / stand_out empty nodes"
     },
+    "byeolmaru-v1/fence_gate_wide.glb": {
+      "meshes": 3,
+      "nodes": 8,
+      "reason": "1.10.394 N4-c assets 163: the taxi's wide gate -- its two leaves (leaf_l, leaf_r) meshes of their own (turned open by the game), stand_in / stand_out empty nodes"
+    },
+    "byeolmaru-v1/fence_gate_wide_low.glb": {
+      "meshes": 3,
+      "nodes": 8,
+      "reason": "1.10.394 N4-c assets 163: the taxi's wide gate -- its two leaves (leaf_l, leaf_r) meshes of their own (turned open by the game), stand_in / stand_out empty nodes"
+    },
     "spring157/spring/spring_cave.glb": {
       "meshes": 4,
       "nodes": 4,
