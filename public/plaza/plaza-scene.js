@@ -1260,13 +1260,15 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const train = trainScene({ scene, assets, solids, vcMat, signboard }); // v1.10.47 관광열차 (its steps are walked round)
   // v1.10.271 섬 택시: the two stops and every ride's car; SPACE by a stop asks (app: the fare, then 타기)
   const TX = globalThis.IslandTaxi; const taxiView = taxiScene({ scene, assets, mark: () => { const t = makeTag('빵!', null); t.scale.multiplyScalar(0.8); return t; }, tag: (text) => { const t = makeTag(text, null); t.scale.multiplyScalar(1.6); return t; } }); /* (294 7: the stop's 「돌아오는 중 · N초」, big) */
+  const taxiParked = { at: null }; /* (403 #18: whether a car stands in a terminal's place -- set once the fleet is known, below) */
   for (const id of Object.keys(TX.STOPS)) {
     const s = TX.stopOf(id); doors[`taxi:${id}`] = { x: s.out.x, z: s.out.z, name: s.sign, mapName: '🚕 택시' };
     // v1.10.285 (사용자 「승강장이랑 택시 둘다 그냥 뚫고 지나다닐 수 있고」): the shelter (its roof 2.9 m along its own x) and the car
     // standing there (1.7 x 3.2 m) block -- three circles along the shelter, two along the car; the car's door side left clear
     const sh = s.shelter; for (const k of [-0.8, 0, 0.8]) solids.push({ x: sh.x + Math.cos(sh.yaw) * k, z: sh.z - Math.sin(sh.yaw) * k, r: 0.7, taxi: true });
-    for (const k of [-0.75, 0.75]) solids.push({ x: s.x + Math.sin(s.yaw) * k, z: s.z + Math.cos(s.yaw) * k, r: 0.9, taxi: true });
-    { const b = TX.placeOf(id, 1); for (const k of [-0.75, 0.75]) solids.push({ x: b.x + Math.sin(b.yaw) * k, z: b.z + Math.cos(b.yaw) * k, r: 0.9, taxi: true }); } /* (1.10.391 N4-a: the second car's place behind) */
+    /* (1.10.403 Codex 391~400 #18: a place's two circles only while a car stands in it -- the one behind pulled up or gone, its place walked through) */
+    for (const k of [-0.75, 0.75]) solids.push({ x: s.x + Math.sin(s.yaw) * k, z: s.z + Math.cos(s.yaw) * k, r: 0.9, taxi: true, off: () => taxiParked.at !== null && !taxiParked.at(id, 0) });
+    { const b = TX.placeOf(id, 1); for (const k of [-0.75, 0.75]) solids.push({ x: b.x + Math.sin(b.yaw) * k, z: b.z + Math.cos(b.yaw) * k, r: 0.9, taxi: true, off: () => taxiParked.at !== null && !taxiParked.at(id, 1) }); } /* (1.10.391 N4-a: the second car's place behind) */
   }
   /* (1.10.392 N4-b) the road stops: SPACE by the sign (its name, 「택시 부르기」 or 타기 in app's window); the sign's post walked round (assets 163 [0, 0, 0.18]) */
   for (const id of Object.keys(TX.ROADSTOPS || {})) { const at = TX.curbOf(id).sign; doors[`taxi:${id}`] = { x: at.x, z: at.z, name: `🚕 택시 · ${TX.labelOf(id)}`, mapName: '🚕 택시' }; solids.push({ x: at.x, z: at.z, r: 0.2, taxi: true }); }
@@ -7178,6 +7180,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // the camera turns as ever), get out at the other stop a half step towards its bench; the cars drawn for everyone's rides
   let taxiRide = null; let onTaxiEnd = null; let taxiCars = []; // (v1.10.285: the cars this frame -- pushing me, the walkers stepping aside)
   const taxiNow = () => viewNow(); /* (294: the eased clock) */ let taxiStops = {}; /* (294 7: the server's { stopId: ride } whose car is out) */
+  /* (1.10.403 Codex 391~400 #18: a place taken -- a car standing in it (the one pulled up from behind still behind till its glide starts); before the
+     fleet is heard of, every place as before) */
+  taxiParked.at = (id, k) => { const cars = taxiStops?.cars; if (!Array.isArray(cars)) return true; const now = taxiNow();
+    return cars.some((c) => !c.ride && c.at === id && (k === 0 ? c.place === 0 && !(c.pulledAt && now < c.pulledAt) : c.place === 1 || (c.place === 0 && c.pulledAt && now < c.pulledAt + 2000))); };
   const taxiAhead = () => { const q = taxiView.seatOf(taxiRide.ride, taxiNow() + 1500); return { x: q.x, z: q.z }; }; let taxiTrace = null; /* (294: a ride's frames, measured -- debug taxiTrace) */
   // v1.10.317 택시 서서 기다리기: a ride's road clock (IslandTaxi warp -- the server eases a car to a stop for someone in front and on
   // again) and its wait (blockedAt: the 「빵」 at 2 s), checked number by number; my own ride takes them from each state answer

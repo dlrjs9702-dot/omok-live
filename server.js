@@ -232,7 +232,7 @@ const IslandTigers = require('./lib/island-tigers'); // 1.10.376 N2a-2 별마루
    island-events, whose first look at the island makes them) */
 const BootCache = require('./lib/boot-cache');
 const bootCache = (process.env.BOOT_CACHE_ONLY && !process.env.BOOT_CACHE_READ) || process.env.BOOT_CACHE === 'off' ? null : BootCache.read(); /* (BOOT_CACHE_READ: test/boot-cache.test.js -- what a read start holds, written out) */
-if (bootCache) { IslandTerrain.presetNature?.(bootCache.nature, bootCache.natureBlocks); IslandNpcs.useGrid(bootCache.grid); }
+const bootGridUsed = Boolean(bootCache) && (() => { IslandTerrain.presetNature?.(bootCache.nature, bootCache.natureBlocks); return IslandNpcs.useGrid(bootCache.grid) === true; })(); /* (1.10.403 Codex 391~400 #20: the grid's own yes -- a cut one refused is not a cache used) */
 const IslandStorehouse = require('./lib/island-storehouse'); // 1.10.386 마당 창고
 const { createIslandEvents } = require('./lib/island-events'); // v1.10.11 서버 공용 랜덤 이벤트 // v1.10.7: the island's shape, shared with the browser
 const { competitionRanking, climbWeekOf, previousWeek } = require('./lib/climb');
@@ -2305,7 +2305,7 @@ const postToday = (n) => counterToday(n) ?? stationToday(n) ?? worksToday(n) ?? 
 const talkable = (n) => Number.isInteger(n) && Boolean(IslandCast.RESIDENTS[n]) && (walksToday(n) || postToday(n) != null);
 const islandEvents = createIslandEvents({ now: () => nowMs(), occupied:()=>[...plazaPresence.values()].filter(p=>!p.ride&&!p.platform&&!p.taxi&&!p.boat), working: (n) => !walksToday(n) }); // (C2: only one walking today) // (v1.10.215: a walker at a counter today is no event's)
 /* (385: both made by now -- kept for the next start when they were not read; BOOT_CACHE_ONLY (postinstall, tools/warm-boot-cache.js) stops here) */
-const bootCacheUsed = Boolean(bootCache) && IslandTerrain.nature() === bootCache.nature;
+const bootCacheUsed = Boolean(bootCache) && IslandTerrain.nature() === bootCache.nature && bootGridUsed; /* (403 #20: a broken grid -- written again, not made at every start) */
 if (!bootCacheUsed && !process.env.BOOT_CACHE_ONLY && process.env.BOOT_CACHE !== 'off' && process.env.NODE_ENV !== 'test') BootCache.write({ nature: IslandTerrain.nature(), natureBlocks: IslandTerrain.natureBlockCount?.() ?? 0, grid: IslandNpcs.packGrid() });
 if (process.env.BOOT_CACHE_ONLY) { const out = process.env.BOOT_CACHE_OUT || BootCache.FILE; BootCache.write({ nature: IslandTerrain.nature(), natureBlocks: IslandTerrain.natureBlockCount?.() ?? 0, grid: IslandNpcs.packGrid() }, out); console.log(`[boot-cache] written ${out} (${bootCacheUsed ? 'read' : 'made'})`); process.exit(0); }
 function broadcastIslandRemoved(ids) {
