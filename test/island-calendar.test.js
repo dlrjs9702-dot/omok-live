@@ -22,7 +22,7 @@ test('요리 대회: 매일 주제(날짜로 차례), 맞으면 +30점·「오�
   const F = require('../lib/island-festival');
   const days = Array.from({ length: F.COOK_THEMES.length }, (_, k) => C.addDays('2026-11-20', k)); assert.equal(new Set(days.map((d) => F.cookTheme(d).id)).size, F.COOK_THEMES.length);
   assert.deepEqual([F.cookStamps(89), F.cookStamps(90), F.cookStamps(139), F.cookStamps(140)], [1, 2, 2, 3]);
-  const veg = ['harvest', 'harvest', 'harvest']; const vegDay = days.find((d) => F.cookTheme(d).id === 'veg2'); const other = days.find((d) => F.cookTheme(d).id === 'herb');
+  const veg = ['harvest', 'crop_carrot', 'harvest']; /* (1.10.395 Codex 381~390 #16: two different vegetables -- one's own carrot and the field's) */ const vegDay = days.find((d) => F.cookTheme(d).id === 'veg2'); const other = days.find((d) => F.cookTheme(d).id === 'herb');
   const a = F.judgeCook(veg, vegDay); const b = F.judgeCook(veg, other); assert.equal(a.themed, true); assert.equal(b.themed, false); assert.equal(a.score - b.score, F.THEME_BONUS);
   assert.ok(a.say.startsWith('오늘 주제에 딱 맞아요!')); assert.ok(!b.say.includes('주제')); assert.equal(a.stamps, F.cookStamps(a.score));
   const fishDay = days.find((d) => F.cookTheme(d).id === 'fish'); assert.equal(F.judgeCook(['fish_goby', 'berry', 'mushroom'], fishDay).themed, true); assert.equal(F.judgeCook(['berry', 'berry', 'berry'], fishDay).themed, false);

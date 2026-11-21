@@ -3426,7 +3426,7 @@
         body.append(list);
       } else if (which === 'cook') {
         const bag = (await api('/api/island/bag').catch(() => ({ items: [] }))).items || []; if (mine !== drawn) return;
-        const ok = bag.filter((e) => ['harvest', 'berry', 'mushroom', 'herb'].includes(e.itemId) || /^fish_/.test(e.itemId));
+        const ok = bag.filter((e) => ['harvest', 'berry', 'mushroom', 'herb'].includes(e.itemId) || /^(fish|crop)_/.test(e.itemId)); /* (1.10.395 Codex 381~390 #16: one's own crops too -- as the server's COOKABLE) */
         /* (381 사용자 결정 15 A: today's theme by the host, +30 when the pot fits it; stamps by the score) */
         if (f.cookTheme) body.append(el('p', 'festivalTheme', `오늘의 주제 · ${f.cookTheme.name} (맞으면 +30점)`));
         body.append(el('p', 'smallMuted', '가방의 먹을 것 세 가지로 요리를 내면 심사해요(하루 한 번). 90점 미만 도장 1개, 90~139점 2개, 140점 이상 3개. 재료는 써요.'));
@@ -4335,16 +4335,20 @@
   }
   // 1.10.386 마당 창고 (사용자 결정 19~21·24): at its door -- its things (꺼내기, back to the bag) and what of my bag may go in (넣기); a row
   // moves the whole entry, 「하나만」 one of a stack
+  let storePending = null; /* (395 Codex #13: the move not yet answered -- outlives the window drawn again) */
   async function openStorehouse() {
     let s; try { s = (await api('/api/home/storehouse')).storehouse; } catch (error) { showToast(error.message); return; }
     if (!s.stage) { showToast('마당 창고는 관공서 민원실에서 지어요.'); return; }
-    const act = async (dir, entryId, qty) => {
+    /* (1.10.395 Codex 381~390 #13: a move whose answer was lost keeps its request id -- the same move pressed again is that request, not a second;
+       #12: a take says what it showed, so another thing at that id is not taken) */
+    const act = async (dir, entryId, qty, itemId) => {
       if (homeBusy) return; homeBusy = true;
-      try { const pose = plaza.controller?.pose?.(); if (pose) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(pose) }).catch(() => {}); const r = await api('/api/home/storehouse/move', { method: 'POST', body: JSON.stringify({ dir, entryId, qty, requestId: crypto.randomUUID() }) }); if (r.bag) drawIslandBag(r.bag); } /* (검토 #4) */
-      catch (error) { showToast(error.message, 4000); } finally { homeBusy = false; }
+      const want = `${dir}:${entryId}:${qty}:${itemId || ''}`; if (storePending?.want !== want) storePending = { want, id: crypto.randomUUID() };
+      try { const pose = plaza.controller?.pose?.(); if (pose) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(pose) }).catch(() => {}); const r = await api('/api/home/storehouse/move', { method: 'POST', body: JSON.stringify({ dir, entryId, qty, ...(dir === 'take' && itemId ? { itemId } : {}), requestId: storePending.id }) }); storePending = null; if (r.bag) drawIslandBag(r.bag); } /* (검토 #4) */
+      catch (error) { if (error.status && error.status < 500) storePending = null; showToast(error.message, 4000); } finally { homeBusy = false; }
       openStorehouse();
     };
-    const row = (e, dir) => { const wrap = document.createElement('div'); wrap.className = 'goodBuy storeRow'; const b = btn('', 'ghost', () => act(dir, e.entryId, e.qty)); b.append(itemIcon(e), ` ${e.name}${e.sizes ? ` ${e.sizes[0]}cm` : ''} ×${e.qty} · ${dir === 'put' ? '넣기' : '꺼내기'}`); b.dataset.entry = e.entryId; b.dataset.dir = dir; wrap.append(b); if (e.qty > 1) wrap.append(btn('하나만', 'ghost tiny', () => act(dir, e.entryId, 1))); return wrap; };
+    const row = (e, dir) => { const wrap = document.createElement('div'); wrap.className = 'goodBuy storeRow'; const b = btn('', 'ghost', () => act(dir, e.entryId, e.qty, e.itemId)); b.append(itemIcon(e), ` ${e.name}${e.sizes ? ` ${e.sizes[0]}cm` : ''} ×${e.qty} · ${dir === 'put' ? '넣기' : '꺼내기'}`); b.dataset.entry = e.entryId; b.dataset.dir = dir; wrap.append(b); if (e.qty > 1) wrap.append(btn('하나만', 'ghost tiny', () => act(dir, e.entryId, 1, e.itemId))); return wrap; };
     const inside = document.createElement('div'); inside.className = 'giftList storeIn'; for (const e of s.items) inside.append(row(e, 'take'));
     const can = document.createElement('div'); can.className = 'giftList storeCan'; for (const e of s.keeps) can.append(row(e, 'put'));
     tankBox.replaceChildren(line(`${s.name} · ${s.used}/${s.slots}칸 · 한 칸에 99개까지`, 'lostRequestLine'), ...(s.items.length ? [inside] : [line('아직 비어 있어요.')]), line(s.keeps.length ? '가방에서 넣기' : '가방에 넣을 수 있는 물건이 없어요. 도구·자전거·펫·심부름 물건은 넣지 않아요.'), can);

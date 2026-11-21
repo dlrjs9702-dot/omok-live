@@ -1449,7 +1449,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const d = Math.hypot(p.x - at.x, p.z - at.z); o.g.visible = d < 180; const capOn = d < 40; if (o.cap.root.visible !== capOn) o.cap.root.visible = capOn; if (capOn) o.cap.anim?.update?.(dt);
     }
     const seatOf = (bs) => { const o = boatObjs.find((x) => x.id === bs.id); return o?.pose ? BT.seatAt(o.pose, bs.seat) : null; };
-    if (myBoat && live) { const b = boatsState.boats.find((x) => x.id === myBoat.id); if (b && b.n > myBoat.n) { const e = BT.exitOf(b.at, b.berth); setMyBoat(null); me.root.position.set(e.x, heightAt(e.x, e.z), e.z); correction = null; } } /* (let off: on the float at once -- the server's word follows with the next pose) */
+    if (myBoat && live) { const b = boatsState.boats.find((x) => x.id === myBoat.id); if (b && b.n > myBoat.n) { const at = b.outAt || b.at; const e = BT.DOCKS[at] ? BT.exitOf(at, b.outAt ? b.outBerth : b.berth) : null; setMyBoat(null); if (e) { me.root.position.set(e.x, heightAt(e.x, e.z), e.z); correction = null; } } } /* (395 Codex 9: where it let me off -- it may have taken the next four and gone in the same tick) */ /* (let off: on the float at once -- the server's word follows with the next pose) */
     if (myBoat) { const s = seatOf(myBoat); if (s) { me.root.position.set(s.x, s.y, s.z); me.root.rotation.y = s.yaw; me.targetYaw = s.yaw; } }
     for (const [, o] of others) if (o.boatSeat) { const s = seatOf(o.boatSeat); if (s) { o.c.root.position.set(s.x, s.y, s.z); o.c.root.rotation.y = s.yaw; } }
   }
@@ -3262,7 +3262,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       // (펫 깜빡임: another's pet through a moment of none -- a server just up -- while they are still here: kept 3 s, then gone)
       if (!w && key !== 'me' && others.has(key) && now - (p.goneAt ||= now) < 3000) { want.set(key, p.want); continue; }
       p.goneAt = 0;
-      if (!w || w.kind !== p.kind || w.name !== p.name || (w.coat || null) !== p.coat) { p.c.dispose(); p.line?.removeFromParent(); pets.delete(key); } else p.want = w;
+      if (!w || w.kind !== p.kind || (w.name || null) !== p.name || (w.coat || null) !== p.coat) { p.c.dispose(); if (p.line) { p.line.removeFromParent(); p.line.geometry?.dispose(); } pets.delete(key); } else p.want = w; /* (1.10.395 Codex 381~390 #15: a nameless pet's '' and null the same -- not made again every frame; its own line's geometry freed) */
     }
     for (const [key, w] of want) {
       const owner = key === 'me' ? me : others.get(key)?.c; if (!w || !owner?.root) continue;

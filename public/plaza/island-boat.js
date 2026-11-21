@@ -114,10 +114,14 @@
     const r = riderOf(fleet, token); if (!r) return { ok: true, was: null };
     if (!['hold', 'back'].includes(r.boat.phase)) return { error: 'SAILING' };
     r.boat.seats[r.seat] = null; if (r.boat.phase === 'hold' && !r.boat.seats.some(Boolean)) { r.boat.phase = 'docked'; r.boat.until = 0; }
-    return { ok: true, was: { id: r.boat.id, dock: r.boat.at } };
+    return { ok: true, was: { id: r.boat.id, dock: r.boat.at, berth: r.boat.berth } }; /* (1.10.395 Codex 19: the berth they were at -- the second's way off is 8.6 m from the first's) */
   }
   // one gone (left the island, the page closed): their seat free at once, whatever the phase
-  function drop(fleet, token) { for (const d of Object.keys(fleet.queues)) fleet.queues[d] = fleet.queues[d].filter((e) => e.token !== token); for (const b of fleet.boats) { const k = b.seats.indexOf(token); if (k >= 0) b.seats[k] = null; } }
+  /* (1.10.395 Codex 8: a boat waiting to go that is empty now stays, as when one gets off) */
+  function drop(fleet, token) { for (const d of Object.keys(fleet.queues)) fleet.queues[d] = fleet.queues[d].filter((e) => e.token !== token); for (const b of fleet.boats) { const k = b.seats.indexOf(token); if (k >= 0) { b.seats[k] = null; if (b.phase === 'hold' && !b.seats.some(Boolean)) { b.phase = 'docked'; b.until = 0; } } } }
+  /* (1.10.395 Codex 8: an empty boat coming to rest -- the same rule as after unloading: a third at a dock goes back across, so neither
+     side is left without one) */
+  const rest = (fleet, b, now) => { if (countAt(fleet, b.at) > 2) { b.phase = 'back'; b.until = now + HOLD / fleet.scale; } else { b.phase = 'docked'; b.until = 0; } };
   // when a boat will next take people at a dock (ms from now): one there now 0, else the first on its way (its unloading too), else
   // one at the other dock: across and back
   function etaOf(fleet, dock, now) {
@@ -143,14 +147,15 @@
         if (b.phase === 'sail' && now >= b.until) {
           b.at = b.to; b.berth = b.berthTo; const riders = b.seats.some(Boolean); const arrive = b.until;
           if (b.berth < 0) { b.berth = freeBerth(fleet, b.at, b); if (b.berth >= 0) { b.phase = 'moor'; b.t0 = arrive; } else { b.phase = 'wait'; b.t0 = arrive; } }
-          else if (riders) { b.phase = 'unload'; b.until = arrive + UNLOAD / fleet.scale; } else { b.phase = 'docked'; b.until = 0; }
+          else if (riders) { b.phase = 'unload'; b.until = arrive + UNLOAD / fleet.scale; } else rest(fleet, b, arrive);
           moved = true; continue;
         }
-        if (b.phase === 'wait') { const k = freeBerth(fleet, b.at, b); if (k >= 0) { b.berth = k; b.phase = 'moor'; b.t0 = now; moved = true; } continue; }
-        if (b.phase === 'moor' && now - b.t0 >= MOOR / fleet.scale) { if (b.seats.some(Boolean)) { b.phase = 'unload'; b.until = b.t0 + MOOR / fleet.scale + UNLOAD / fleet.scale; } else { b.phase = 'docked'; b.until = 0; } moved = true; continue; }
+        if (b.phase === 'wait') { const k = freeBerth(fleet, b.at, b); if (k >= 0) { b.berth = k; b.phase = 'moor'; b.t0 = now; moved = true; } else if (!b.seats.some(Boolean)) { depart(fleet, b, now); moved = true; } continue; } /* (395 Codex 8: an empty one with nowhere to tie up goes back across from offshore) */
+        if (b.phase === 'moor' && now - b.t0 >= MOOR / fleet.scale) { if (b.seats.some(Boolean)) { b.phase = 'unload'; b.until = b.t0 + MOOR / fleet.scale + UNLOAD / fleet.scale; } else rest(fleet, b, now); moved = true; continue; }
         if (b.phase === 'unload' && now >= b.until) {
           for (let k = 0; k < SEATS; k += 1) if (b.seats[k]) { out.released.push({ token: b.seats[k], dock: b.at, ...exitOf(b.at, b.berth) }); b.seats[k] = null; } b.n += 1;
-          if (countAt(fleet, b.at) > 2) { b.phase = 'back'; b.until = now + HOLD / fleet.scale; } else { b.phase = 'docked'; b.until = 0; }
+          b.outAt = b.at; b.outBerth = b.berth; /* (395 Codex 9: where they got off -- it may board and leave again in this same tick) */
+          rest(fleet, b, now);
           moved = true; continue;
         }
       }
@@ -165,7 +170,7 @@
     return out;
   }
   // what the pages see (no tokens): each boat's phase and times, how full; the queues' lengths
-  const view = (fleet, now) => ({ at: now, scale: fleet.scale, boats: fleet.boats.map((b) => ({ id: b.id, phase: b.phase, at: b.at, berth: b.berth, from: b.from, to: b.to, berthFrom: b.berthFrom, berthTo: b.berthTo, t0: b.t0, until: b.until, riders: b.seats.filter(Boolean).length, n: b.n })),
+  const view = (fleet, now) => ({ at: now, scale: fleet.scale, boats: fleet.boats.map((b) => ({ id: b.id, phase: b.phase, at: b.at, berth: b.berth, from: b.from, to: b.to, berthFrom: b.berthFrom, berthTo: b.berthTo, t0: b.t0, until: b.until, riders: b.seats.filter(Boolean).length, n: b.n, outAt: b.outAt || null, outBerth: b.outBerth ?? -1 })),
     queues: Object.fromEntries(Object.entries(fleet.queues).map(([d, q]) => [d, q.length])), eta: Object.fromEntries(Object.keys(DOCKS).map((d) => [d, etaOf(fleet, d, now)])) });
   // the sign at a dock and the hint's words (the page): 「탐방선 · 배 N척」 / 「곧 출발 · N초」 / 「배 오는 중 · N초 · 내 순서 K번째」
   function signOf(v, dock, now, myPlace = 0) {

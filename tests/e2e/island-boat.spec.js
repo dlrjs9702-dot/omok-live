@@ -14,7 +14,7 @@ test('탐방선: 배 타는 곳에서 타기 → 곧 출발 → 다리 밑으로
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().boats().state?.boats?.length || 0), { timeout: 30000 }).toBe(4);
   const shown = () => page.evaluate(() => window.PlazaDebug().boats());
   // the boats drawn at their berths: two at each dock
-  await page.evaluate(() => window.PlazaDebug().teleport(0, 1.5)); await page.waitForTimeout(1500);
+  await page.evaluate(() => window.PlazaDebug().teleport(0, 1.5)); await page.waitForTimeout(3500); /* (1.10.395 Codex 7: a leap onto the float counts as there after 3 s) */
   { const s = await shown(); const near = s.shown.filter((b) => b.visible && Math.hypot(b.x, b.z - 4.85) < 6); expect(near.length).toBe(2); }
   // SPACE on the float: aboard, the hint 「내리기 · 곧 출발」
   await expect.poll(async () => { await page.evaluate(() => window.PlazaDebug().teleport(0, 1.5)); return page.locator('#plazaHint').textContent(); }, { timeout: 15000 }).toContain('타기');
