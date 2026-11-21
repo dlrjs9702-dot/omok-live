@@ -15,6 +15,16 @@
   // 물가 거리 d 53~112 by 2.6 m (the bay's railing now the walk's outer edge), the east shore d 187~245 by 2 m, 툇마루섬 d 332~345
   // by 2 m north -- eased over 10 m (work/t1-roads/route.cjs)
   const ROUTE = [[8,-53],[4.4,-52.6],[0.8,-52.2],[0.7,-48.5],[0.7,-44.7],[0.6,-40.9],[0.6,-37.1],[0.5,-33.3],[0.5,-29.5],[0.5,-25.7],[0.4,-21.9],[0.4,-18.1],[0.4,-16.2],[0.6,-14.3],[1.2,-12.4],[2.1,-10],[2.5,-8.4],[4,-7.7],[7.8,-7.3],[11.6,-6.9],[15.4,-6.5],[19.2,-6.1],[22.9,-5.7],[26.5,-4.6],[30,-3.4],[33.3,-2.2],[36.7,-1.1],[40.2,0.1],[43.9,1.4],[47.1,3.3],[50.5,5.3],[53.9,7.3],[57.3,9.3],[58.5,10.2],[59.6,11.4],[60.7,12.6],[62,14.9],[63.1,16.6],[64.4,18],[67.3,20.5],[70.2,23.1],[73,25.7],[74.8,27.3],[77.1,30.5],[79.4,33.6],[81.6,36.6],[83.9,39.6],[86.3,42.8],[87.3,44.3],[89,47.7],[90.7,51.2],[92.4,54.6],[93.3,56.3],[94.6,59.9],[95.3,62],[96.1,63.6],[98.2,66.7],[99,68.3],[99.6,70.1],[100.3,74],[101,78],[101.6,81.9],[102.2,85.4],[102.8,88.7],[102.7,92.5],[102.6,96.1],[102.5,99.7],[102.4,103.3],[102.3,107],[101.7,110.5],[101,114.3],[100.4,117.8],[100.1,119.3],[98.9,123],[97.8,126.5],[96.9,129.2],[96.1,131],[95.4,132.4],[94.5,133.6],[92.8,135.6],[90.9,136.9],[88,139.2],[86.3,139.8],[82.3,139.8],[78.4,139.9],[74.4,139.9],[70.5,140],[66.5,140],[62.6,140.1],[58.6,140.1],[54.7,140.2],[50.8,140.3],[46.8,140.3],[42.9,140.4],[38.9,140.4],[35,140.5],[31,140.5],[27.1,140.6],[24.6,140.6],[22.6,140.4],[21.2,140.1],[17.7,139.2],[15.8,138.9],[14.3,138.8],[10.3,138.9],[6.4,138.9],[2.4,139],[0.5,139.1],[-1,139.4],[-3.5,140.1],[-5.5,140.7],[-7.4,141.1],[-11.4,141.1],[-15.3,141.2],[-19.2,141.3],[-19.3,145.2],[-19.4,149.1],[-19.4,153.1],[-19.5,157],[-19.6,160.9],[-19.6,164.9],[-19.7,168.8],[-19.7,172.8],[-16,172.9],[-13.3,173.1]];
+  /* 1.10.395 N4-c (notes n4-plan-20261120 §5-3): the road on to 별마루섬 -- from the corner before 툇마루섬 마을's stop (ROUTE's third
+     last point) north up the neck's walk (x -20), east along the village street (z 236: the yards' front fences stand at 232.1 and
+     239.9 whatever their size, the road's 7.8 m just between), straight on past lot14's corner to x 116, then 별마루다리's walk, over
+     the bridge and through the wide gate (assets 163) to 10.5 m inside it, where the third stop comes (396). Found on today's ground
+     (work: build-ext395): no water but the bridge, no slope over 0.3, no yard of any size within 3.9 m, nothing built in its band.
+     The roads are ROADS -- the ground's band, its paint, the islanders' crossings and what is put beside it read them all */
+  const EXT = [[-19.7,172.8],[-19.7,175.4],[-19.8,178],[-19.9,180.7],[-19.9,183.3],[-20,186],[-20,189.8],[-20,193.6],[-20,197.5],[-20,201.3],[-20,205.1],[-20,208.9],[-20,212.7],[-20,216.5],[-20,220.4],[-20,224.2],[-20,228],[-19.6,230.1],[-19.2,232.2],[-17,235.2],[-15,235.6],[-13,236],[-9.1,236],[-5.2,236],[-1.3,236],[2.6,236],[6.5,236],[10.5,236],[14.4,236],[18.3,236],[22.2,236],[26.1,236],[30,236],[33.9,236],[37.8,236],[41.7,236],[45.6,236],[49.5,236],[53.5,236],[57.4,236],[61.3,236],[65.2,236],[69.1,236],[73,236],[76.9,236],[80.8,236],[84.7,236],[88.6,236],[92.5,236],[96.5,236],[100.4,236],[104.3,236],[108.2,236],[112.1,236],[116,236],[118.4,235],[120.9,234.1],[124.7,233.7],[128.3,233.4],[131.8,233],[135.1,232.7],[138.7,232.2],[142,231.6],[144.8,231],[147.8,230.2],[151.2,229],[154.9,227.6],[156.9,227],[159.1,226.5],[161.6,226.1],[165.3,225.8],[169,225.6],[172.9,225.6],[176.1,225.6],[179.4,225.6],[182.7,225.7],[186.1,225.8],[189.5,225.9],[192.8,226],[196,226],[199.3,226],[202.9,226],[206.5,226],[210.3,226],[213.9,226],[217.5,226],[220.8,226],[224.5,226],[226.2,226],[228.2,225.9],[231.1,226.6],[234.8,227.5],[238.4,228.4]];
+  const ROADS = Object.freeze([ROUTE, EXT]);
+  /* (the village street: its lamps keep to its walks -- 3.3 m out, as they stood -- the yards' fences right behind them) */
+  const STREET = Object.freeze({ x0: -13, x1: 116, z: 236, lamp: 3.3 });
   const BRIDGE = { x0: 31, x1: 88, z0: 136, z1: 144 }; // (the east 윤슬다리: slower there until 1.10.327 -- SLOW is FAST now; 1.10.389 N3-a: the high one, 56 m)
   // v1.10.317 C1 건널목 (notes docs/taxi-yield-20261109.md, 사용자 「큰길을 건너는 자리는 건널목 몇 곳으로 모아요」): where the islanders go
   // over the road -- where their rounds did cross (before the stop and 대청마당, the bend by the hall's walk, off the bridge's
@@ -27,7 +37,10 @@
   // ROAD (T1 171A): two lanes of 2.3 m and a walk of 1.6 m each side -- 3.9 m from the middle to the walk's outer edge; the
   // ground's road map (island-paths buildRoadMap) paints it, nothing solid stands in it (dalmaru-island roadClear)
   // (1.10.389 N3-a: the high bridge's two -- its ramps now stand where they were -- each more than 5 m off its ends, on the road: (88.4, 138.9) -> (92.8, 135.6), (36.4, 140.5) -> (25.5, 140.6))
-  const CROSSINGS = Object.freeze([[2.4,-52.4],[0.8,-13.7],[92.7,55.1],[102.5,101],[92.8,135.6],[25.5,140.6],[-10.9,141.1],[-19.3,146.5],[-19.7,168],[96.7,129.7],[100.1,119.3]].map(([x, z]) => Object.freeze({ x, z })));
+  const CROSSINGS = Object.freeze([[2.4,-52.4],[0.8,-13.7],[92.7,55.1],[102.5,101],[92.8,135.6],[25.5,140.6],[-10.9,141.1],[-19.3,146.5],[-19.7,168],[96.7,129.7],[100.1,119.3],
+    /* (1.10.395 N4-c: on the new road -- the neck before the corner (the west street's walk to its east side) and the village street where
+       each yard's walk comes to it, -14 · 14 · 42 · 70 · 98) */
+    [-20,224],[-14,236],[14,236],[42,236],[70,236],[98,236]].map(([x, z]) => Object.freeze({ x, z })));
   const CROSS_CLEAR = 5;
   const CROSS_HALF = 2.2;
   const ROAD = Object.freeze({ lane: 2.3, walk: 1.6, half: 3.9 });
@@ -267,5 +280,5 @@
   const PLACE_IDS = () => ['plaza', ...Object.keys(ROADSTOPS).sort((a, b) => ROADSTOPS[a].s - ROADSTOPS[b].s), 'isle'];
   return { boardOf, ROADSTOPS, ROAD_LEN, sOf, atS, curbOf, driveBetween, distanceOf, fareByRoad, PLACE_IDS, isTerminal, labelOf, toOf, sendCar, WAIT, nearestRoom, /* (392 N4-b) */
     LANE, PLACES, BACK, placeOf, laneOffs, createFleet, takeCar, settle, etaAt, fleetView, countAt, standingAt, onBridgeBox: (x, z, m = 0) => x >= BRIDGE.x0 - m && x <= BRIDGE.x1 + m && z >= BRIDGE.z0 && z <= BRIDGE.z1, /* (391 N4-a) */
-    CROSSINGS, CROSS_HALF, CROSS_CLEAR, ROAD, LEAD, RAMP, sideAt, ghostAt, shifted, roadNow, rateOf, warpTo, realAt, rideOver, TURN, backOf, carAt, easeClock, ROUTE, STOPS, BRIDGE, ENTER, EXIT, EASE, FAST, SLOW, FARE, DAY_PASS, EXTRA, BOARD, ALIGHT, SEAT, roadOf, stopOf, dropOf, driveOf, tableOf, durationOf, poseAt, arrivalOf, doorOf, fareOf };
+    CROSSINGS, CROSS_HALF, CROSS_CLEAR, ROAD, LEAD, RAMP, sideAt, ghostAt, shifted, roadNow, rateOf, warpTo, realAt, rideOver, TURN, backOf, carAt, easeClock, ROUTE, EXT, ROADS, STREET, ROAD_ENDS: Object.freeze([ROUTE[0], ROUTE[ROUTE.length - 1], EXT[EXT.length - 1]]) /* (395: the stops at the roads' ends -- kept clear round, as the two were) */, STOPS, BRIDGE, ENTER, EXIT, EASE, FAST, SLOW, FARE, DAY_PASS, EXTRA, BOARD, ALIGHT, SEAT, roadOf, stopOf, dropOf, driveOf, tableOf, durationOf, poseAt, arrivalOf, doorOf, fareOf };
 }));

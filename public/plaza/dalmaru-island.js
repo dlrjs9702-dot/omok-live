@@ -120,11 +120,12 @@
   // the nearest point on the middle, the road's left-hand normal there, which side the point is on)
   const TX = (typeof self !== 'undefined' && self.IslandTaxi) || (typeof require === 'function' ? require('./island-taxi.js') : null);
   const ROAD = TX?.ROAD || { lane: 2.3, walk: 1.6, half: 3.9 };
-  const roadDist = (x, z) => (TX ? lineDist(x, z, TX.ROUTE) : Infinity);
+  const ROADS = TX ? (TX.ROADS || [TX.ROUTE]) : []; /* (1.10.395 N4-c: the road on to 별마루섬 too) */
+  const roadDist = (x, z) => { let d = Infinity; for (const r of ROADS) d = Math.min(d, lineDist(x, z, r)); return d; };
   const roadClear = (o, r) => roadDist(o.x, o.z) > ROAD.half + r + 0.1;
   function roadFoot(x, z) {
-    const route = TX?.ROUTE || []; let best = null;
-    for (let i = 1; i < route.length; i += 1) {
+    let best = null;
+    for (const route of ROADS) for (let i = 1; i < route.length; i += 1) {
       const [ax, az] = route[i - 1]; const [bx, bz] = route[i]; const dx = bx - ax; const dz = bz - az; const L = Math.hypot(dx, dz) || 1e-9;
       const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (L * L))); const px = ax + dx * t; const pz = az + dz * t; const d = Math.hypot(x - px, z - pz);
       if (!best || d < best.d) best = { d, x: px, z: pz, nx: dz / L, nz: -dx / L };
@@ -594,7 +595,7 @@
   const nearKeeper = (x, z) => Object.values(PL.quests).some((q) => Math.hypot(x - q.x, z - q.z) < 3.5) || [VILLAGE.painter, VILLAGE.busker, VILLAGE.electrician, VILLAGE.builder, VILLAGE.librarian, VILLAGE.grandpa, VILLAGE.guide, FARM.farmer].some((q) => Math.hypot(x - q.x, z - q.z) < 3.5);
   // (G4a: what blocks keeps off the taxi's road and its stops -- island-taxi.js, loaded before this file)
   const TAXI_BAND = 0.85 + 3.2; /* (from the road's middle: the car's half width, then the islanders' band 1.5~3 m beside it, a little over -- notes docs/taxi-yield-20261109.md) */
-  const taxiClear = (x, z, r) => { const X = (typeof require === 'function' ? require('./island-taxi.js') : globalThis.IslandTaxi); const route = X.ROUTE; return lineDist(x, z, route) > TAXI_BAND + r && [route[0], route.at(-1)].every(([sx, sz]) => Math.hypot(x - sx, z - sz) > 10 + r) && (X.CROSSINGS || []).every((c) => Math.hypot(x - c.x, z - c.z) > (X.CROSS_CLEAR ?? 5) + r); }; /* (317: and its 건널목 -- doc 27행) */
+  const taxiClear = (x, z, r) => { const X = (typeof require === 'function' ? require('./island-taxi.js') : globalThis.IslandTaxi); const roads = X.ROADS || [X.ROUTE]; return roads.every((route) => lineDist(x, z, route) > TAXI_BAND + r) && (X.ROAD_ENDS || [X.ROUTE[0], X.ROUTE.at(-1)]).every(([sx, sz]) => Math.hypot(x - sx, z - sz) > 10 + r) /* (395: the road on to 별마루섬 and its end's stop too) */ && (X.CROSSINGS || []).every((c) => Math.hypot(x - c.x, z - c.z) > (X.CROSS_CLEAR ?? 5) + r); }; /* (317: and its 건널목 -- doc 27행) */
   let natureCache = null; const natureBlocks = []; // (island-train: no tree on a lift's way)
   const addNatureBlock = (fn) => { natureBlocks.push(fn); natureCache = null; };
   addNatureBlock((x, z, r) => inFarmYard(x, z, r)); // (3회차 15: the farm yard clear)
@@ -664,8 +665,10 @@
       const [x, z] = w.pts[i]; const [x2, z2] = w.pts[i + 1]; const l = Math.hypot(x2 - x, z2 - z) || 1;
       const lx0 = x - ((z2 - z) / l) * (w.w / 2 + 0.8); const lz0 = z + ((x2 - x) / l) * (w.w / 2 + 0.8);
       const foot = roadFoot(lx0, lz0); const atRoad = foot && foot.d < ROAD.half + 0.55;
-      const spots = atRoad ? [foot.side, -foot.side].map((s) => [foot.x + foot.nx * (ROAD.half + 0.55) * s, foot.z + foot.nz * (ROAD.half + 0.55) * s]) : [[lx0, lz0]];
-      const fits = ([lx, lz]) => !(!walkable(lx, lz) || inPlaza(lx, lz, 1) || onBridge(lx, lz) || onStairs(lx, lz) || inTownhall(lx, lz, 1) || (!atRoad && walkDist(lx, lz) < 0.2) || roadDist(lx, lz) < ROAD.half + 0.5)
+      /* (1.10.395 N4-c: on the village street the yards' fences stand at the road's edge -- its lamps on its walks, 3.3 m out, where they stood) */
+      const SL = TX?.STREET; const street = atRoad && SL && foot.x >= SL.x0 && foot.x <= SL.x1 && Math.abs(foot.z - SL.z) < 0.5; const out = street ? SL.lamp : ROAD.half + 0.55;
+      const spots = atRoad ? [foot.side, -foot.side].map((s) => [foot.x + foot.nx * out * s, foot.z + foot.nz * out * s]) : [[lx0, lz0]];
+      const fits = ([lx, lz]) => !(!walkable(lx, lz) || inPlaza(lx, lz, 1) || onBridge(lx, lz) || onStairs(lx, lz) || inTownhall(lx, lz, 1) || (!atRoad && walkDist(lx, lz) < 0.2) || roadDist(lx, lz) < (street ? out - 0.05 : ROAD.half + 0.5))
         && !(structureSolids().some((o) => Math.hypot(o.x - lx, o.z - lz) < o.r + 0.6) || BUILDINGS.some((b) => Math.hypot(b.x - lx, b.z - lz) < (b.kind === 'facade' ? FACADE.w / 2 + 1 : 4)))
         && ![...keptTrees, ...keptBushes].some((t) => Math.hypot(t.x - lx, t.z - lz) < 1.5) && !atCrossing({ x: lx, z: lz }, 0.4);
       const at = spots.find(fits); if (at) lampSpots.push({ x: at[0], z: at[1], ...(D.newIsleCoast(at[0], at[1]) > -5 ? { isle2: true } : {}) }); /* (N1: 새 섬's shown with it) */

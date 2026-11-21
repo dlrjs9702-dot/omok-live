@@ -116,10 +116,11 @@
     const out = new Uint8Array(n * 3); const best = new Float32Array(n).fill(Infinity); for (let k = 0; k < n; k += 1) out[k * 3] = 255;
     const P = T.dalmaru?.PLAZA; const plazaDist = P ? (x, z) => Math.max(Math.abs(x - P.x) - P.hw, P.d0 - z, z - P.d1) : () => 1;
     const keep = (x, z) => !T.onBridge(x, z) && plazaDist(x, z) >= -0.2 && T.coastDist(x, z) > -1.5;
-    const route = X.ROUTE; const crossAlong = []; let total = 0;
-    const segs = route.slice(1).map((q, i) => { const p = route[i]; const len = Math.hypot(q[0] - p[0], q[1] - p[1]); const s = { p, q, len, at: total }; total += len; return s; });
-    const footOf = (x, z) => { let b = null; for (const s of segs) { const dx = s.q[0] - s.p[0]; const dz = s.q[1] - s.p[1]; const t = Math.max(0, Math.min(1, ((x - s.p[0]) * dx + (z - s.p[1]) * dz) / (s.len * s.len || 1e-9))); const d = Math.hypot(x - s.p[0] - dx * t, z - s.p[1] - dz * t); if (!b || d < b.d) b = { d, along: s.at + s.len * t }; } return b; };
-    for (const c of X.CROSSINGS || []) crossAlong.push(footOf(c.x, c.z).along);
+    /* (1.10.395 N4-c: every road -- the road on to 별마루섬 too; a 건널목 counts on the road it stands on) */
+    const crossAlong = []; const segs = [];
+    (X.ROADS || [X.ROUTE]).forEach((route, r) => { let total = 0; for (let i = 1; i < route.length; i += 1) { const p = route[i - 1]; const q = route[i]; const len = Math.hypot(q[0] - p[0], q[1] - p[1]); segs.push({ p, q, len, at: total, r }); total += len; } });
+    const footOf = (x, z) => { let b = null; for (const s of segs) { const dx = s.q[0] - s.p[0]; const dz = s.q[1] - s.p[1]; const t = Math.max(0, Math.min(1, ((x - s.p[0]) * dx + (z - s.p[1]) * dz) / (s.len * s.len || 1e-9))); const d = Math.hypot(x - s.p[0] - dx * t, z - s.p[1] - dz * t); if (!b || d < b.d) b = { d, along: s.at + s.len * t, r: s.r }; } return b; };
+    for (const c of X.CROSSINGS || []) { const f = footOf(c.x, c.z); crossAlong.push({ r: f.r, along: f.along }); }
     const reach = ROAD_RANGE;
     for (const s of segs) {
       if (!s.len) continue; const dx = s.q[0] - s.p[0]; const dz = s.q[1] - s.p[1];
@@ -131,7 +132,7 @@
         const d = Math.hypot(x - s.p[0] - dx * t, z - s.p[1] - dz * t); if (d >= best[k] || d >= reach) continue;
         best[k] = d;
         const side = Math.sign((x - s.p[0]) * dz - (z - s.p[1]) * dx) || 1; /* (+: the road's right, heading p -> q) */
-        const along = s.at + s.len * t; const cross = crossAlong.reduce((w, a) => Math.max(w, 1 - Math.max(0, Math.min(1, (Math.abs(along - a) - (X.CROSS_HALF ?? 2.2)) / 0.4))), 0);
+        const along = s.at + s.len * t; const cross = crossAlong.reduce((w, a) => (a.r !== s.r ? w : Math.max(w, 1 - Math.max(0, Math.min(1, (Math.abs(along - a.along) - (X.CROSS_HALF ?? 2.2)) / 0.4)))), 0);
         out[k * 3] = Math.max(0, Math.min(255, Math.round(((side * d) / ROAD_RANGE * 0.5 + 0.5) * 255)));
         out[k * 3 + 1] = d < MASK ? 255 : 0; out[k * 3 + 2] = d < MASK ? Math.round(cross * 255) : 0;
       }
