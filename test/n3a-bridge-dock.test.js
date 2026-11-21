@@ -42,7 +42,7 @@ test('N3-a 택시·건널목·역장: 다리 상자 31~88, 다리 끝 건널목 
 test('N3-a 별마루섬 부두: 뜬 판에서 건널판·계단을 지나 부두 문까지 끊김 없이 걸음, 문 12 m는 호랑이가 안 들어가고 안 쫓음', { skip: !T.dalmaru && '달마루섬 전용' }, () => {
   const K = T.DOCK2; assert.ok(K); assert.equal(K.root.yaw, -Math.PI / 2); assert.equal(T.STRUCTURES.dock2.x, K.x);
   assert.ok(Math.abs(T.heightAt(K.x, K.z) - (-0.2)) < 1e-9, 'its float'); assert.ok(T.heightAt(K.x, K.z) > SEA, 'over the sea');
-  const gate = P.FENCE.filter((a) => P.FENCE_KINDS[a[3]] === 'fence_gate')[1]; assert.ok(gate);
+  const gate = P.FENCE.filter((a) => P.FENCE_KINDS[a[3]] === 'fence_gate')[0]; assert.ok(gate); /* (1.10.394: 별마루다리's the wide one now -- the people's gate the dock's alone) */
   const solids = [...T.natureSolids(), ...T.structureSolids(), ...P.solids()];
   let prev = T.heightAt(K.x, K.z);
   for (let x = K.x; x <= gate[0] + 2; x += 0.25) { assert.ok(T.walkable(x, K.z), `walkable ${x}`); const h = T.heightAt(x, K.z); assert.ok(Math.abs(h - prev) < 0.4, `step at ${x}: ${prev} -> ${h}`); prev = h;

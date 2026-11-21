@@ -705,7 +705,7 @@
   // stools, the spring cave -- one season's file for them all but the cave's; High near, Low past it
   { const B1 = '/assets/island/byeolmaru-v1'; const N1 = '/assets/island/newisle-v1';
     const two = (dir, f) => ({ url: `${dir}/${f}.glb`, low: { url: `${dir}/${f}_low.glb` } });
-    for (const k of ['fence_segment', 'fence_palisade_b', 'fence_palisade_e', 'fence_stonewall', 'fence_gate', 'fence_corner']) REGISTRY[`byeolmaru.${k}`] = { ...two(B1, k), near: 30, ...(k === 'fence_gate' ? { keepNodes: true } : {}) }; /* (1.10.377: the gate's leaf a node of its own -- it opens) */
+    for (const k of ['fence_segment', 'fence_palisade_b', 'fence_palisade_e', 'fence_stonewall', 'fence_gate', 'fence_gate_wide', 'fence_corner']) REGISTRY[`byeolmaru.${k}`] = { ...two(B1, k), near: 30, ...(/^fence_gate/.test(k) ? { keepNodes: true } : {}) }; /* (1.10.377: the gate's leaf a node of its own -- it opens; 394 assets 163 the taxi's wide gate, leaf_l · leaf_r) */
     REGISTRY['byeolmaru.tiger_rock'] = { ...two(B1, 'tiger_rock'), near: 40 }; REGISTRY['byeolmaru.sign_tiger'] = { ...two(B1, 'sign_tiger'), near: 40 }; /* (152e's board) */
     for (const k of ['reeds_a', 'reeds_b', 'reeds_c', 'swamp_lily_a', 'swamp_lily_b', 'swamp_fungus', 'swamp_grass_a', 'swamp_grass_b', 'swamp_planks']) REGISTRY[`byeolmaru.${k}`] = { ...two(B1, k), near: 25, shadows: false, hideFar: 40 };
     REGISTRY['byeolmaru.swamp_stones'] = { ...two(B1, 'swamp_stones'), near: 30 };

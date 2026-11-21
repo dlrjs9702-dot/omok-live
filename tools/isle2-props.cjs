@@ -35,8 +35,11 @@ const gate = segs.filter((s) => s.keep).sort((p, q) => p.walk - q.walk)[0]; /* (
 /* (1.10.389 N3-a 부두 문: the second gate, the piece nearest the 별마루섬 부두's gangway foot (its float 7.2 m west of it) -- a gate's 12 m round
    is the tigers' safe ground (lib/island-tigers reads the gates off this list)) */
 const DOCK2 = D.PLACES.dock2; const dockGate = DOCK2 ? segs.filter((s) => s.keep && s !== gate).sort((p, q) => Math.hypot(p.x - DOCK2.x - 7.2, p.z - DOCK2.z) - Math.hypot(q.x - DOCK2.x - 7.2, q.z - DOCK2.z))[0] : null;
-const KINDS = ['fence_segment', 'fence_palisade_b', 'fence_palisade_e', 'fence_stonewall', 'fence_gate'];
-const FENCE = segs.filter((s) => s.keep).map((s) => { const h = hash(s.x, s.z, 3); const kind = s === gate || s === dockGate ? 4 : h < 0.07 ? 1 : h < 0.14 ? 2 : h < 0.2 ? 3 : 0; return [r2(s.x), r2(s.z), r3(s.yaw), kind]; });
+/* (1.10.394 N4-c, assets 163 fence_gate_wide, notes n4-plan §5-4: the taxi's way onto 별마루섬 -- the walk's gate and the two pieces either
+   side of it (the old #181 · #183) one 7.2 m gate in the middle one's place and turn, its 4.4 m between the posts; kind 5 so the others keep theirs) */
+const wideOff = new Set([segs[(gate.i + segs.length - 1) % segs.length], segs[(gate.i + 1) % segs.length]]);
+const KINDS = ['fence_segment', 'fence_palisade_b', 'fence_palisade_e', 'fence_stonewall', 'fence_gate', 'fence_gate_wide'];
+const FENCE = segs.filter((s) => s.keep && !wideOff.has(s)).map((s) => { const h = hash(s.x, s.z, 3); const kind = s === gate ? 5 : s === dockGate ? 4 : h < 0.07 ? 1 : h < 0.14 ? 2 : h < 0.2 ? 3 : 0; return [r2(s.x), r2(s.z), r3(s.yaw), kind]; });
 const CORNERS = []; for (let i = 0; i < segs.length; i += 1) { const p = segs[(i + segs.length - 1) % segs.length]; const s = segs[i]; if (p.keep !== s.keep) { CORNERS.push([r2(pts[i][0]), r2(pts[i][1])]); continue; } /* (a run's end, by a cliff or the creek: its post) */ if (!p.keep || !s.keep) continue; let turn = Math.abs(s.yaw - p.yaw); turn = Math.min(turn, Math.PI * 2 - turn); if (turn > (10 * Math.PI) / 180) CORNERS.push([r2(pts[i][0]), r2(pts[i][1])]); }
 
 // ---- the warning board (152b/152e sign_tiger): outside the gate, beside the walk, facing whoever comes over 별마루다리 ----
@@ -104,12 +107,13 @@ const segCircles = (r, zc = 0) => [-1.05, -0.7, -0.35, 0, 0.35, 0.7, 1.05].map((
 const CIRCLES = {
   fence_segment: segCircles(0.22), fence_palisade_b: segCircles(0.38), fence_palisade_e: segCircles(0.42, 0.15), fence_stonewall: segCircles(0.28, 0.03),
   fence_gate: [[-1.05, 0, 0.2], [1.05, 0, 0.2]], /* (the people's way between: a body 0.45 round -- 0.8 m to go through, the leaf's 1 m opening) */
+  fence_gate_wide: [[-2.4, 0, 0.2], [2.4, 0, 0.2], [-2.75, 0, 0.22], [-3.1, 0, 0.22], [-3.45, 0, 0.22], [2.75, 0, 0.22], [3.1, 0, 0.22], [3.45, 0, 0.22]], /* (assets 163 solids.json: its posts and wings -- the leaves block nothing) */
   fence_corner: [[0, 0, 0.2]], sign_tiger: [[-0.85, 0, 0.15], [0.85, 0, 0.15]], sign_reserve: [[-0.66, 0.12, 0.17], [0.66, 0.12, 0.17]], sign_trail: [[0, 0.15, 0.18]] /* (136 README's solids) */, tiger_rock: [[-0.5, 0, 0.95], [0.5, 0, 0.95]], swamp_stones: [[0, -0.4, 0.66], [0, 0.4, 0.66]],
   campfire: [[0, 0, 0.6]], log_bench: [[-0.45, 0.05, 0.22], [0.45, 0.05, 0.22]], log_stool: [[0, 0, 0.25]],
   spring_cave: [...caveSolids.rock, ...caveSolids.water],
 };
 const BOXES = {
-  fence_segment: [2.5, 1.6, 0.5, 0], fence_palisade_b: [2.5, 1.6, 0.8, 0], fence_palisade_e: [2.5, 1.5, 0.95, 0.15], fence_stonewall: [2.5, 1.4, 0.6, 0.03], fence_gate: null,
+  fence_segment: [2.5, 1.6, 0.5, 0], fence_palisade_b: [2.5, 1.6, 0.8, 0], fence_palisade_e: [2.5, 1.5, 0.95, 0.15], fence_stonewall: [2.5, 1.4, 0.6, 0.03], fence_gate: null, fence_gate_wide: null,
   fence_corner: [0.42, 2.08, 0.42, 0], sign_tiger: [1.9, 2.33, 0.2, 0], tiger_rock: [3.0, 0.98, 2.0, 0], swamp_stones: [1.34, 0.53, 1.77, 0], campfire: [1.22, 0.36, 1.22, 0], log_bench: [1.62, 0.48, 0.46, 0.05], log_stool: [0.52, 0.42, 0.52, 0],
 };
 const CAVE_BOXES = caveSolids.rockBoxes;

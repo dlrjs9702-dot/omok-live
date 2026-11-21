@@ -149,7 +149,18 @@
     const C = NEW_ISLE.camp; const dc = Math.hypot(x - C.x, z - C.z); if (dc < C.r + 14) h = lerp(C.h, h, smooth(C.r, C.r + 14, dc));
     const beach = h > 6 ? 1.2 : 7; if (cd < beach) h = lerp(SEA - 0.3, h, cd / beach);
     const cr = lineDist(x, z, CREEK.pts); if (cr < 5) h -= 0.7 * (1 - smooth(1.5, 5, cr));
-    return h;
+    return gateCut(x, z, h);
+  }
+  /* 1.10.394 N4-c (notes n4-plan-20261120 §5-4, 결정 41-1 B; assets 163 ground-cut.json): inside the wide gate on 별마루다리's head the ground
+     rose 0.57 m where its leaves swing in -- cut, only inside the gate's line (lz > 0) and never raised: flat at the line's height 0.04 for
+     7 m along it and 2.3 m in, then 0.3 a metre up inward and to both sides (round at the corners), at most 0.55 m deep. The gate's
+     place and turn as isle2-props puts it (#182 of the fence) */
+  const GATE_CUT = Object.freeze({ x: 228.23, z: 225.65, c: Math.cos(1.327), s: Math.sin(1.327), y: 0.04, hw: 3.5, d: 2.3, slope: 0.3, max: 0.55 });
+  function gateCut(x, z, h) {
+    const G = GATE_CUT; const dx = x - G.x; const dz = z - G.z; if (dx * dx + dz * dz > 100) return h;
+    const lx = dx * G.c - dz * G.s; const lz = dx * G.s + dz * G.c; if (lz <= 0) return h;
+    const t = G.y + G.slope * Math.hypot(Math.max(0, lz - G.d), Math.max(0, Math.abs(lx) - G.hw));
+    return Math.max(Math.min(h, t), h - G.max);
   }
   function landHeightOf(x, z) {
     const cd = coastDist(x, z);

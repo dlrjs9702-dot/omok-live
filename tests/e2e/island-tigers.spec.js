@@ -19,7 +19,7 @@ test('별마루섬 호랑이: 경고, 잡히면 물건 2개를 잃고 시장님 
   const kst = new Date(Date.now() + 9 * 3600000); const shift = Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate(), 0, 0, 0) - Date.now();
   try {
     // (1.10.377) at 별마루다리's gate its leaf opens; the two signs' words
-    const gate = P.FENCE.find((f) => P.FENCE_KINDS[f[3]] === 'fence_gate');
+    const gate = P.FENCE.find((f) => /^fence_gate/.test(P.FENCE_KINDS[f[3]])); /* (1.10.394 N4-c: the wide one, assets 163 -- its two leaves) */
     await standAt(request, who, gate[0] + Math.sin(gate[2]) * 1.5, gate[1] + Math.cos(gate[2]) * 1.5);
     await expect.poll(() => page.evaluate(() => window.PlazaTigers()?.gateOpen ?? 0), { timeout: 10000 }).toBeGreaterThan(0.8);
     expect(await page.evaluate(() => window.PlazaTigers()?.signs)).toEqual(['별마루섬 자연 구역', P.SIGN_TRAIL[3].join(' / ')]);

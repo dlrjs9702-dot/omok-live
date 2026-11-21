@@ -17,8 +17,13 @@ test('별마루섬 목책·문·늪·캠핑장: 문은 다리 길 위 하나(지
   const D = T.dalmaru; const I = D.NEW_ISLE;
   // the fence: 2.4 m pieces most of the way round (cliffs and the creek's mouth left), one gate on the walk from 별마루다리
   // (1.10.389 N3-a: and the 부두 문, the piece before 별마루섬 부두's gangway -- notes n3-plan §3-3 #194)
-  assert.ok(P.FENCE.length > 320, `${P.FENCE.length}`); const gates = P.FENCE.filter((f) => P.FENCE_KINDS[f[3]] === 'fence_gate'); assert.equal(gates.length, 2);
+  assert.ok(P.FENCE.length > 320, `${P.FENCE.length}`); const gates = P.FENCE.filter((f) => /^fence_gate/.test(P.FENCE_KINDS[f[3]])); assert.equal(gates.length, 2);
   const [gx, gz, gyaw] = gates[0]; assert.ok(T.walkDist(gx, gz) < 0, '문은 길 위'); assert.ok(Math.hypot(gx - 196, gz - 226) < 40, '별마루다리 쪽');
+  // (1.10.394 N4-c, assets 163: 별마루다리's the wide gate -- 7.2 m, in the old three pieces' place: its neighbours 4.8 m off its middle, a car
+  // (1.7 m wide) through its middle 2.4 m clear of every post)
+  assert.equal(P.FENCE_KINDS[gates[0][3]], 'fence_gate_wide'); assert.deepEqual([gx, gz, gyaw], [228.23, 225.65, 1.327]);
+  const gi = P.FENCE.indexOf(gates[0]); for (const n of [P.FENCE[gi - 1], P.FENCE[gi + 1]]) assert.ok(Math.abs(Math.hypot(n[0] - gx, n[1] - gz) - 4.8) < 0.05, `이웃 조각 ${n}`);
+  for (const [o, r] of P.circlesAt('fence_gate_wide', gx, gz, gyaw).map((c) => [c, c.r])) for (const a of [-1.2, 0, 1.2]) assert.ok(Math.hypot(o.x - (gx + a * Math.cos(gyaw)), o.z - (gz - a * Math.sin(gyaw))) >= r + 0.85, '택시가 문 가운데로');
   const D2 = T.DOCK2; assert.ok(Math.hypot(gates[1][0] - 232.44, gates[1][1] - 197.24) < 0.1 && Math.abs(gates[1][1] - D2.z) < 1.2, '부두 문은 부두 건널판 앞');
   // its lane: a body (0.45) at each gate's middle clear of every solid
   const solids = [...T.natureSolids(), ...T.structureSolids()]; for (const [x, z] of gates) assert.ok(solids.every((o) => Math.hypot(o.x - x, o.z - z) >= o.r + 0.45 - 1e-6), '문 가운데로 지나감');
