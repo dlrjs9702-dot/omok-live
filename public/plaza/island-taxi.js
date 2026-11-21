@@ -275,7 +275,9 @@
     for (const c of fleet.cars) if (c.ride && c.ride.stay === undefined && rideOver(c.ride, now)) {
       const to = toOf(c.ride); moved = true;
       if (isTerminal(to) && countAt(fleet, to) < PLACES) { c.ride.stay = true; c.ride.park = freePlace(fleet, to, c); }
-      else if (isTerminal(to) && isTerminal(c.ride.from)) { c.ride.stay = false; c.ride.park = freePlace(fleet, c.ride.from, c); } /* (the way back the same road, as before) */
+      else if (isTerminal(to) && isTerminal(c.ride.from) && countAt(fleet, c.ride.from) < PLACES) { c.ride.stay = false; c.ride.park = freePlace(fleet, c.ride.from, c); } /* (the way back the same road, as before) */
+      /* (1.10.403 Codex 391~400 #10: home filled meanwhile -- others stayed there after letting their riders out: not back into a taken place, but on
+         empty to the nearest terminal with room, the one left with none) */
       else goEmpty(fleet, c, to, now); /* (392: from where it let its rider out) */
     }
     for (const c of fleet.cars) if (c.ride && c.ride.stay !== undefined && now >= backOf(c.ride, now)) {

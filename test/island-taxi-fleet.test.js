@@ -68,6 +68,15 @@ test('택시 ⑤: 뒤 차는 앞 차가 빠진 뒤에 당겨 섬 — 두 차가 
   }
 });
 
+// 1.10.403 Codex 391~400 #10: 마을's two cars off to the full 별마루섬 입구 while 대청마당's two stay at 마을 -- the two coming back from 입구 went to
+// 마을's taken places (two cars a place) and 대청마당 had none. Now they go where there is room
+test('택시 Codex #10: 돌아갈 종점이 찼으면 빈자리 있는 가까운 종점으로 — 한 자리에 두 대 없음', () => {
+  const fleet = X.createFleet(0); const rides = [];
+  for (const [from, to] of [['plaza', 'isle'], ['plaza', 'isle'], ['isle', 'head'], ['isle', 'head']]) { const ride = { from, to, startedAt: 0, runMs: 3000 }; assert.ok(X.takeCar(fleet, from, ride, 0)); rides.push(ride); }
+  for (let now = 0; now <= 60000; now += 250) { X.settle(fleet, now); check(fleet); }
+  assert.equal(standing(fleet), '2/2/2', '종점마다 두 대');
+});
+
 // 1.10.403 Codex 391~400 #2: A's fare pending, B takes the car pulled up; A's fare refused -- A's undo put the whole fleet back as it stood,
 // B's car with it (B charged, their car standing again). Now only A's car goes back
 test('택시 Codex #2: 결제 실패 되돌리기는 내 차만 — 그사이 남이 탄 차는 그대로', () => {

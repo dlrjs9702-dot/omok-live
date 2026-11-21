@@ -45,6 +45,18 @@ test('택시 부르기: 정류장에서 부르면 가까운 차가 빈 차로 �
   assert.equal((await req('/api/island/taxi?from=isleFork', b)).data.called, null, 'walked off: the call let go');
 });
 
+// 1.10.403 Codex 391~400 #9: two calling at one stop -- each a car of their own; one gets in, the other's car still comes
+test('택시 Codex #9: 한 정류장에서 둘이 부르면 차도 둘', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'taxi-two-')); rmAtExit(dir);
+  const server = await boot(t, dir); const { req } = server;
+  const a = await server.enter(await server.issue('먼저부름')); const b = await server.enter(await server.issue('나중부름'));
+  await req('/api/test/taxi-run', a, { ms: 3000 }); const board = X.boardOf('museum');
+  await req('/api/plaza/state', a, { x: board.x, z: board.z, yaw: 0, moving: false }); await req('/api/plaza/state', b, { x: board.x + 1.2, z: board.z, yaw: 0, moving: false });
+  for (const who of [a, b]) { const r = await req('/api/island/taxi/call', who, { stop: 'museum' }); assert.equal(r.status, 200, JSON.stringify(r.data)); assert.equal(r.data.queued, false, 'a car for each'); }
+  const coming = (await req('/api/plaza/state', a, { x: board.x, z: board.z, yaw: 0, moving: false })).data.taxiStops.cars.filter((c) => c.ride?.empty && c.ride.to === 'museum');
+  assert.equal(coming.length, 2, '두 대가 옴');
+});
+
 // 1.10.403 Codex 391~400 #6: the fare's claim is the page's request -- the same request again (no answer the first time) is not a second fare;
 // a request that already started its ride starts no other
 test('택시 Codex #6: 같은 요청은 한 번만 결제, 이미 탄 요청으로 다시 타기는 막음', async (t) => {

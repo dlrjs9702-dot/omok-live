@@ -2679,13 +2679,17 @@ const taxiCalls = new Map();
 const taxiQueuePlace = (token) => { let k = 0; for (const [t, c] of taxiCalls) { if (c.queued) k += 1; if (t === token) return c.queued ? k : 0; } return 0; };
 function taxiDispatch(now = nowMs()) {
   const testRun = process.env.NODE_ENV === 'test' && taxiTestRunMs ? taxiTestRunMs : 0; taxiFleet.runMs = testRun || undefined;
+  /* (1.10.403 Codex 391~400 #9: a car for one caller -- two at one stop each have their own; the one whose car someone else took is back in the
+     queue (in the order called), not left 「on its way」 with no car) */
+  const carsFor = (stop) => taxiFleet.cars.filter((k) => (k.ride && k.ride.empty && IslandTaxi.toOf(k.ride) === stop) || (!k.ride && k.at === stop)).length;
+  const served = new Map();
   for (const [token, c] of taxiCalls) {
     const p = plazaPresence.get(token); const sign = IslandTaxi.curbOf(c.stop).sign;
     if (!sessions.has(token) || !p || (p.space || 'island') !== 'island' || Math.hypot(p.x - sign.x, p.z - sign.z) > 10) { taxiCalls.delete(token); plazaDirty = true; continue; } /* (walked off: let go) */
-    if (!c.queued) continue;
-    const coming = taxiFleet.cars.some((k) => (k.ride && k.ride.empty && IslandTaxi.toOf(k.ride) === c.stop) || (!k.ride && k.at === c.stop));
-    if (coming) { c.queued = false; continue; } /* (one there or on its way for this stop already) */
-    if (IslandTaxi.sendCar(taxiFleet, c.stop, now, testRun)) { c.queued = false; plazaDirty = true; }
+    const n = served.get(c.stop) || 0;
+    if (n < carsFor(c.stop)) { served.set(c.stop, n + 1); if (c.queued) { c.queued = false; plazaDirty = true; } continue; } /* (one there or on its way for this caller) */
+    if (!c.queued) { c.queued = true; plazaDirty = true; } /* (its car taken by another: waiting again) */
+    if (IslandTaxi.sendCar(taxiFleet, c.stop, now, testRun)) { c.queued = false; served.set(c.stop, n + 1); plazaDirty = true; }
   }
 }
 const taxiAwayMs = (from, now = nowMs()) => { IslandTaxi.settle(taxiFleet, now); return Math.max(0, IslandTaxi.etaAt(taxiFleet, from, now)); };
