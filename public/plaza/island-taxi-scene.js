@@ -67,6 +67,23 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
     assets.attach('taxi.stop_sign', g, fb, (entry) => { if (!entry) return; g.traverse((o) => { if (o.isMesh && [].concat(o.material).some((m) => m?.name === 'stop_plate')) o.material = face; }); });
     return { id, g, at };
   });
+  /* (1.10.399 assets 168, 에셋 검사 2회차 「길에서 표지 옆면만 · 종점 벤치~첫 차」: where one stands to get in, every place -- a round taxi mark in the
+     ground (read from any side; off the car's way: past the curb); at a terminal a lane of 1 m tiles from the bench's front to the mark, its
+     chevrons to the car. Walked over (no solids); a flat stand-in till the models come) */
+  const markMat = new THREE.MeshStandardMaterial({ color: 0xf0be43, roughness: 0.8 }); made.push(markMat);
+  const marks = X.PLACE_IDS().map((id) => {
+    const at = X.boardOf(id); const g = new THREE.Group(); g.position.set(at.x, groundY(at.x, at.z), at.z); group.add(g);
+    const fb = new THREE.Group(); piece(fb, markMat, 0.9, 0.03, 0.9, 0, 0.015, 0); g.add(fb); assets.attach('taxi.stop_mark', g, fb); return g;
+  });
+  const lanes = [];
+  for (const st of stops) {
+    const out = st.s.out; const sh = st.s.shelter; const dx = out.x - sh.x; const dz = out.z - sh.z; const len = Math.hypot(dx, dz) || 1; const ux = dx / len; const uz = dz / len;
+    const S = { x: sh.x + ux * 0.45, z: sh.z + uz * 0.45 }; const E = { x: out.x - ux * 0.46, z: out.z - uz * 0.46 }; const L = Math.hypot(E.x - S.x, E.z - S.z); if (L < 0.3) continue;
+    const n = Math.max(1, Math.round(L));
+    for (let k = 0; k < n; k += 1) { const x = S.x + ((k + 0.5) / n) * (E.x - S.x); const z = S.z + ((k + 0.5) / n) * (E.z - S.z);
+      const g = new THREE.Group(); g.position.set(x, groundY(x, z), z); /* (the model 4 cm into the ground already) */ g.rotation.y = Math.atan2(-ux, -uz); g.scale.z = L / n; group.add(g);
+      const fb = new THREE.Group(); piece(fb, markMat, 0.5, 0.05, 1, 0, 0.025, 0); g.add(fb); assets.attach('taxi.lane', g, fb); lanes.push(g); }
+  }
   const moving = new Map(); // (1.10.391 N4-a) car id -> its record: the four cars, standing in their places or out on a ride
   let night = false;
   // each frame: `rides` [{ key, ride }] I know of and `fleet` { cars } the server's (391: two a stop -- standing in a place, or out on a
@@ -113,5 +130,5 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
   const dispose = () => { scene.remove(group); for (const m of made) m.dispose?.(); };
   // (v1.10.285) the cars on their way or parked after a ride: where, which way, running or not, honking -- they block and others step aside
   const cars = () => [...moving.entries()].filter(([, r]) => r.out).map(([key, r]) => ({ key, x: r.h.position.x, z: r.h.position.z, yaw: r.h.rotation.y, running: Boolean(r.running), horn: Boolean(r.horn?.visible), ask: Boolean(r.ask?.visible), ghost: Boolean(r.ghost), rate: r.rate ?? 1, waitMs: r.waitMs || 0 })); /* (317: its pace -- 0 standing for someone, a little creeping by; 391: the cars out) */
-  return { group, step, seatOf, setNight, dispose, cars, stops: () => stops.map((st) => ({ id: st.id, x: st.s.x, z: st.s.z, standing: Boolean(standCount[st.id]), count: standCount[st.id] || 0, away: !standCount[st.id], label: st.said || '' })), /* (294; 391: how many stand there) */ moving: () => [...moving.entries()].filter(([, r]) => r.out).map(([k]) => k), roadSigns: () => roadSigns.map((s) => ({ id: s.id, x: +s.at.x.toFixed(2), z: +s.at.z.toFixed(2), model: s.g.children.length > 1 })), /* (392) */ parked: () => [...moving.entries()].filter(([, r]) => !r.out).map(([k, r]) => ({ id: k, x: +r.h.position.x.toFixed(2), z: +r.h.position.z.toFixed(2) })) };
+  return { group, step, seatOf, setNight, dispose, cars, stops: () => stops.map((st) => ({ id: st.id, x: st.s.x, z: st.s.z, standing: Boolean(standCount[st.id]), count: standCount[st.id] || 0, away: !standCount[st.id], label: st.said || '' })), /* (294; 391: how many stand there) */ moving: () => [...moving.entries()].filter(([, r]) => r.out).map(([k]) => k), roadSigns: () => roadSigns.map((s) => ({ id: s.id, x: +s.at.x.toFixed(2), z: +s.at.z.toFixed(2), model: s.g.children.length > 1 })), /* (392) */ floorMarks: () => ({ marks: marks.length, lanes: lanes.length }), /* (399) */ parked: () => [...moving.entries()].filter(([, r]) => !r.out).map(([k, r]) => ({ id: k, x: +r.h.position.x.toFixed(2), z: +r.h.position.z.toFixed(2) })) };
 }

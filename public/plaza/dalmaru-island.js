@@ -519,6 +519,12 @@
       for (let u = -b.half; u <= b.half + 1e-6; u += 0.5) for (const v of [-3.25, 3.25]) { const x = b.x + b.ux * u - b.uz * v; const z = b.z + b.uz * u + b.ux * v; if (deckAt({ b, u }) - ground(x, z) > rise && walkable(x, z)) out.push({ x, z, r: 0.4, guard: true }); } }
     return (guards_ = out);
   }
+  /* (1.10.399 assets 168 dock_dest_board, 에셋 검사 2회차 「부두에서 행선지가 안 보임」: where each dock's boat goes, facing who walks up -- 배 타는 곳
+     west of its steps off the road's band, 별마루섬 부두 on the sand by its gangway; their words drawn by the scene) */
+  const DOCK_BOARDS = Object.freeze([
+    Object.freeze({ dock: 'dal', x: -2.5, z: -3.5, yaw: 0, text: '⛴ 별마루섬행', posts: [[-3.25, -3.5], [-1.75, -3.5]] }), /* (the assets' (-2.4, -5) stood on the bay's walk -- 1.5 m north: off it, off the gangway and the road's band) */
+    ...(DOCK2 ? [Object.freeze({ dock: 'byeol', x: 230.8, z: 199.6, yaw: -Math.PI / 2, text: '⛴ 달마루섬행', posts: [[230.8, 198.85], [230.8, 200.35]] })] : []),
+  ]);
   function structureSolids() {
     const out = [{ x: PL.lighthouse.x, z: PL.lighthouse.z, r: 3.2 }, { x: D.ISLE.x - 4, z: D.ISLE.z - ISLE_SIGN_IN, r: 1.1 }, ...pavingSolids(), ...auctionSolids()];
     for (let u = 1.1; u <= SL - 2; u += 0.5) for (const v of [-0.05, 3.45]) out.push( /* (the rails' run: the foot and the top meet level ground, nothing drawn there to stop one) */{ x: STAIRS.x + STAIRS.ux * u + STAIRS.nx * v, z: STAIRS.z + STAIRS.uz * u + STAIRS.nz * v, r: 0.28, rail: true });
@@ -534,6 +540,7 @@
     out.push(...exchangeSolids()); // (v1.10.320: and off the 증권거래소)
     if (Q) out.push(...Q.solidsOf()); // (1.10.323 채석장: its rocks, the sign and the ore pile -- assets 129 circles)
     out.push(...rampGuards()); // (1.10.389: the high bridge's ramps' sides over land)
+    for (const b of DOCK_BOARDS) for (const [x, z] of b.posts) out.push({ x, z, r: 0.2 }); // (1.10.399 assets 168: the docks' boards' two posts)
     return out;
   }
   // v1.10.320 섬 증권거래소: its ground's edge all round (0.5 m circles every 0.5 m, 0.3 in) and its middle filled -- in its own
@@ -918,7 +925,7 @@
     coastR: () => D.R_OUT, coastDist: D.coastDist, cliffAt, rawLand: D.landHeight, land, ground, creekWaterY, meshGroundHeight, settledSpot, heightAt, walkable,
     streamDist: () => Infinity, walkDist, STREAMS: [], streamCurves: [], walkCurves, RIVER_WIDE: { pts: [] }, riverExtra: () => 0,
     streamDepth: () => 0, streamWaterHeight: () => SEA, POND: { x: 1e5, z: 1e5, r: 0 }, PADS,
-    bridges, onBridge, deckAt, onStairs, STAIRS, PIER, DOCK, DOCK2, DOCKS, BREAKWATER: { x: 1e5, z: 1e5, ux: 1, uz: 0, half: 0, w: 0, deck: 0 }, bayR: D.R_BAY,
+    bridges, onBridge, deckAt, onStairs, STAIRS, PIER, DOCK, DOCK2, DOCKS, DOCK_BOARDS /* (399) */, BREAKWATER: { x: 1e5, z: 1e5, ux: 1, uz: 0, half: 0, w: 0, deck: 0 }, bayR: D.R_BAY,
     fishWater, canFish: (x, z) => fishWater(x, z) !== null, ISLAND_RADIUS: 540 /* (v1.10.230: the village's far corner, r 323; N1: 새 섬's east end x 516 -- 330 -> 540) */,
     /* N1 새 섬's ground: its own mesh on the main ground's 2.5 m lattice (x0, z0 on it), a cell its when within 14 m of its coast
        (the main ground leaves those out -- no cell drawn twice); its own ground maps over this square */

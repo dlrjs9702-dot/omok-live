@@ -1197,6 +1197,15 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     piece('dalmaru.pier_dalkkeut', S.pier.x, S.pier.y, S.pier.z, S.pier.yaw, box(3.6, 0.2, 20, 0xc58b5a, 10), true);
     piece('dalmaru.dock_boat', S.dock.x, S.dock.y, S.dock.z, S.dock.yaw, box(12, 0.15, 3, 0xc58b5a), true);
     if (S.dock2) piece('dalmaru.dock_boat', S.dock2.x, S.dock2.y, S.dock2.z, S.dock2.yaw, box(12, 0.15, 3, 0xc58b5a), true); // (1.10.389 N3-a 별마루섬 부두: the same, its gangway east)
+    /* (1.10.399 assets 168 dock_dest_board, 에셋 검사 2회차: where each dock's boat goes -- its `plate` both faces (the back's u turned round) the words,
+       drawn as the taxi stops' signs; its two posts block (T.structureSolids), a stand-in box over each) */
+    for (const b of T.DOCK_BOARDS || []) {
+      const c = document.createElement('canvas'); c.width = 780; c.height = 250; const x = c.getContext('2d'); x.fillStyle = '#fff6e3'; x.fillRect(0, 0, 780, 250); x.strokeStyle = '#8a6b45'; x.lineWidth = 12; x.strokeRect(6, 6, 768, 238);
+      x.fillStyle = '#4a3828'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = '800 112px sans-serif'; x.fillText(b.text, 390, 132);
+      const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.flipY = false; const face = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 });
+      const fb = new THREE.Group(); for (const s of [-0.75, 0.75]) mesh(new THREE.BoxGeometry(0.28, 1.0, 0.28), mat(0x8a6440), s, 0.5, 0, fb); mesh(new THREE.BoxGeometry(1.56, 0.5, 0.08), mat(0xfff6e3), 0, 1.85, 0, fb);
+      const g = piece('dalmaru.dock_board', b.x, heightAt(b.x, b.z), b.z, b.yaw, fb, false, () => g.traverse((o) => { if (o.isMesh && [].concat(o.material).some((m) => m?.name === 'dest_plate')) o.material = face; }));
+    }
     // the stairs: its model runs along local -x from its foot; the low wall on its open side (and its back, the stone
     // under the steps) are walked round, its ends are open
     const st = T.STAIRS; const stairs = new THREE.Group(); const flights = new THREE.Group(); stairs.add(flights);
@@ -3281,6 +3290,8 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       { const o = owner.root.position; if (p.last && dt > 0) { const v = Math.hypot(o.x - p.last.x, o.z - p.last.z) / dt; p.speed = (p.speed || 0) * 0.8 + Math.min(v, 30) * 0.2; } p.last = { x: o.x, z: o.z }; if (key === 'me' ? myRun() : others.get(key)?.run) p.runUntil = now + 1500; } /* (running as the owner means it -- mine, or as they sent it; held 1.5 s) */
       const riding = key === 'me' ? Boolean(cycling) : Boolean(others.get(key)?.bike);
       const role = petRole(w.kind, riding && owner.bike?.group ? 'bike' : now < (p.runUntil || 0) ? 'run' : 'walk'); const was = p.role; p.role = role;
+      /* (1.10.399 assets 168: the crate's cushion away while a pet rides in it, back when it is out -- mine and others' bikes alike) */
+      if (owner.bike?.group) { const b = owner.bike; if (!b.cushions?.length || !b.cushions[0].parent) { b.cushions = []; b.group.traverse((o) => { if (o.name === 'basket_cushion') b.cushions.push(o); }); } for (const o of b.cushions) o.visible = role !== 'basket'; } /* (High and Low each their own) */
       const r = p.c.root.position; const lift = (o) => Math.max(owner.root.position.y - 0.05, heightAt(o.x, o.z));
       const seat = (k) => { const s = PET_SEAT[`${w.kind}:${k}`] || PET_SEAT[w.kind] || [0, 0, 0]; const a = yaw + Math.PI; return [s[0] * Math.cos(a) + s[2] * Math.sin(a), s[1], -s[0] * Math.sin(a) + s[2] * Math.cos(a)]; }; /* (its own frame turned to the world) */
       if (role === 'head' || role === 'basket' || role === 'kite') { // (riding on or behind its owner: placed there, facing as they do)
