@@ -100,7 +100,7 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
       if (ride && known && known.startedAt === ride.startedAt) ride = { ...ride, warp: known.warp ?? ride.warp, side: known.side ?? ride.side, ghost: known.ghost ?? ride.ghost, blockedAt: known.blockedAt ?? ride.blockedAt }; /* (my own ride's clock: fresher) */
       let rec = moving.get(c.id); if (!rec) { rec = car(); moving.set(c.id, rec); }
       let p = ride ? X.carAt(ride, now) : null;
-      if (ride && !p) { const home = ride.stay ? X.STOPS[ride.from].to : ride.from; p = { ...X.placeOf(home, ride.park || 0), phase: 'wait', d: 0 }; } /* (in its place, before the server says so) */
+      if (ride && !p) { const home = ride.stay ? X.toOf(ride) : ride.from; /* (1.10.399: a ride from a road stop -- not a terminal, no STOPS entry: where it is going, as named) */ p = { ...X.placeOf(home, ride.park || 0), phase: 'wait', d: 0 }; } /* (in its place, before the server says so) */
       if (!ride) { const q = X.placeOf(c.at, c.place); standCount[c.at] = (standCount[c.at] || 0) + 1;
         if (c.pulledAt && c.place === 0 && now - c.pulledAt < 2000) { const f = X.placeOf(c.at, 1); const k = sm((now - c.pulledAt) / 2000); p = { x: f.x + (q.x - f.x) * k, z: f.z + (q.z - f.z) * k, yaw: q.yaw, phase: 'wait', d: k * X.BACK }; } /* (the one behind pulling up) */
         else p = { ...q, phase: 'wait', d: 0 }; }
