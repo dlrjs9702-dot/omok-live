@@ -63,6 +63,9 @@ test('생활 서버: 완료시점·고정위치·선점·동일요청·취소·�
   const ka=await server.issue('생활가'),kb=await server.issue('생활나');let a=await server.enter(ka),b=await server.enter(kb);
   const all=async()=> (await req('/api/test/island/events',a)).data.events;
   /* (1.10.396 CI: a random coin with all five of its old spots blocked -- TOO_FAR; eight round it at 0.9 and 1.4 m too) */ const AROUND=[[0,0],...[0.9,1.4].flatMap((r)=>[0,1,2,3,4,5,6,7].map((k)=>[Math.round(r*Math.cos(k*Math.PI/4)*100)/100,Math.round(r*Math.sin(k*Math.PI/4)*100)/100]))];
+  /* (1.10.396 CI TOO_FAR: a pose is taken as a walk from my last spot and stopped at another player on that line -- the other one at (0, 8); a fresh
+     entry, no last spot, beside a random tree / coin / thing) */
+  const standFresh=async(s,p)=>{await req('/api/plaza/leave',s,{});return req('/api/plaza/state',s,{x:p.x,z:p.z,yaw:0,moving:true});};
   const stand=(s,p)=>req('/api/plaza/state',s,{x:p.x,z:p.z,yaw:0,moving:true});
   const list=await all();assert.ok(list.length>15);
   const one=list.find(e=>e.type.startsWith('mushroom')&&e.type!=='mushroom_blue'); /* (G4b: the common mushrooms -- 「버섯」 in the bag) */
@@ -87,17 +90,17 @@ test('생활 서버: 완료시점·고정위치·선점·동일요청·취소·�
   assert.equal((await req('/api/island/resource/finish',winner,{id:one.id,requestId:crypto.randomUUID()})).data.error,'COLLECT_NOT_STARTED');
   const tree=(await all()).find(e=>e.type==='berry');await stand(b,{x:0,z:8});
   let fruit=null; // (a random tree: its own spot may not be stood on -- the server puts me aside; then beside it)
-  for(const [dx,dz] of AROUND){await stand(a,{x:tree.x+dx,z:tree.z+dz});fruit=await req('/api/island/resource/start',a,{id:tree.id});if(fruit.status===200)break;}assert.equal(fruit.status,200,JSON.stringify(fruit.data));assert.equal(fruit.data.anim,'pickFruit');assert.equal(fruit.data.ms,1800);
+  for(const [dx,dz] of AROUND){await standFresh(a,{x:tree.x+dx,z:tree.z+dz});fruit=await req('/api/island/resource/start',a,{id:tree.id});if(fruit.status===200)break;}assert.equal(fruit.status,200,JSON.stringify(fruit.data));assert.equal(fruit.data.anim,'pickFruit');assert.equal(fruit.data.ms,1800);
   await sleep(1850);const picked=await req('/api/island/resource/finish',a,{id:tree.id,requestId:crypto.randomUUID()});assert.equal(picked.status,200,JSON.stringify(picked.data));
   assert.equal(picked.data.item.qty,1);assert.equal(picked.data.events.find(e=>e.id===tree.id).available,false);
   await req('/api/test/island/events',a,{grow:tree.id});const regrown=(await all()).find(e=>e.id===tree.id);assert.deepEqual([regrown.x,regrown.z],[tree.x,tree.z]);
   await req('/api/island/resource/cancel',a,{});
   const coin=(await all()).find(e=>e.type==='coin');const before=(await req('/api/donation',a)).data.balance;
   let dig=null; // (a random coin, like the tree: its own spot may not be stood on -- then beside it)
-  for(const [dx,dz] of AROUND){await stand(a,{x:coin.x+dx,z:coin.z+dz});dig=await req('/api/island/resource/start',a,{id:coin.id});if(dig.status===200)break;}assert.equal(dig.status,200,JSON.stringify(dig.data));
+  for(const [dx,dz] of AROUND){await standFresh(a,{x:coin.x+dx,z:coin.z+dz});dig=await req('/api/island/resource/start',a,{id:coin.id});if(dig.status===200)break;}assert.equal(dig.status,200,JSON.stringify(dig.data));
   await sleep(1050);const paid=await req('/api/island/resource/finish',a,{id:coin.id,requestId:crypto.randomUUID()});assert.equal(paid.data.points,2000);assert.equal((await req('/api/donation',a)).data.balance,before+2000);
   // G4b 채집: no daily cap (사용자 「추천대로」, v1.10.35 -- the blue mushroom a third time too), and what grows back kept over a restart
-  const near=async(s,e)=>{for(const [dx,dz] of AROUND){await stand(s,{x:e.x+dx,z:e.z+dz});const r=await req('/api/island/resource/start',s,{id:e.id});if(r.status===200)return r;}return null;};
+  const near=async(s,e)=>{for(const [dx,dz] of AROUND){await standFresh(s,{x:e.x+dx,z:e.z+dz});const r=await req('/api/island/resource/start',s,{id:e.id});if(r.status===200)return r;}return null;};
   const pick=async(e)=>{assert.ok(await near(a,e),e.type);await sleep(1050);return req('/api/island/resource/finish',a,{id:e.id,requestId:crypto.randomUUID()});};
   const blue=(await all()).find(e=>e.type==='mushroom_blue');
   for(let k=0;k<3;k+=1){assert.equal((await pick(blue)).status,200);await req('/api/test/island/events',a,{grow:blue.id});}
