@@ -39,8 +39,8 @@
   // (1.10.389 N3-a: the high bridge's two -- its ramps now stand where they were -- each more than 5 m off its ends, on the road: (88.4, 138.9) -> (92.8, 135.6), (36.4, 140.5) -> (25.5, 140.6))
   const CROSSINGS = Object.freeze([[2.4,-52.4],[0.8,-13.7],[92.7,55.1],[102.5,101],[92.8,135.6],[25.5,140.6],[-10.9,141.1],[-19.3,146.5],[-19.7,168],[96.7,129.7],[100.1,119.3],
     /* (1.10.395 N4-c: on the new road -- the neck before the corner (the west street's walk to its east side) and the village street where
-       each yard's walk comes to it, -14 · 14 · 42 · 70 · 98) */
-    [-20,224],[-14,236],[14,236],[42,236],[70,236],[98,236]].map(([x, z]) => Object.freeze({ x, z })));
+       each yard's walk comes to it, -14 (at -12: off the corner's bend) · 14 · 42 · 70 · 98) */
+    [-20,224],[-12,236],[14,236],[42,236],[70,236],[98,236]].map(([x, z]) => Object.freeze({ x, z })));
   const CROSS_CLEAR = 5;
   const CROSS_HALF = 2.2;
   const ROAD = Object.freeze({ lane: 2.3, walk: 1.6, half: 3.9 });
