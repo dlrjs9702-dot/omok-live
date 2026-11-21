@@ -47,13 +47,15 @@
   const STOPS = {
     plaza: { id: 'plaza', label: '대청마당', to: 'isle', sign: '🚕 섬 택시 · 툇마루섬 마을까지' },
     isle: { id: 'isle', label: '툇마루섬 마을', to: 'plaza', sign: '🚕 섬 택시 · 대청마당까지' },
+    /* (1.10.397 N4-c, 결정 1 B · notes n4-plan §5-3·§5-4: the third, 10.5 m inside 별마루다리's wide gate -- EXT's end) */
+    head: { id: 'head', label: '별마루섬 입구', to: 'isle', sign: '🚕 섬 택시 · 별마루섬 입구' },
   };
   const ENTER = 1200; const EXIT = 1000; const EASE = 1500; const FAST = 16; /* (v1.10.285: 10 -> 13; 1.10.327 사용자 「16의 속도로 올려」 -- faster than a bike's 12) */ const SLOW = FAST; /* (1.10.327 사용자 「다리 위에서도 도로와 동일한 속도」: no slow stretch -- nor on a higher bridge later) */ const STEP = 50; // (ms; m/s)
   // 1.10.327 택시 요금 (notes docs/taxi-yield-20261109.md 「택시 요금」, 사용자 2026-11-16): everyone pays -- a ride's base fare (경제 값
   // taxi:fare) or the day's pass (taxi:dayPass: that Seoul day, any number of rides); EXTRA: what a pair of stops adds to the base
   // by distance once there are more stops (none now -- the two stops are the base)
   const FARE = 1000; const DAY_PASS = 5000; const EXTRA = Object.freeze({});
-  const roadOf = (from) => (from === 'isle' ? ROUTE.slice().reverse() : ROUTE.slice());
+  const roadOf = (from) => (from === 'isle' ? ROUTE.slice().reverse() : from === 'head' ? EXT.slice().reverse() /* (397: from its end back) */ : ROUTE.slice());
   const segs = (pts) => pts.slice(1).map((q, i) => { const p = pts[i]; const len = Math.hypot(q[0] - p[0], q[1] - p[1]); const mx = (p[0] + q[0]) / 2; const mz = (p[1] + q[1]) / 2;
     return { p, q, len, yaw: Math.atan2(q[0] - p[0], q[1] - p[1]), slow: mx >= BRIDGE.x0 && mx <= BRIDGE.x1 && mz >= BRIDGE.z0 && mz <= BRIDGE.z1 }; });
   const smooth = (t) => { const k = Math.min(1, Math.max(0, t)); return k * k * (3 - 2 * k); };
@@ -68,7 +70,7 @@
   const beside = (x, z, yaw, at) => ({ x: x + Math.cos(yaw) * at.across + Math.sin(yaw) * at.along, z: z - Math.sin(yaw) * at.across + Math.cos(yaw) * at.along });
   // a stop's place: where the car stands (the road's end, facing the road), the shelter beside it, where one gets in
   function stopOf(id) {
-    const road = roadOf(id === 'isle' ? 'isle' : 'plaza'); const [a, b] = road; const yaw = Math.atan2(b[0] - a[0], b[1] - a[1]);
+    const road = roadOf(id === 'isle' || id === 'head' ? id : 'plaza'); const [a, b] = road; const yaw = Math.atan2(b[0] - a[0], b[1] - a[1]);
     const nx = Math.cos(yaw); const nz = -Math.sin(yaw); // (the car's right)
     return { ...STOPS[id], x: a[0], z: a[1], yaw, shelter: { x: a[0] + nx * 3.2 - Math.sin(yaw) * 1.2, z: a[1] + nz * 3.2 - Math.cos(yaw) * 1.2, yaw: yaw - Math.PI / 2 }, out: beside(a[0], a[1], yaw, BOARD) };
   }
@@ -85,37 +87,52 @@
   // each at its distance along ROUTE from 대청마당 (s) and the side its sign stands on (+1: the right going from 대청마당). A ride is between
   // any two; a car going empty -- to fetch a caller, or to the nearest terminal with room -- is a ride with none in it (`empty`) ----
   const SR = [0]; for (let i = 1; i < ROUTE.length; i += 1) SR.push(SR[i - 1] + Math.hypot(ROUTE[i][0] - ROUTE[i - 1][0], ROUTE[i][1] - ROUTE[i - 1][1])); const ROAD_LEN = SR[SR.length - 1];
-  function atS(s) { let i = 1; while (i < ROUTE.length - 1 && SR[i] < s) i += 1; const [ax, az] = ROUTE[i - 1]; const [bx, bz] = ROUTE[i]; const t = Math.max(0, Math.min(1, (s - SR[i - 1]) / (SR[i] - SR[i - 1] || 1))); return { x: ax + (bx - ax) * t, z: az + (bz - az) * t, yaw: Math.atan2(bx - ax, bz - az) }; }
+  /* 1.10.397 N4-c: the trunk -- ROUTE to the corner before 툇마루섬 마을's stop (JN, where EXT begins) and on along EXT to 별마루섬 입구; 마을's stop is a
+     short spur off it at the corner (SPUR m: the corner to its standing place). A place's s is along the trunk (마을: the corner's), the road
+     between two places along the trunk, the spur added for 마을 */
+  const JN = ROUTE.length - 3; const TRUNK = [...ROUTE.slice(0, JN + 1), ...EXT.slice(1)];
+  const TS = [0]; for (let i = 1; i < TRUNK.length; i += 1) TS.push(TS[i - 1] + Math.hypot(TRUNK[i][0] - TRUNK[i - 1][0], TRUNK[i][1] - TRUNK[i - 1][1]));
+  const SJ = TS[JN]; const SPUR = ROAD_LEN - SR[JN]; const TRUNK_LEN = TS[TS.length - 1];
+  function atS(s) { let i = 1; while (i < TRUNK.length - 1 && TS[i] < s) i += 1; const [ax, az] = TRUNK[i - 1]; const [bx, bz] = TRUNK[i]; const t = Math.max(0, Math.min(1, (s - TS[i - 1]) / (TS[i] - TS[i - 1] || 1))); return { x: ax + (bx - ax) * t, z: az + (bz - az) * t, yaw: Math.atan2(bx - ax, bz - az) }; }
   const ROADSTOPS = Object.freeze({
     dock: Object.freeze({ id: 'dock', label: '배 타는 곳', s: 52.3, side: 1 }), waterfront: Object.freeze({ id: 'waterfront', label: '물가 거리', s: 92.1, side: 1 }),
     museum: Object.freeze({ id: 'museum', label: '박물관·잔치마루', s: 177.2, side: 1 }),
     /* (1.10.395 사용자 결정 50 A: ④ before the bend at (102, 110) -- 6.75 m from both crossings either side (s 218.3 and 231.8), about 35 m to 달끝역's way in) */
-    dalkkeut: Object.freeze({ id: 'dalkkeut', label: '달끝나루·달끝역', s: 225, side: 1 }), isleFork: Object.freeze({ id: 'isleFork', label: '툇마루섬 갈림길', s: 365, side: 1 }),
+    dalkkeut: Object.freeze({ id: 'dalkkeut', label: '달끝나루·달끝역', s: 225, side: 1 }), /* (1.10.397 N4-c ⑥ · ⑦ on the village street (notes n4-plan §3-3): x -3 (9 m from the crossing at -12) and x 106 (8 m past the one at 98); their
+       signs on the south walk, the yards' fences behind -- signOut 1.0) */
+    villageMid: Object.freeze({ id: 'villageMid', label: '마을 가운데', s: 475.1, side: 1, signOut: 1.0 }), villageEast: Object.freeze({ id: 'villageEast', label: '마을 동쪽 끝', s: 584.1, side: 1, signOut: 1.0 }),
+    isleFork: Object.freeze({ id: 'isleFork', label: '툇마루섬 갈림길', s: 365, side: 1 }),
   });
   const isTerminal = (id) => Boolean(STOPS[id]); const labelOf = (id) => (STOPS[id] || ROADSTOPS[id])?.label || '';
-  const sOf = (id) => (id === 'plaza' ? 0 : id === 'isle' ? ROAD_LEN : ROADSTOPS[id]?.s ?? NaN);
+  const sOf = (id) => (id === 'plaza' ? 0 : id === 'isle' ? SJ : id === 'head' ? TRUNK_LEN : ROADSTOPS[id]?.s ?? NaN); /* (397: 마을 at its corner on the trunk -- distanceOf adds its spur) */
   const toOf = (ride) => ride.to || STOPS[ride.from]?.to; // (a ride's end: named, or the other terminal as before 392)
   // a stop's curb: the car's spot at the road's side by its sign, facing the way from 대청마당; its sign 1.2 m further out
-  function curbOf(id) { const r = ROADSTOPS[id]; const p = atS(r.s); const c = (LANE + 1.2) * r.side; return { x: p.x + Math.cos(p.yaw) * c, z: p.z - Math.sin(p.yaw) * c, yaw: p.yaw, sign: { x: p.x + Math.cos(p.yaw) * (c + 2.2 * r.side), z: p.z - Math.sin(p.yaw) * (c + 2.2 * r.side), yaw: p.yaw - (Math.PI / 2) * r.side } }; }
+  function curbOf(id) { const r = ROADSTOPS[id]; const p = atS(r.s); const c = (LANE + 1.2) * r.side; const so = (r.signOut ?? 2.2) * r.side; return { x: p.x + Math.cos(p.yaw) * c, z: p.z - Math.sin(p.yaw) * c, yaw: p.yaw, sign: { x: p.x + Math.cos(p.yaw) * (c + so), z: p.z - Math.sin(p.yaw) * (c + so), yaw: p.yaw - (Math.PI / 2) * r.side } }; } /* (397 ⑥⑦: on the village street the sign on its walk -- signOut 1.0, the yards' fences behind) */
   // the road between two places: its start (a terminal's front place, or a stop's curb), the road's points past 10 m of a terminal end and
   // 6 m of a stop, its end (a terminal's drop spot by its shelter, or a stop's curb). Between the two terminals: the drive as before
   function driveBetween(from, to) {
     if (STOPS[from] && STOPS[from].to === to) return driveOf(from);
-    const s0 = sOf(from); const s1 = sOf(to); const dir = Math.sign(s1 - s0) || 1; const m0 = isTerminal(from) ? 10 : 6; const m1 = isTerminal(to) ? 10 : 6;
+    /* (1.10.397: along the trunk; 마을's spur -- its stop to the corner -- before or after; between the trunk's ends no 10 m left off at the corner) */
+    const s0 = sOf(from); const s1 = sOf(to); const dir = Math.sign(s1 - s0) || 1; const m0 = from === 'isle' ? -0.01 : isTerminal(from) ? 10 : 6; const m1 = to === 'isle' ? -0.01 : isTerminal(to) ? 10 : 6;
     const start = isTerminal(from) ? (() => { const s = stopOf(from); return [s.x, s.z]; })() : (() => { const c = curbOf(from); return [c.x, c.z]; })();
-    const mids = ROUTE.filter((p, i) => (dir > 0 ? SR[i] > s0 + m0 && SR[i] < s1 - m1 : SR[i] < s0 - m0 && SR[i] > s1 + m1)); if (dir < 0) mids.reverse();
+    const spur = ROUTE[ROUTE.length - 2]; /* (the spur's middle point, between the corner and 마을's stop) */
+    const st = to === 'isle' ? stopOf('isle') : null; /* (into 마을's stop as the classic drive: the points within 10 m of it left out, then its approach) */
+    const mids = TRUNK.filter((p, i) => (dir > 0 ? TS[i] > s0 + m0 && TS[i] < s1 - m1 : TS[i] < s0 - m0 && TS[i] > s1 + m1) && !(st && Math.hypot(p[0] - st.x, p[1] - st.z) <= 10)); if (dir < 0) mids.reverse();
     const end = isTerminal(to) ? (() => { const d = dropOf(to); return [d.approach, [d.x, d.z]]; })() : (() => { const c = curbOf(to); return [[c.x, c.z]]; })();
-    return [start, ...mids, ...end];
+    return [start, ...(from === 'isle' ? [spur] : []), ...mids, ...end];
   }
   // where one gets in at a place: by the car's door as it stands there (a terminal's front place, a stop's curb)
   const boardOf = (id) => { if (STOPS[id]) return stopOf(id).out; const c = curbOf(id); return beside(c.x, c.z, c.yaw, BOARD); };
   // the road's length between two places -- what a fare is by (n4-plan §5-5)
-  const distanceOf = (from, to) => Math.abs(sOf(to) - sOf(from));
+  const distanceOf = (from, to) => (from === to ? 0 : Math.abs(sOf(to) - sOf(from)) + (from === 'isle' ? SPUR : 0) + (to === 'isle' ? SPUR : 0)); /* (397: 마을's spur) */
   // 1.10.391 N4-a (notes docs/n4-plan-20261120.md §5-1, 사용자 N4 §8): keep right -- every car LANE m to its own right of the road's
   // middle, eased in over the first and last LANE_EASE m of a drive; on the one-lane bridge (and LANE_EASE m before it) the middle.
   // Each point of a drive keeps its offset (`offs`): a car going back the same road is shifted by it in its own frame -- its right too
   const LANE = 1.15; const LANE_EASE = 8;
-  const bridgeOut = (x, z) => (z < BRIDGE.z0 - 4 || z > BRIDGE.z1 + 4 ? Infinity : Math.max(0, BRIDGE.x0 - x, x - BRIDGE.x1));
+  /* (1.10.397 N4-c: 별마루다리 one lane too -- 61.75 m, and through the wide gate at its head (4.4 m between the posts) to 5 m inside it) */
+  const BRIDGE2 = Object.freeze({ x0: 164.5, x1: 233, z0: 222.5, z1: 229.5 }); const BRIDGES = Object.freeze([BRIDGE, BRIDGE2]);
+  const bridgeOut = (x, z) => Math.min(...BRIDGES.map((b) => (z < b.z0 - 4 || z > b.z1 + 4 ? Infinity : Math.max(0, b.x0 - x, x - b.x1))));
+  const bridgeOf = (x, z, m = 0) => BRIDGES.findIndex((b) => x >= b.x0 - m && x <= b.x1 + m && z >= b.z0 && z <= b.z1); /* (which one-lane bridge a point is on, -1 none) */
   function laneOffs(road) {
     const ds = [0]; for (let i = 1; i < road.length; i += 1) ds.push(ds[i - 1] + Math.hypot(road[i][0] - road[i - 1][0], road[i][1] - road[i - 1][1])); const total = ds[ds.length - 1];
     return road.map(([x, z], i) => LANE * Math.min(1, ds[i] / LANE_EASE, (total - ds[i]) / LANE_EASE, bridgeOut(x, z) / LANE_EASE));
@@ -236,7 +253,7 @@
   // the clock moved on: a ride just over decides where its car goes (stays where that stop has fewer than PLACES, else back home) and
   // which place it takes; each car whose glide or way back is over stands in it -> whether anything changed
   // (392 N4-b) after a ride to a stop, or to a full terminal from a stop: empty to the nearest terminal with room (by the road; none: the nearer)
-  const nearestRoom = (fleet, from, except) => Object.keys(STOPS).sort((a, b) => Math.abs(sOf(a) - sOf(from)) - Math.abs(sOf(b) - sOf(from))).find((t) => fleet.cars.filter((c) => c !== except && headingTo(c) === t).length < PLACES) || Object.keys(STOPS).sort((a, b) => Math.abs(sOf(a) - sOf(from)) - Math.abs(sOf(b) - sOf(from)))[0];
+  const nearestRoom = (fleet, from, except) => Object.keys(STOPS).sort((a, b) => distanceOf(a, from) - distanceOf(b, from)).find((t) => fleet.cars.filter((c) => c !== except && headingTo(c) === t).length < PLACES) || Object.keys(STOPS).sort((a, b) => distanceOf(a, from) - distanceOf(b, from))[0];
   function goEmpty(fleet, c, from, now) { const to = nearestRoom(fleet, from, c); const runMs = c.ride?.runMs || fleet.runMs; c.ride = { from, to, startedAt: now, empty: true, car: c.id, seat: 0, ...(runMs ? { runMs } : {}), stay: true, park: 0 }; c.ride.park = freePlace(fleet, to, c); c.at = null; c.waitUntil = 0; }
   const WAIT = 15000; // (a car fetched to a stop waits this long for its caller, then goes to the nearest terminal with room)
   function settle(fleet, now) {
@@ -254,7 +271,7 @@
   }
   // (392 N4-b) a call at a stop: the nearest car standing at a terminal (its front one) is sent there empty -> the car, or null (none standing)
   function sendCar(fleet, stop, now, runMs) {
-    const from = Object.keys(STOPS).filter((t) => standingAt(fleet, t).length).sort((a, b) => Math.abs(sOf(a) - sOf(stop)) - Math.abs(sOf(b) - sOf(stop)))[0]; if (!from) return null;
+    const from = Object.keys(STOPS).filter((t) => standingAt(fleet, t).length).sort((a, b) => distanceOf(a, stop) - distanceOf(b, stop))[0]; if (!from) return null;
     const ride = { from, to: stop, startedAt: now, empty: true, ...(runMs ? { runMs } : {}) }; const took = takeCar(fleet, from, ride, now); if (!took) return null;
     ride.stay = true; ride.park = 0; return took.car;
   }
@@ -277,8 +294,8 @@
   const easeClock = (view, server, step = 2, jump = 1000) => (view == null || Math.abs(server - view) > jump ? server : view + Math.max(-step, Math.min(step, server - view)));
   // (392 N4-b, 결정 40 A · n4-plan §5-5) a fare by the road's length: per100 a 100 m (the nearest 100 m), at least min
   const fareByRoad = (from, to, per100 = 250, min = 500) => Math.max(Math.round(Number(min) || 0), Math.round(Number(per100) || 0) * Math.round(distanceOf(from, to) / 100));
-  const PLACE_IDS = () => ['plaza', ...Object.keys(ROADSTOPS).sort((a, b) => ROADSTOPS[a].s - ROADSTOPS[b].s), 'isle'];
+  const PLACE_IDS = () => ['plaza', 'isle', 'head', ...Object.keys(ROADSTOPS)].sort((a, b) => sOf(a) - sOf(b)); /* (397: by the trunk -- 마을 at its corner, 별마루섬 입구 last) */
   return { boardOf, ROADSTOPS, ROAD_LEN, sOf, atS, curbOf, driveBetween, distanceOf, fareByRoad, PLACE_IDS, isTerminal, labelOf, toOf, sendCar, WAIT, nearestRoom, /* (392 N4-b) */
-    LANE, PLACES, BACK, placeOf, laneOffs, createFleet, takeCar, settle, etaAt, fleetView, countAt, standingAt, onBridgeBox: (x, z, m = 0) => x >= BRIDGE.x0 - m && x <= BRIDGE.x1 + m && z >= BRIDGE.z0 && z <= BRIDGE.z1, /* (391 N4-a) */
+    LANE, PLACES, BACK, placeOf, laneOffs, createFleet, takeCar, settle, etaAt, fleetView, countAt, standingAt, onBridgeBox: (x, z, m = 0) => bridgeOf(x, z, m) >= 0, bridgeOf, BRIDGES, /* (391 N4-a; 397 both one-lane bridges) */ TRUNK, TRUNK_LEN, SPUR,
     CROSSINGS, CROSS_HALF, CROSS_CLEAR, ROAD, LEAD, RAMP, sideAt, ghostAt, shifted, roadNow, rateOf, warpTo, realAt, rideOver, TURN, backOf, carAt, easeClock, ROUTE, EXT, ROADS, STREET, ROAD_ENDS: Object.freeze([ROUTE[0], ROUTE[ROUTE.length - 1], EXT[EXT.length - 1]]) /* (395: the stops at the roads' ends -- kept clear round, as the two were) */, STOPS, BRIDGE, ENTER, EXIT, EASE, FAST, SLOW, FARE, DAY_PASS, EXTRA, BOARD, ALIGHT, SEAT, roadOf, stopOf, dropOf, driveOf, tableOf, durationOf, poseAt, arrivalOf, doorOf, fareOf };
 }));

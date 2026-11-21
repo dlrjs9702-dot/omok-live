@@ -717,7 +717,8 @@
     // blocks 3 m off a walk (a 1.5 m lane by an 오솔길). Each marked isle2 -- the scene puts it in and out with the island
     const PIER2 = { x: 230, z: 197.3 }; const I2 = { trees: [], bushes: [], rocks: [], flowers: [], grass: [], logs: [] };
     const A = ANCIENT; const KEEP = 18; const offAncient = (x, z, r) => Math.hypot(x - A.x, z - A.z) > KEEP + r;
-    const isle2Free = (x, z, r) => roadClear({ x, z }, r) /* (1.10.396 N4-c: the taxi's road in through the wide gate) */ && D.newIsleCoast(x, z) > 4 + r && slopeAt(x, z) < 0.6 && D.creekDist(x, z) > 1.5 + r && !onBridge(x, z) && Math.hypot(x - ISLE2.camp.x, z - ISLE2.camp.z) > ISLE2.camp.r + 1 + r
+    const HEAD_END = TX?.EXT ? TX.EXT[TX.EXT.length - 1] : null; /* (1.10.397: 별마루섬 입구's stop -- its places, shelter and drop spot, 10 m round as the other stops) */
+    const isle2Free = (x, z, r) => roadClear({ x, z }, r) /* (1.10.396 N4-c: the taxi's road in through the wide gate) */ && !(HEAD_END && Math.hypot(x - HEAD_END[0], z - HEAD_END[1]) < 10 + r) && D.newIsleCoast(x, z) > 4 + r && slopeAt(x, z) < 0.6 && D.creekDist(x, z) > 1.5 + r && !onBridge(x, z) && Math.hypot(x - ISLE2.camp.x, z - ISLE2.camp.z) > ISLE2.camp.r + 1 + r
       && Math.hypot(x - ISLE2.peak.x, z - ISLE2.peak.z) > 9 + r && Math.hypot(x - PIER2.x, z - PIER2.z) > 8 + r && walkDist(x, z) > 1.6 + r && offAncient(x, z, r) && !natureBlocks.some((fn) => fn(x, z, r))
       && !isle2PropsNear(x, z, r); /* (1.10.375 N2a-1: off the fence, the cave, the camp's pieces, 우레's rock and the swamps -- isle2-props.js) */
     const at2 = () => { const a = rnd() * TAU; const d = Math.sqrt(rnd()) * (ISLE2.r + 8); return [ISLE2.x + Math.cos(a) * d, ISLE2.z + Math.sin(a) * d]; };

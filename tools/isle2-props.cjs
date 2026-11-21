@@ -28,7 +28,10 @@ const segs = [];
 for (let i = 0; i < pts.length; i += 1) {
   const a = pts[i]; const b = pts[(i + 1) % pts.length]; const mx = (a[0] + b[0]) / 2; const mz = (a[1] + b[1]) / 2; const tx = (b[0] - a[0]) / SEG; const tz = (b[1] - a[1]) / SEG;
   let nx = tz; let nz = -tx; if (nx * (mx - I.x) + nz * (mz - I.z) < 0) { nx = -nx; nz = -nz; }
-  const keep = ![a, b, [mx, mz]].some(([x, z]) => steep(x, z) || wet(x, z));
+  /* (1.10.397 사용자 결정 54 A, 검토 isle2-fence-bridge-whale fence-gaps: by the creek and at a cliff's ends the pieces left out stood on walkable
+     ground -- one walked in round the fence; a piece any of whose points is walkable stands too, but none over the creek's water (its middle in
+     it): the creek's way stays, the banks fenced -- in and out by the two gates only) */
+  const keep = ![a, b, [mx, mz]].some(([x, z]) => steep(x, z) || wet(x, z)) || (!D.inCreek(mx, mz) && [a, b, [mx, mz]].some(([x, z]) => T.walkable(x, z)));
   segs.push({ i, x: mx, z: mz, yaw: Math.atan2(-nx, -nz), keep, walk: T.walkDist(mx, mz) });
 }
 const gate = segs.filter((s) => s.keep).sort((p, q) => p.walk - q.walk)[0]; /* (the walk from 별마루다리: the only one it crosses) */
