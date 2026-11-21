@@ -107,7 +107,24 @@ export function createOcclusion(camera) {
       }
     }
   }
-  return { update, remove, dispose: () => { for (const root of [...records.keys()]) remove(root); },
+  /* (1.10.398 사용자 결정 55 A: a question only -- does one of `holders` (the buildings seen through by SEE.cliff) stand on the camera's line to me
+     (my middle, the last 0.8 m by me left out)? nothing faded; a holder rebuilt as its model changes (userData.seeRev) */
+  const inScene = (o) => { for (; o; o = o.parent) { if (!o.visible) return false; if (o.isScene) return true; } return false; };
+  function blocked(holders, p) {
+    direction.set(p.x, p.y + 1.1, p.z).sub(camera.position); const far = direction.length() - 0.8; if (far < 1.2) return false; ray.set(camera.position, direction.normalize());
+    for (const root of holders) {
+      if (!inScene(root)) continue;
+      let rec = records.get(root); const rev = root.userData.seeRev || 0; if (!rec || rec.revision !== rev) { rec = build(root); rec.revision = rev; }
+      if (rec.box.isEmpty() || rec.box.distanceToPoint(p) > 30) continue;
+      if (!rec.box.containsPoint(ray.origin) && (!ray.intersectBox(rec.box, hit) || hit.distanceToSquared(camera.position) >= far * far)) continue;
+      for (const item of rec.tests) {
+        if (!visible(item.mesh, root)) continue; localRay.copy(ray).applyMatrix4(item.inverse);
+        if (item.box.containsPoint(localRay.origin) || (localRay.intersectBox(item.box, hit) && hit.applyMatrix4(item.world).distanceToSquared(camera.position) < far * far)) return true;
+      }
+    }
+    return false;
+  }
+  return { update, blocked, remove, dispose: () => { for (const root of [...records.keys()]) remove(root); },
     debug: () => ({ ...stats, roots: records.size, faded: [...records.values()].filter((r) => r.a > 0).length,
       active: [...records].filter(([, r]) => r.a > 0).map(([root, r]) => ({ x: root.position.x, z: root.position.z, alpha: r.a })) }) };
 }
