@@ -1352,7 +1352,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .plazaDialog.mapMode .islandMapCard::after{background:linear-gradient(90deg,transparent calc(33.3% - 1px),rgba(90,60,20,.18) 33.3%,rgba(255,255,255,.25) calc(33.3% + 1px),transparent calc(33.3% + 3px),transparent calc(66.6% - 1px),rgba(90,60,20,.18) 66.6%,rgba(255,255,255,.25) calc(66.6% + 1px),transparent calc(66.6% + 3px)),linear-gradient(0deg,transparent calc(50% - 1px),rgba(90,60,20,.16) 50%,rgba(255,255,255,.22) calc(50% + 1px),transparent calc(50% + 3px))}
 :root[data-theme="light"] .plazaDialog.stampMode .recordsDialogHead h2,:root[data-theme="light"] .plazaDialog.mailMode .recordsDialogHead h2,:root[data-theme="light"] .plazaDialog.mapMode .recordsDialogHead h2{color:var(--isle-ink);background:none}
 :root[data-theme="light"] .plazaDialog.stampMode .recordsDialogHead .ghost,:root[data-theme="light"] .plazaDialog.mailMode .recordsDialogHead .ghost,:root[data-theme="light"] .plazaDialog.mapMode .recordsDialogHead .ghost{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
-:root[data-theme="light"] .plazaDialog.stampMode .stampBtn,:root[data-theme="light"] .plazaDialog.mailMode button.primary{background:#c98a1e;color:#fff;border-color:transparent}
+:root[data-theme="light"] .plazaDialog.stampMode .stampBtn,:root[data-theme="light"] .plazaDialog.mailMode button.primary{background:var(--isle-btn);color:#fff;border-color:transparent}
 :root[data-theme="light"] .plazaDialog.stampMode .stampBtn:disabled{background:#e7d6b4;color:var(--isle-soft)}
 :root[data-theme="light"] .plazaDialog.boardMode .noticeEmpty,:root[data-theme="light"] .plazaDialog.boardMode .emptyState{color:#fff6e3}
 :root[data-theme="light"] .plazaDialog.boardMode .noticeCount{background:#c0392b;color:#fff}
@@ -1435,7 +1435,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(button.primary,button[type="submit"]:not(.ghost):not(.secondary)){background:var(--isle-btn);color:#fff;border:1px solid transparent}
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.skinTab[aria-selected="true"],.furniturePiece.selected,button.selected){background:#f0dcb6;border-color:var(--isle-tag);outline:none}
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea){background:#fffdf6;color:var(--isle-ink);border:1px solid var(--isle-line)}
-:root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(input,textarea)::placeholder{color:#a08b72}
+:root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(input,textarea)::placeholder{color:var(--isle-soft)}
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.skinCard,.myPetRow,.pointHistoryRow,.issueItem,.dressBar,.bankSums>div,.islandTaxRow,.taxBill,.missionItem,.rankingList>li,.climbRanking>li,.donationRanking>*,.islandPlaceRow){background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.myInfoSection,.pointHistoryPanel){border-color:var(--isle-line)}
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.pointBalance,.bankSums strong,.climbSummary strong,.islandTaxRow p){color:var(--isle-btn)}
@@ -1643,7 +1643,7 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] #boardOverlay.hpPanel .resultActions .hpBtn.go{background:var(--c1,var(--hp-blue));color:var(--hp-on-c1)}
 :root[data-theme="light"] .hpX{border:0;background:var(--hp-glass);box-shadow:inset 0 0 0 1px var(--hp-line);color:var(--hp-t1)}
 :root[data-theme="light"] .recordTowerChip{border:1px solid #c4a77d;background:#fbf3e2;color:#5a4632}
-:root[data-theme="light"] .recordTowerChip.selected{background:#9c5f14;border-color:#9c5f14;color:#fff}
+:root[data-theme="light"] .recordTowerChip.selected{background:#f0dcb6;border-color:var(--isle-tag);box-shadow:inset 0 0 0 1px var(--isle-tag);color:var(--isle-ink)}
 :root[data-theme="light"] .recordTowerRowItem{background:#fffaf0;border:1px solid #e2d4bd;color:#3d2f20}
 :root[data-theme="light"] .recordTowerRowItem.first{background:#fff1c7;border-color:#e0a82e}
 :root[data-theme="light"] .recordTowerRowItem.first b{color:#9a6400}
@@ -1757,3 +1757,39 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] #tigerWarn span{background:#2a0b0bcc;color:#ffe1d6}
 :root[data-theme="light"] #tigerTransfer{background:radial-gradient(circle at 50% 45%,#2a0707f2,#050101fa);color:#ffe6df}
 :root[data-theme="light"] .tigerTransferGo{color:#ff3b30}
+:root[data-theme="light"] body.plazaMode .dressing>.skinShopBody .skinFilterBar{background:var(--isle-paper)}
+:root[data-theme="light"] body.plazaMode .dressTags i{background:#f2e3c4;color:var(--isle-ink)}
+:root[data-theme="light"] body.plazaMode .skinCount{color:var(--isle-soft)}
+:root[data-theme="light"] body.plazaMode .dressPoints{color:var(--isle-value)}
+:root[data-theme="light"] body.plazaMode .dressBar :is(.dressWear,.dressGift,.dressClose){background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
+:root[data-theme="light"] body.plazaMode .dressBar .dressBuy{background:var(--isle-btn);color:#fff}
+:root[data-theme="light"] body.plazaMode .dressBar button:disabled{background:#fffaf0;color:var(--isle-soft);border:1px dashed var(--isle-line)}
+:root[data-theme="light"] body.plazaMode .genderChoice{background:#fffaf0;border-color:var(--isle-line);color:var(--isle-ink)}
+:root[data-theme="light"] body.plazaMode .genderChoice[aria-checked="true"]{background:var(--isle-select);border-color:var(--isle-tag);box-shadow:0 0 0 3px rgba(138,106,74,.25)}
+:root[data-theme="light"] body.plazaMode .isle-sheet.genderDialog #genderConfirmBtn:disabled{background:#fffaf0;color:var(--isle-soft);border:1px dashed var(--isle-line)}
+:root[data-theme="light"] .plazaDialog.stampMode button.ghost,:root[data-theme="light"] body.plazaMode :is(.controlsHint,.slowNote) button.ghost{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:none}
+:root[data-theme="light"] .plazaDialog.stampMode button.ghost:hover,:root[data-theme="light"] body.plazaMode :is(.controlsHint,.slowNote) button.ghost:hover{background:var(--isle-hover)}
+:root[data-theme="light"] body.plazaMode .slowNote button.primary{background:var(--isle-btn);color:#fff;border:1px solid transparent}
+:root[data-theme="light"] body.plazaMode .gameMenuDialog input:is([type="radio"],[type="checkbox"]){background:transparent;border:0}
+:root[data-theme="light"] body.plazaMode .gameMenuDialog button.danger{background:#fffaf0;color:var(--isle-danger);border:1px solid var(--isle-danger)}
+:root[data-theme="light"] body.plazaMode .gameMenuDialog button.danger:hover{background:#fbe9e4}
+:root[data-theme="light"] body.plazaMode .gameMenuScreenNow{color:var(--isle-soft)}
+:root[data-theme="light"] #donationDialog .skinShopBalance{color:#fff1c9}
+:root[data-theme="light"] #donationDialog #donationRanking>.emptyState{color:var(--isle-soft)}
+:root[data-theme="light"] .plazaDialog.boardMode .announcementDetails p{color:var(--isle-ink)}
+:root[data-theme="light"] body.plazaMode .chatEmpty{color:var(--isle-soft)}
+:root[data-theme="light"] .placeItem.no{color:var(--isle-soft)}
+:root[data-theme="light"] .placeItem small{color:var(--isle-soft)}
+:root[data-theme="light"] .stampDay.later{background:transparent}
+:root[data-theme="light"] .bagTab.none{color:var(--isle-soft)}
+:root[data-theme="light"] .bagTab.on.none{color:#3b2a14}
+:root[data-theme="light"] .storyChapter.locked h4{color:var(--isle-soft)}
+:root[data-theme="light"] .storyPieceCell.locked{color:var(--isle-soft)}
+:root[data-theme="light"] .stocksCols{color:var(--isle-soft)}
+:root[data-theme="light"] .stocksRow:disabled :is(.stocksName,.stocksQty){color:var(--isle-soft)}
+:root[data-theme="light"] body.plazaMode .plazaDialog:not(.adminMode) :is(input,textarea)::placeholder{color:var(--isle-soft)}
+:root[data-theme="light"] .plazaDialog.mailMode .mailHead .smallMuted{color:var(--isle-ink)}
+:root[data-theme="light"] .mailLetter.unread .mailHead strong::after{color:var(--isle-value)}
+:root[data-theme="light"] #islandBagDialog .lookMeta{color:var(--isle-soft)}
+:root[data-theme="light"] body.plazaMode .museumItem.empty{color:var(--isle-soft)}
+:root[data-theme="light"] body.plazaMode .tfRow small{color:var(--isle-soft)}

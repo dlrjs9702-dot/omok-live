@@ -43,7 +43,7 @@ body:not(.mEmbed) .mEmbedOnly{display:none!important}
 .mApp .smallMuted,.mApp time{color:var(--isle-soft)}
 .messengerPage .ghost{background:#fffaf0;color:var(--isle-ink);border:1px solid var(--isle-line)}
 .messengerPage .secondary{background:var(--isle-tag);color:#fff;border-color:transparent}
-.messengerPage .primary{background:#c98a1e;color:#fff;border-color:transparent}
+.messengerPage .primary{background:#9c5f14;color:#fff;border-color:transparent}
 .messengerPage input[type="text"],.messengerPage input[type="password"]{background:#fff;color:var(--isle-ink);border:1px solid var(--isle-line);border-radius:12px;padding:9px 12px;font-size:1rem}
 .messengerPage .toast{position:fixed;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%)}
 @media(max-width:760px){.mApp{padding:8px}}
