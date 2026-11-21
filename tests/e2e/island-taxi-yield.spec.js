@@ -10,7 +10,7 @@ test('섬 택시 비켜 가기: 건널목에 선 사람 → 빵·비켜 주세�
   const a = await shopper(browser, request, '비켜탄이', 0, 'female'); const b = await shopper(browser, request, '건널목선이', 0, 'male');
   await grant(request, a, 100000); expect((await post(request, '/api/test/taxi-run', a.token, { ms: 0 })).status).toBe(200); /* (the real road) */
   try {
-    for (const who of [a, b]) { await who.page.evaluate(() => { localStorage.removeItem('gc.testClassic'); }); await who.page.reload(); await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); }
+    for (const who of [a, b]) { await who.page.evaluate(() => { localStorage.removeItem('gc.testClassic'); }); await who.page.reload(); await expect.poll(() => who.page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true); await who.page.evaluate(() => window.PlazaDebug().holdQuality(0)); /* (검토 notes taxi-yield-flake-20261121: the automatic quality tier stepping down on a slow screen rebuilt 23~25 shaders and froze it 3~5 s just as the car came by -- held, as island-assets.spec does) */ }
     const X = require('../../public/plaza/island-taxi.js'); const s = X.stopOf('plaza'); const spot = X.CROSSINGS[1]; /* (the road at the crossing by the hall's walk -- T1: by 배 타는 곳, the road moved off (0.3, -6.7)) */
     await b.page.evaluate(([x, z]) => window.PlazaWarp(x, z), [spot.x, spot.z]);
     const { page } = a;

@@ -2703,7 +2703,7 @@ function taxiWay(bare, road, look) {
 // should come to stand), or null
 function taxiBlocker(ride, way, now, across = TAXI_LOOK.across) {
   for (const [token, e] of plazaPresence) {
-    if (e.ride || e.platform || e.taxi || e.boat || taxiRides.get(token) === ride || !Number.isFinite(e.x) || now - (e.at || 0) > 5000 || (e.space && e.space !== 'island')) continue;
+    if (e.ride || e.platform || e.taxi || e.boat || taxiRides.get(token) === ride || !Number.isFinite(e.x) || now - (e.at || 0) > PLAZA_STALE_MS || (e.space && e.space !== 'island')) continue; /* (1.10.392 검토 taxi-yield-flake: 5 s let a screen stalled 2 s -- its pose every 3 s standing -- drop out of the road; the plaza keeps a pose 15 s) */
     const rel = (p) => { const dx = e.x - p.x; const dz = e.z - p.z; return { along: dx * Math.sin(p.yaw) + dz * Math.cos(p.yaw), across: dx * Math.cos(p.yaw) - dz * Math.sin(p.yaw) }; };
     const hit = way.findIndex((p) => { const r = rel(p); return Math.abs(r.across) < across && Math.abs(r.along) < TAXI_LOOK.nose; });
     if (hit < 0) continue;
@@ -5181,7 +5181,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.392' });
+    return sendJson(res, 200, { ok: true, version: '1.10.393' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -11072,7 +11072,7 @@ async function main() {
   bootMark('before-listen');
   /* (1.10.376 별마루섬 호랑이: their ground made after the start in 20 ms slices, as 별마루섬's open table -- the tigers wait till it is) */
   if (process.env.NODE_ENV !== 'test') setTimeout(() => { const step = () => { try { if (!tigerSim.warm(20)) setImmediate(step); } catch (error) { console.error('호랑이 땅 만들기 실패:', error.message); } }; step(); }, 6000).unref?.();
-  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.392 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.393 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

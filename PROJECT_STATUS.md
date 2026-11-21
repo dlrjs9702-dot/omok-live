@@ -13,6 +13,11 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.393 택시 비켜 가기 흔들림 고침(검토 notes docs/taxi-yield-flake-20261121.md)
+
+- 서버: 택시 앞 보기(taxiBlocker)가 사람의 자리를 5초가 아니라 PLAZA_STALE_MS(15초)까지 봄 — 서 있는 화면은 3초마다 자리를 보내서, 화면이 2초만 버벅여도 길 위 사람을 놓쳐 반투명이 끊기거나 그냥 지나갔어요.
+- 스펙 island-taxi-yield: 두 화면 holdQuality(0) — 느린 시험 화면에서 화질 자동이 낮음으로 내려가며 셰이더 23~25개를 다시 만들어 3~5초 멈추던 것(검토 측정: 고친 뒤 8/8 통과).
+
 ## v1.10.392 N4-b 택시 정류장 · 택시 부르기 · 거리 요금(notes n4-plan-20261120 §5-2·§5-5, 결정 40 A · 41-3 A, 에셋 163 표지)
 
 - 길 위 자리(island-taxi.js ROADSTOPS): ① 배 타는 곳 s 52.3, ② 물가 거리 92.1, ③ 박물관·잔치마루 177.2(건널목에서 9 m), ⑤ 툇마루섬 갈림길 365 — 차는 길가 칸(오른쪽 차선 + 1.2 m), 표지는 그 2.2 m 밖. ④ 달끝나루는 자리 물음(건널목 6 m 규칙) 뒤에.
@@ -30,10 +35,3 @@
 - 「어디로 갈까요?」 창: GET 응답에 dests·cars, POST에 to. 요금은 그대로(거리 요금·하루권 8,000P는 N4-b).
 - 화면: 차 4대를 서버 차 목록(taxiStops = 차 목록)으로, 서 있는 차·당겨 서기·내려 준 뒤 머물기, 정류장 표지 「돌아오는 중 · N초」는 서 있는 차가 없을 때만. 뒤 칸에도 막는 원.
 - 시험: test/island-taxi-fleet.test.js 새로, island-taxi-server(셋이 동시에 → 둘 타고 하나 기다림), bicycle·island-taxi-yield 스펙을 두 대 규칙으로.
-
-## v1.10.390 N3-b 자연 구역 탐방선(사용자 결정 37, 에셋 134, notes n3-plan-20261120 §4-2)
-
-- `public/plaza/island-boat.js`(서버·화면 공유): 배 4척(처음 2/2), 선착장마다 대는 자리 3 + 앞바다 대기, 오른쪽 두 줄 물길(±2.5 m), 13 m/s·다리 밑 8 m/s(약 28초), 처음 탄 뒤 6초 기다림·4자리 차면 바로, 내림 3초, 선착장 배가 2척 넘으면 빈 배로 돌아감(6초 동안 탈 수 있음), 배 없으면 줄 서서 온 순서대로, 떠나기 전 내리기. 화면에 토큰 안 보냄.
-- 서버: 0.5초 틱, 바뀔 때만 SSE `boats`, 들어올 때 한 번·자세 응답에도. `POST /api/island/boat/board`·`/leave`, `GET /api/island/boats`, 시험 `/api/test/boats {scale}`. 탄 사람은 자리 위치(호랑이·자리 비움·밀어내기 목록 밖), 끊기면 자리 비움, 내리면 뜬 판 위.
-- 화면: 배 4척(에셋 134, 대역 상자), 흔들림, 양옆 이름판 「자연 구역 탐방선」, 배마다 선장(주민 모습·모자, 셔츠 색 다름, 40 m 안), 탄 사람 의자에 앉음, 팻말 문구(배 N척 / 곧 출발 N초 / 배 오는 중 N초 · 내 순서).
-- 시험: test/island-boat.test.js(물길·대는 자리·규칙·자세), tests/e2e/island-boat.spec.js(타고 건너 내리기, 2/2로 돌아옴).
