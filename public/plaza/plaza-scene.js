@@ -6535,7 +6535,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const seaRay = new THREE.Raycaster(); const ndc = new THREE.Vector2(); const level = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); const hitAt = new THREE.Vector3();
   /* (1.10.396 문제 기록 a3408e31 「윤슬다리 옆 고래」, 검토 isle2-fence-bridge-whale: a whale (up to 19.5 m from where it comes up, 10.4 m tall)
      came out beside the bridges -- the sea's shows keep 25 m off every long bridge, along it and to its sides) */
-  const byBridge = (x, z) => (T.bridges || []).some((b) => b.half > 10 && Math.abs((x - b.x) * b.ux + (z - b.z) * b.uz) < b.half + 25 && Math.abs((z - b.z) * b.ux - (x - b.x) * b.uz) < 25);
+  const byBridge = (x, z) => (globalThis.IslandTerrain?.bridges || []).some((b) => b.half > 10 && Math.abs((x - b.x) * b.ux + (z - b.z) * b.uz) < b.half + 25 && Math.abs((z - b.z) * b.ux - (x - b.x) * b.uz) < 25);
   function seaSpot(dMin, dMax, clear, above = 0) { // `above`: the height over the sea it will be seen at
     const T = globalThis.IslandTerrain; const p = me.root.position;
     level.constant = -SEA_Y;
