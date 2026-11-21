@@ -29,7 +29,7 @@ test('섬 택시 서버: 요금(누구나 1,000P, 하루 자유이용권 5,000P)
   await stand(a, P.x + 12, P.z); assert.equal((await req('/api/island/taxi', a, { from: 'plaza' })).data.error, 'TOO_FAR');
   // by the stop: 1,000P, once
   await stand(a, P.out.x, P.out.z);
-  const asked = { ok: true, from: 'plaza', to: 'isle', fare: 1000, dayPass: 5000, pass: false, awayS: 0, dests: [{ id: 'isle', label: '툇마루섬 마을', fare: 1000 }], cars: 2 }; /* (391 N4-a: where to, and two cars standing) */
+  const asked = { ok: true, from: 'plaza', to: 'isle', fare: 1000, dayPass: 8000, pass: false, awayS: 0, dests: X.PLACE_IDS().filter((id) => id !== 'plaza').map((id) => ({ id, label: X.labelOf(id), fare: X.fareByRoad('plaza', id) })), cars: 2 }; /* (391 N4-a: where to, and two cars standing; 392 N4-b: every place on the road, its fare by the road's length, the pass 8,000P) */
   assert.deepEqual((await req('/api/island/taxi?from=plaza', a)).data, asked);
   const before = await balance(a); const rode = await req('/api/island/taxi', a, { from: 'plaza' });
   assert.equal(rode.status, 200, JSON.stringify(rode.data)); assert.equal(rode.data.fare, 1000); assert.equal(rode.data.taxi.runMs, 3000);
@@ -56,18 +56,18 @@ test('섬 택시 서버: 요금(누구나 1,000P, 하루 자유이용권 5,000P)
     const S = X.stopOf(from); await stand(b, S.out.x + 0.5, S.out.z + 0.5); const r = await req('/api/island/taxi', b, { from, pay }); assert.equal(r.status, 200, JSON.stringify(r.data));
     await sleep(X.durationOf(r.data.taxi) + 300); await stand(b, S.out.x, S.out.z); await req('/api/test/taxi-run', a, { ms: 3000 }); /* (294: its car back) */ return r.data;
   };
-  const bought = await rideB('plaza', 'pass'); assert.deepEqual([bought.fare, bought.pass], [5000, true]); assert.equal(await balance(b), owner - 5000);
+  const bought = await rideB('plaza', 'pass'); assert.deepEqual([bought.fare, bought.pass], [8000, true]); assert.equal(await balance(b), owner - 8000);
   const history = (await req('/api/points/history?limit=3', b)).data.items; assert.equal(history[0].reason, 'taxipass', '내역 「택시 자유이용권」');
   await stand(b, I.out.x + 0.5, I.out.z + 0.5); assert.equal((await req('/api/island/taxi?from=isle', b)).data.pass, true);
   for (const [from, pay] of [['isle', 'fare'], ['plaza', 'pass']]) { /* (the pass held: no fare, and never a second pass the same day) */
-    const again = await rideB(from, pay); assert.deepEqual([again.fare, again.pass], [0, true]); assert.equal(await balance(b), owner - 5000);
+    const again = await rideB(from, pay); assert.deepEqual([again.fare, again.pass], [0, true]); assert.equal(await balance(b), owner - 8000);
   }
   // the fare is the economy's (the administrator's table); more than I have: refused, nothing taken
   const c = await server.enter(await server.issue('빈손')); await stand(c, P.out.x - 0.6, P.out.z - 0.6); const has = await balance(c);
   const admin = (await req('/api/admin/login', null, { password: 'look-test' })).data.sessionToken; const fare = 1500;
   const box = T.facilityDoor('donate'); await stand(c, box.x, box.z);
   const gave = await req('/api/donation', c, { amount: has - 500, requestId: `taxi-poor-${Date.now()}` }); assert.equal(gave.status, 200, JSON.stringify(gave.data)); assert.equal(await balance(c), 500); /* (points given away: 500 left) */
-  const set = await req('/api/admin/economy', admin, { changes: { 'taxi:fare': fare } }); assert.equal(set.status, 200, JSON.stringify(set.data));
+  const set = await req('/api/admin/economy', admin, { changes: { 'taxi:per100': 375 } }); /* (392: 404 m -> 4 x 375) */ assert.equal(set.status, 200, JSON.stringify(set.data));
   await stand(c, P.out.x - 0.6, P.out.z - 0.6); assert.equal((await req('/api/island/taxi?from=plaza', c)).data.fare, fare);
   const poor = await req('/api/island/taxi', c, { from: 'plaza' }); assert.equal(poor.data.error, 'INSUFFICIENT_POINTS'); assert.match(poor.data.message, /1,500P/); assert.equal(await balance(c), 500);
   assert.equal((await req('/api/island/taxi?from=plaza', c)).data.awayS, 0, '못 탄 사람은 차를 잡지 않음');

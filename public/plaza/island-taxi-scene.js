@@ -54,6 +54,19 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
       for (const m of [].concat(o.material)) { m.transparent = rec.ghost; m.opacity = rec.ghost ? 0.4 : 1; m.depthWrite = !rec.ghost; m.needsUpdate = true; } });
   }
   for (const st of stops) st.standing.h.visible = false; /* (1.10.391 N4-a: the four cars below stand there -- the stop's own one no longer) */
+  // 1.10.392 N4-b the road stops' signs (assets 163 taxi_stop_sign, 결정 41-3 A: its `plate` both faces -- one picture, the back's u turned
+  // round -- the stop's name); a stand-in post and board till it comes
+  function plateWords(text) {
+    const c = document.createElement('canvas'); c.width = 512; c.height = 256; const x = c.getContext('2d'); x.fillStyle = '#fff6e3'; x.fillRect(0, 0, 512, 256); x.strokeStyle = '#8a6b45'; x.lineWidth = 10; x.strokeRect(5, 5, 502, 246);
+    x.fillStyle = '#4a3828'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = '800 64px sans-serif'; x.fillText('🚕 택시', 256, 82); let px = 58; do { x.font = `700 ${px}px sans-serif`; px -= 2; } while (x.measureText(text).width > 470 && px > 20); x.fillText(text, 256, 178);
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.flipY = false; made.push(tex); return tex; }
+  const roadSigns = Object.keys(X.ROADSTOPS || {}).map((id) => {
+    const at = X.curbOf(id).sign; const g = new THREE.Group(); g.position.set(at.x, groundY(at.x, at.z), at.z); g.rotation.y = at.yaw; group.add(g);
+    const fb = new THREE.Group(); piece(fb, wood, 0.12, 2.3, 0.12, 0, 1.15, 0); piece(fb, cream, 0.95, 0.5, 0.06, 0, 2.0, 0); g.add(fb);
+    const words = plateWords(X.labelOf(id)); const face = new THREE.MeshStandardMaterial({ map: words, roughness: 0.85 }); made.push(face);
+    assets.attach('taxi.stop_sign', g, fb, (entry) => { if (!entry) return; g.traverse((o) => { if (o.isMesh && [].concat(o.material).some((m) => m?.name === 'stop_plate')) o.material = face; }); });
+    return { id, g, at };
+  });
   const moving = new Map(); // (1.10.391 N4-a) car id -> its record: the four cars, standing in their places or out on a ride
   let night = false;
   // each frame: `rides` [{ key, ride }] I know of and `fleet` { cars } the server's (391: two a stop -- standing in a place, or out on a
@@ -100,5 +113,5 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
   const dispose = () => { scene.remove(group); for (const m of made) m.dispose?.(); };
   // (v1.10.285) the cars on their way or parked after a ride: where, which way, running or not, honking -- they block and others step aside
   const cars = () => [...moving.entries()].filter(([, r]) => r.out).map(([key, r]) => ({ key, x: r.h.position.x, z: r.h.position.z, yaw: r.h.rotation.y, running: Boolean(r.running), horn: Boolean(r.horn?.visible), ask: Boolean(r.ask?.visible), ghost: Boolean(r.ghost), rate: r.rate ?? 1, waitMs: r.waitMs || 0 })); /* (317: its pace -- 0 standing for someone, a little creeping by; 391: the cars out) */
-  return { group, step, seatOf, setNight, dispose, cars, stops: () => stops.map((st) => ({ id: st.id, x: st.s.x, z: st.s.z, standing: Boolean(standCount[st.id]), count: standCount[st.id] || 0, away: !standCount[st.id], label: st.said || '' })), /* (294; 391: how many stand there) */ moving: () => [...moving.entries()].filter(([, r]) => r.out).map(([k]) => k), parked: () => [...moving.entries()].filter(([, r]) => !r.out).map(([k, r]) => ({ id: k, x: +r.h.position.x.toFixed(2), z: +r.h.position.z.toFixed(2) })) };
+  return { group, step, seatOf, setNight, dispose, cars, stops: () => stops.map((st) => ({ id: st.id, x: st.s.x, z: st.s.z, standing: Boolean(standCount[st.id]), count: standCount[st.id] || 0, away: !standCount[st.id], label: st.said || '' })), /* (294; 391: how many stand there) */ moving: () => [...moving.entries()].filter(([, r]) => r.out).map(([k]) => k), roadSigns: () => roadSigns.map((s) => ({ id: s.id, x: +s.at.x.toFixed(2), z: +s.at.z.toFixed(2), model: s.g.children.length > 1 })), /* (392) */ parked: () => [...moving.entries()].filter(([, r]) => !r.out).map(([k, r]) => ({ id: k, x: +r.h.position.x.toFixed(2), z: +r.h.position.z.toFixed(2) })) };
 }

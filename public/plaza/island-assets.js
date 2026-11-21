@@ -68,6 +68,7 @@
   // v1.10.271 섬 택시 (assets 99): the car (front −Z: turned round, its doors and wheels kept as nodes) and the stop's bench
   'taxi.car': { url: '/assets/island/taxi-v1/taxi_island.glb', low: { url: '/assets/island/taxi-v1/taxi_island_low.glb' }, near: 40, rotationY: Math.PI },
   'taxi.stop': { url: '/assets/island/taxi-v1/taxi_stop.glb', low: { url: '/assets/island/taxi-v1/taxi_stop_low.glb' }, near: 40, rotationY: Math.PI },
+  'taxi.stop_sign': { url: '/assets/island/taxi-v1/taxi_stop_sign.glb', low: { url: '/assets/island/taxi-v1/taxi_stop_sign_low.glb' }, near: 40, keepNodes: true }, /* (1.10.392 N4-b, assets 163: a road stop's sign -- its `plate` both faces, the game's words on it) */
     // v1.10.275 그래픽 시범 (assets 106: Nature Megapack - Low Poly Extended, RG Poly, CC0): the one patch's plants
     // (island-pilot-scene.js), a file per season with its own 512 picture -- light enough to be its own Low everywhere
     ...Object.fromEntries(['grass_broad', 'grass_tuft', 'bush_fern', 'mushroom_red', 'mushroom_brown'] /* (v1.10.310: the patch's own plants gone -- these still drawn: island-pilot IDS) */

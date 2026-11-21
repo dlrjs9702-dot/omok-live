@@ -9260,6 +9260,14 @@
       "lowSha256": "f9bcc240b438244632d558e43574e405112f4f4281b39f3649293f6afd203f0e"
     },
     {
+      "out": "taxi-v1/taxi_stop_sign.glb",
+      "src": "taxi163:01. High/taxi-v1/taxi_stop_sign.glb",
+      "sha256": "c5993fc94a41367e57fe55c33c78daae53ba5ad686da57ec032f21892e3fec64",
+      "lowSrc": "taxi163:02. Low/taxi-v1/taxi_stop_sign_low.glb",
+      "lowSha256": "59cf67bd63e5bfa0ee782ef0b16b0fbd00f9cc846b1479965d9ced6426f24338",
+      "precompressed": true
+    },
+    {
       "out": "characters/motions/TaxiSit.glb",
       "src": "taxi99:01. High/motions/TaxiSit.glb",
       "sha256": "d0ab47c697a0b482641455ae7b81ae56d96239d474d4d5db1750d45ccdeafa93"
@@ -15744,6 +15752,7 @@
     "storehouse160": "160. Game Island yard storehouse 2026-11-20",
     "petbike161": "161. Game Island pet bike 2026-11-20",
     "yunseul133": "133. Game Island high yunseul bridge 2026-11-15",
-    "ferry134": "134. Game Island ferry 2026-11-15"
+    "ferry134": "134. Game Island ferry 2026-11-15",
+    "taxi163": "163. Game Island taxi gate and stop sign 2026-11-21"
   }
 }
