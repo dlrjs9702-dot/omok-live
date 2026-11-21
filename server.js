@@ -2241,17 +2241,36 @@ async function tigerCatch(token, def) {
   const id = `${now}:${def.id}`;
   /* (1.10.395 Codex 381~390 #5: the last ten catches' ids with what each took -- a late retry of this one, after another catch was saved, still
      finds it done and takes nothing again) */
-  const take = () => pointStore.questApply(account, 'tiger', (doc, bag) => { if (doc.lastId === id || doc.lost?.[id]) return { error: 'DONE' }; const pick = IslandTigers.losePick(bag, IslandItems); const lost = pick.map((e) => IslandItems.itemDef(e.itemId)?.name || e.itemId);
-    return { doc: { ...doc, caught: (doc.caught || 0) + 1, at: now, by: def.id, lastId: id, lastLost: lost, lost: Object.fromEntries([...Object.entries(doc.lost || {}).slice(-9), [id, lost]]) }, take: pick.map((e) => ({ entryId: e.entryId, qty: 1 })), lost }; });
-  const once = async () => { const r = await take().catch((error) => { console.error('호랑이 물건 잃기 실패:', error.message); return null; }); if (r?.error === 'DONE') { const d = (await pointStore.questDoc(account, 'tiger')).doc || {}; return { lost: d.lost?.[id] || (d.lastId === id ? d.lastLost : null) || [] }; } return r?.error ? { lost: [] } : r; }; /* (a try that had saved before its answer was lost: what it took) */
-  /* (tiger review #4: the move told at once -- the first try's loss with it; a try that failed goes on behind (up to five) and its loss follows as
-     'tigerLost'. #6: `who` -- only the screen caught goes to the mayor; the account's other screens have the bag and the word) */
-  const out = account ? await once() : null;
+  /* (tiger review #4: the move told at once -- the first try's loss with it; a try that failed goes on behind and its loss follows as 'tigerLost'.
+     #6: `who` -- only the screen caught goes to the mayor; the account's other screens have the bag and the word) */
+  const out = account ? await tigerLoseOnce(account, id, def.id, now) : null;
   console.log(`[tiger] caught by=${def.id} lost=${out?.lost?.length ?? 0}${account && !out ? ' retrying' : ''}`); /* (no account in the log) */
   notifyAccount(account, 'tigerCaught', { id, who: session.plazaId, ...(wasAway ? { away: true } : {}), by: def.name, lost: out?.lost || [], x: spot.x, z: spot.z, ...(out?.bag ? { bag: out.bag } : {}), ...(account && !out ? { pending: true } : {}) });
-  if (account && !out) (async () => { let late = null; for (let k = 1; k < 5 && !late; k += 1) { await new Promise((r) => { setTimeout(r, 2000 * k); }); late = await once(); }
-    console.log(`[tiger] caught by=${def.id} lost=${late?.lost?.length ?? 0}${late ? ' late' : ' unsaved'}`); notifyAccount(account, 'tigerLost', { id, by: def.name, lost: late?.lost || [], ...(late?.bag ? { bag: late.bag } : {}), ...(late ? {} : { unsaved: true }) }); })();
+  if (account && !out) tigerLoseLater(account, id, def.id, now);
 }
+/* (1.10.395 Codex 381~390 #5: the last ten catches' ids with what each took -- a late retry of this one, after another catch was saved, still finds it
+   done and takes nothing again) -> { lost, bag? } | null (not saved) */
+async function tigerLoseOnce(account, id, defId, at) {
+  const take = () => pointStore.questApply(account, 'tiger', (doc, bag) => { if (doc.lastId === id || doc.lost?.[id]) return { error: 'DONE' }; const pick = IslandTigers.losePick(bag, IslandItems); const lost = pick.map((e) => IslandItems.itemDef(e.itemId)?.name || e.itemId);
+    return { doc: { ...doc, caught: (doc.caught || 0) + 1, at, by: defId, lastId: id, lastLost: lost, lost: Object.fromEntries([...Object.entries(doc.lost || {}).slice(-9), [id, lost]]) }, take: pick.map((e) => ({ entryId: e.entryId, qty: 1 })), lost }; });
+  const r = await take().catch((error) => { console.error('호랑이 물건 잃기 실패:', error.message); return null; });
+  if (r?.error === 'DONE') { const d = (await pointStore.questDoc(account, 'tiger').catch(() => ({ doc: null }))).doc || {}; return { lost: d.lost?.[id] || (d.lastId === id ? d.lastLost : null) || [] }; } /* (a try that had saved before its answer was lost: what it took) */
+  return r?.error ? { lost: [] } : r;
+}
+/* (1.10.403 Codex 391~400 #16: a catch whose loss is not saved yet is kept (world 'tigerPending', by its id) and tried again -- quickly at first, then
+   every half minute, a day at most -- across a restart too (tigerPendingResume at boot), with the same id: taken once, never lost) */
+const tigerPending = new Map(); let tigerPendingSaving = Promise.resolve();
+const tigerPendingSave = () => { tigerPendingSaving = tigerPendingSaving.then(() => pointStore.setWorldValue('tigerPending', Object.fromEntries(tigerPending))).catch((error) => console.error('호랑이 미처리 저장 실패:', error.message)); return tigerPendingSaving; };
+function tigerLoseLater(account, id, defId, at) {
+  if (tigerPending.has(id)) return; tigerPending.set(id, { account, defId, at }); tigerPendingSave();
+  (async () => {
+    let late = null; let k = 0;
+    while (!late && nowMs() - at < 24 * 3600000) { k += 1; await new Promise((r) => { setTimeout(r, k < 5 ? 2000 * k : 30000).unref?.(); }); late = await tigerLoseOnce(account, id, defId, at); }
+    tigerPending.delete(id); tigerPendingSave(); const def = IslandTigers.TIGERS.find((d) => d.id === defId);
+    console.log(`[tiger] caught by=${defId} lost=${late?.lost?.length ?? 0}${late ? ' late' : ' unsaved'}`); notifyAccount(account, 'tigerLost', { id, by: def?.name || '호랑이', lost: late?.lost || [], ...(late?.bag ? { bag: late.bag } : {}), ...(late ? {} : { unsaved: true }) });
+  })();
+}
+async function tigerPendingResume() { const saved = await pointStore.worldValue('tigerPending').catch(() => null); for (const [id, p] of Object.entries(saved || {})) if (p?.account && p.defId && Number.isFinite(p.at)) tigerLoseLater(p.account, id, p.defId, p.at); }
 /* (tiger review #4: a screen that was shut or away when it was caught -- told once it is back (its lobby stream opens), till it says it saw it) */
 async function tigerCaughtReplay(account) {
   if (!account) return; const doc = (await pointStore.questDoc(account, 'tiger').catch(() => ({ doc: null }))).doc;
@@ -11120,7 +11139,7 @@ async function main() {
   bootMark('before-listen');
   /* (1.10.376 별마루섬 호랑이: their ground made after the start in 20 ms slices, as 별마루섬's open table -- the tigers wait till it is) */
   if (process.env.NODE_ENV !== 'test') setTimeout(() => { const step = () => { try { if (!tigerSim.warm(20)) setImmediate(step); } catch (error) { console.error('호랑이 땅 만들기 실패:', error.message); } }; step(); }, 6000).unref?.();
-  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.402 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.402 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); tigerPendingResume().catch(() => {}); /* (403 Codex #16: catches whose loss was not saved before the restart) */ if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had
