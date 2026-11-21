@@ -6525,42 +6525,42 @@
     },
     {
       "out": "bike-v1/bike_crank.glb",
-      "src": "petbike161:01. High/bike_crank__base.glb",
-      "sha256": "2160788bf4e349d2abcbe4e579bcc46e59b021a9a2e73e1299e47bcda14708c9",
-      "lowSrc": "petbike161:02. Low/bike_crank__base_low.glb",
-      "lowSha256": "186087f2eb3731f369591843d4efae884ab1ecb8b90ddcd4cb6b1cc3a214012a",
+      "src": "review168:01. High/bike-v1/bike_crank.glb",
+      "sha256": "37852647a344ea0c5acddf3a81873d896703d390f0cc03dfc38cb8b0d800db75",
+      "lowSrc": "review168:02. Low/bike-v1/bike_crank_low.glb",
+      "lowSha256": "cd2cb5ec9ea431c601a972019f8b2223ea743a7929ce33605b5f286d43a239ac",
       "precompressed": true
     },
     {
       "out": "bike-v1/bike_frame__butter.glb",
-      "src": "petbike161:01. High/bike_frame__butter.glb",
-      "sha256": "900c58fcaa608682f0ec9d08a726c109c4f5ddde3e7479d6ebf723648563bd85",
-      "lowSrc": "petbike161:02. Low/bike_frame__butter_low.glb",
-      "lowSha256": "44221eaa143f37f293b640f39dc3b9910211baded54b93ef20670ca8b06420fe",
+      "src": "review168:01. High/bike-v1/bike_frame__butter.glb",
+      "sha256": "3ce66cd385ff61558fde3e039693750b74a278663b9e7bd46c5a4f74ffa87087",
+      "lowSrc": "review168:02. Low/bike-v1/bike_frame__butter_low.glb",
+      "lowSha256": "85d1a17721f5f45374008ee60e6999a46c80ce1b4250ec9cbd3c0477689015f2",
       "precompressed": true
     },
     {
       "out": "bike-v1/bike_frame__mint.glb",
-      "src": "petbike161:01. High/bike_frame__mint.glb",
-      "sha256": "8073b6d71e2f01ac6d0647a436707f2f3dd072c09e5078bf9e51bd568a0a5d0d",
-      "lowSrc": "petbike161:02. Low/bike_frame__mint_low.glb",
-      "lowSha256": "e4ba76f3cd104809ebd315ce31a5c570e019d8322da7b8248937cf86dd6707a3",
+      "src": "review168:01. High/bike-v1/bike_frame__mint.glb",
+      "sha256": "a82554909eb31d9585979cbe7fd38fb959f80e6f9d827cdd4a8a5f3f3dc10faf",
+      "lowSrc": "review168:02. Low/bike-v1/bike_frame__mint_low.glb",
+      "lowSha256": "0a54d379ef40fdf1ece27fd3aaa4b4ce2112d25806e7a05f12144592fad3d297",
       "precompressed": true
     },
     {
       "out": "bike-v1/bike_frame__red.glb",
-      "src": "petbike161:01. High/bike_frame__red.glb",
-      "sha256": "0081978a6c16f352da0da590a90685c7dc8a8cdeb6771aa0ab2e053a7b06f648",
-      "lowSrc": "petbike161:02. Low/bike_frame__red_low.glb",
-      "lowSha256": "b10430e4fcaecbb2435ab4087a7f57c8388b487ca1bfd9a5dd19c297ca491f6a",
+      "src": "review168:01. High/bike-v1/bike_frame__red.glb",
+      "sha256": "63764e2bb92c665351e8d4ad017eb1e35b56560086146879ae0fe250ad542f9a",
+      "lowSrc": "review168:02. Low/bike-v1/bike_frame__red_low.glb",
+      "lowSha256": "0399d5f3c8d6ffe3be1d80e6b89a0e97286995ee97ce7514c3c956d6bbe2815c",
       "precompressed": true
     },
     {
       "out": "bike-v1/bike_frame__sky.glb",
-      "src": "petbike161:01. High/bike_frame__sky.glb",
-      "sha256": "a7727c405ea59a2e728ccc3d178d6b9e5b913c0b1e26a8d575d53f4ea7a6af1f",
-      "lowSrc": "petbike161:02. Low/bike_frame__sky_low.glb",
-      "lowSha256": "b8f652504685b3ac0a913951f3058992d666468e006f96a36c330f11f9f7e832",
+      "src": "review168:01. High/bike-v1/bike_frame__sky.glb",
+      "sha256": "de0fc3ef6eb7cd84439c71f588d4eb403f0cfb4f528a87adc8c76efcaa6e705d",
+      "lowSrc": "review168:02. Low/bike-v1/bike_frame__sky_low.glb",
+      "lowSha256": "c8bf28fbf637f215661fda73030efba8cce07fa26d6f9faa135d8141b49bc79f",
       "precompressed": true
     },
     {
@@ -9269,10 +9269,10 @@
     },
     {
       "out": "byeolmaru-v1/fence_gate_wide.glb",
-      "src": "taxi163:01. High/byeolmaru-v1/fence_gate_wide.glb",
-      "sha256": "ed66ebdabb9599a2b2a75782fa71331a81669fc29aeb69776f3581922f2f1e17",
-      "lowSrc": "taxi163:02. Low/byeolmaru-v1/fence_gate_wide_low.glb",
-      "lowSha256": "eeb62b7dd224f1f469961cf307fe116a0edb7f3288e96fe5897ffe6c0b3c8e72",
+      "src": "review168:01. High/byeolmaru-v1/fence_gate_wide.glb",
+      "sha256": "cb7c0cf5087a47fc7ad6a8c5187a066e7753fa3955fa8d24707a4a87d9f47d1d",
+      "lowSrc": "review168:02. Low/byeolmaru-v1/fence_gate_wide_low.glb",
+      "lowSha256": "9985c48215dda8bbc5d0b10fed780e32d29bb240cc4b4dc50f8bdab1a656fc02",
       "precompressed": true
     },
     {
@@ -15136,8 +15136,8 @@
     },
     {
       "out": "byeolmaru-v1/fence_gate.glb",
-      "src": "byeolmaru152:01. High/byeolmaru-v1/fence_gate.glb",
-      "sha256": "8b9f7e70752e0aea333040cd9ae7a12e4404e65f731577a662fa60700f8837b4",
+      "src": "review168:01. High/byeolmaru-v1/fence_gate.glb",
+      "sha256": "4c896d124bb9e44b35ed863733c49b3c9b7d498c4772d7ebda43ab9237597c6d",
       "precompressed": true
     },
     {
@@ -15238,8 +15238,8 @@
     },
     {
       "out": "byeolmaru-v1/fence_gate_low.glb",
-      "src": "byeolmaru152:02. Low/byeolmaru-v1/fence_gate_low.glb",
-      "sha256": "462f74532cabd304326de389e847761818704593503a9dfc4402f9e6b58b8d5b",
+      "src": "review168:02. Low/byeolmaru-v1/fence_gate_low.glb",
+      "sha256": "b5502b12beb451188c791d7791c7bcfb24a16bfa943f041ca4f876faee24ec58",
       "precompressed": true
     },
     {
@@ -15631,6 +15631,30 @@
       "src": "petbike161:01. High/motions/Sprint.glb",
       "sha256": "5100d7d71a6c0c2765613208f4f00cbfa46ee947b31ec694fdb9a7412cf50cd6",
       "precompressed": true
+    },
+    {
+      "out": "taxi-v1/taxi_stop_mark.glb",
+      "src": "review168:01. High/taxi-v1/taxi_stop_mark.glb",
+      "sha256": "960ff7dbed9f904bc099e9e4bbfe18a4281a7df51d7697ae3fb69acd23e5123b",
+      "lowSrc": "review168:02. Low/taxi-v1/taxi_stop_mark_low.glb",
+      "lowSha256": "f89d27e33e5ced461898f8408d47e5baa950bce6f6187255e163c4cd5d860dca",
+      "precompressed": true
+    },
+    {
+      "out": "taxi-v1/taxi_lane.glb",
+      "src": "review168:01. High/taxi-v1/taxi_lane.glb",
+      "sha256": "467acdeb57f1b7713c2ebaeeb71f4f93480fd867777318ad020011194895a29a",
+      "lowSrc": "review168:02. Low/taxi-v1/taxi_lane_low.glb",
+      "lowSha256": "467acdeb57f1b7713c2ebaeeb71f4f93480fd867777318ad020011194895a29a",
+      "precompressed": true
+    },
+    {
+      "out": "dalmaru-v1/dock_dest_board.glb",
+      "src": "review168:01. High/dalmaru-v1/dock_dest_board.glb",
+      "sha256": "111201f2530a30b29968817113b610dbe4ae2369d421db66a4cca573a67edeba",
+      "lowSrc": "review168:02. Low/dalmaru-v1/dock_dest_board_low.glb",
+      "lowSha256": "15eafb410a99c7d98ddf72b8a4b76850ba7bff227e4a7c4f556906ab24f000b8",
+      "precompressed": true
     }
   ],
   "sources": {
@@ -15761,6 +15785,7 @@
     "petbike161": "161. Game Island pet bike 2026-11-20",
     "yunseul133": "133. Game Island high yunseul bridge 2026-11-15",
     "ferry134": "134. Game Island ferry 2026-11-15",
-    "taxi163": "163. Game Island taxi gate and stop sign 2026-11-21"
+    "taxi163": "163. Game Island taxi gate and stop sign 2026-11-21",
+    "review168": "168. Game Island review fixes 2026-11-21"
   }
 }

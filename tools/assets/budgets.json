@@ -2229,20 +2229,24 @@
       "reason": "1.10.386 assets 160 마당 창고: its doors (door_l, door_r) a node and mesh of their own to open, the body one mesh; one 512 picture (yard_atlas) as the 111 yard pieces"
     },
     "bike-v1/bike_frame__mint.glb": {
-      "nodes": 4,
-      "reason": "1.10.387 assets 161 자전거 몸체: one mesh under a root with two empty marks, basket_seat (front crate) and tow_hook (rear hook)"
+      "nodes": 6,
+      "reason": "1.10.399 assets 168 자전거 몸체: the frame mesh and the crate's basket_cushion (its own node -- hidden while a pet rides in it) under a root with two empty marks, basket_seat and tow_hook",
+      "meshes": 2
     },
     "bike-v1/bike_frame__red.glb": {
-      "nodes": 4,
-      "reason": "1.10.387 assets 161 자전거 몸체: one mesh under a root with two empty marks, basket_seat (front crate) and tow_hook (rear hook)"
+      "nodes": 6,
+      "reason": "1.10.399 assets 168 자전거 몸체: the frame mesh and the crate's basket_cushion (its own node -- hidden while a pet rides in it) under a root with two empty marks, basket_seat and tow_hook",
+      "meshes": 2
     },
     "bike-v1/bike_frame__sky.glb": {
-      "nodes": 4,
-      "reason": "1.10.387 assets 161 자전거 몸체: one mesh under a root with two empty marks, basket_seat (front crate) and tow_hook (rear hook)"
+      "nodes": 6,
+      "reason": "1.10.399 assets 168 자전거 몸체: the frame mesh and the crate's basket_cushion (its own node -- hidden while a pet rides in it) under a root with two empty marks, basket_seat and tow_hook",
+      "meshes": 2
     },
     "bike-v1/bike_frame__butter.glb": {
-      "nodes": 4,
-      "reason": "1.10.387 assets 161 자전거 몸체: one mesh under a root with two empty marks, basket_seat (front crate) and tow_hook (rear hook)"
+      "nodes": 6,
+      "reason": "1.10.399 assets 168 자전거 몸체: the frame mesh and the crate's basket_cushion (its own node -- hidden while a pet rides in it) under a root with two empty marks, basket_seat and tow_hook",
+      "meshes": 2
     },
     "bike-v1/bike_wheel.glb": {
       "nodes": 2,
@@ -2253,20 +2257,24 @@
       "reason": "1.10.387 assets 161 자전거 크랭크: its mesh under a pivot node at the axle, turned by the game"
     },
     "bike-v1/bike_frame__mint_low.glb": {
-      "nodes": 4,
-      "reason": "1.10.387 assets 161 자전거 몸체: one mesh under a root with two empty marks, basket_seat (front crate) and tow_hook (rear hook)"
+      "nodes": 6,
+      "reason": "1.10.399 assets 168 자전거 몸체: the frame mesh and the crate's basket_cushion (its own node -- hidden while a pet rides in it) under a root with two empty marks, basket_seat and tow_hook",
+      "meshes": 2
     },
     "bike-v1/bike_frame__red_low.glb": {
-      "nodes": 4,
-      "reason": "1.10.387 assets 161 자전거 몸체: one mesh under a root with two empty marks, basket_seat (front crate) and tow_hook (rear hook)"
+      "nodes": 6,
+      "reason": "1.10.399 assets 168 자전거 몸체: the frame mesh and the crate's basket_cushion (its own node -- hidden while a pet rides in it) under a root with two empty marks, basket_seat and tow_hook",
+      "meshes": 2
     },
     "bike-v1/bike_frame__sky_low.glb": {
-      "nodes": 4,
-      "reason": "1.10.387 assets 161 자전거 몸체: one mesh under a root with two empty marks, basket_seat (front crate) and tow_hook (rear hook)"
+      "nodes": 6,
+      "reason": "1.10.399 assets 168 자전거 몸체: the frame mesh and the crate's basket_cushion (its own node -- hidden while a pet rides in it) under a root with two empty marks, basket_seat and tow_hook",
+      "meshes": 2
     },
     "bike-v1/bike_frame__butter_low.glb": {
-      "nodes": 4,
-      "reason": "1.10.387 assets 161 자전거 몸체: one mesh under a root with two empty marks, basket_seat (front crate) and tow_hook (rear hook)"
+      "nodes": 6,
+      "reason": "1.10.399 assets 168 자전거 몸체: the frame mesh and the crate's basket_cushion (its own node -- hidden while a pet rides in it) under a root with two empty marks, basket_seat and tow_hook",
+      "meshes": 2
     },
     "bike-v1/bike_wheel_low.glb": {
       "nodes": 2,
@@ -2297,6 +2305,36 @@
       "meshes": 2,
       "nodes": 4,
       "reason": "1.10.392 N4-b assets 163 정류장 표지: the post and its `plate` (both faces, its own UVs for the game's words -- gltfpack -kv -vtf) two meshes, the plate a node of its own"
+    },
+    "dalmaru-v1/dock_dest_board.glb": {
+      "meshes": 2,
+      "nodes": 4,
+      "reason": "1.10.399 assets 168: the board and its `plate` (the game's words) apart -- keepNodes"
+    },
+    "dalmaru-v1/dock_dest_board_low.glb": {
+      "meshes": 2,
+      "nodes": 4,
+      "reason": "1.10.399 assets 168: the board and its `plate` (the game's words) apart -- keepNodes"
+    },
+    "taxi-v1/taxi_stop_mark.glb": {
+      "meshes": 1,
+      "nodes": 2,
+      "reason": "1.10.399 assets 168: as delivered"
+    },
+    "taxi-v1/taxi_stop_mark_low.glb": {
+      "meshes": 1,
+      "nodes": 2,
+      "reason": "1.10.399 assets 168: as delivered"
+    },
+    "taxi-v1/taxi_lane.glb": {
+      "meshes": 1,
+      "nodes": 2,
+      "reason": "1.10.399 assets 168: as delivered"
+    },
+    "taxi-v1/taxi_lane_low.glb": {
+      "meshes": 1,
+      "nodes": 2,
+      "reason": "1.10.399 assets 168: as delivered"
     }
   },
   "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files.",

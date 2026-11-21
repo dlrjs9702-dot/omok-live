@@ -69,6 +69,10 @@
   'taxi.car': { url: '/assets/island/taxi-v1/taxi_island.glb', low: { url: '/assets/island/taxi-v1/taxi_island_low.glb' }, near: 40, rotationY: Math.PI },
   'taxi.stop': { url: '/assets/island/taxi-v1/taxi_stop.glb', low: { url: '/assets/island/taxi-v1/taxi_stop_low.glb' }, near: 40, rotationY: Math.PI },
   'taxi.stop_sign': { url: '/assets/island/taxi-v1/taxi_stop_sign.glb', low: { url: '/assets/island/taxi-v1/taxi_stop_sign_low.glb' }, near: 40, keepNodes: true }, /* (1.10.392 N4-b, assets 163: a road stop's sign -- its `plate` both faces, the game's words on it) */
+  /* (1.10.399 assets 168: where one stands to get in -- a round taxi mark in the ground, read from any side; a terminal's lane of tiles from the bench to it; a dock's board, its `plate` the game's words) */
+  'taxi.stop_mark': { url: '/assets/island/taxi-v1/taxi_stop_mark.glb', low: { url: '/assets/island/taxi-v1/taxi_stop_mark_low.glb' }, near: 40 },
+  'taxi.lane': { url: '/assets/island/taxi-v1/taxi_lane.glb', low: { url: '/assets/island/taxi-v1/taxi_lane_low.glb' }, near: 40 },
+  'dalmaru.dock_board': { url: '/assets/island/dalmaru-v1/dock_dest_board.glb', low: { url: '/assets/island/dalmaru-v1/dock_dest_board_low.glb' }, near: 40, keepNodes: true },
     // v1.10.275 그래픽 시범 (assets 106: Nature Megapack - Low Poly Extended, RG Poly, CC0): the one patch's plants
     // (island-pilot-scene.js), a file per season with its own 512 picture -- light enough to be its own Low everywhere
     ...Object.fromEntries(['grass_broad', 'grass_tuft', 'bush_fern', 'mushroom_red', 'mushroom_brown'] /* (v1.10.310: the patch's own plants gone -- these still drawn: island-pilot IDS) */
@@ -636,7 +640,7 @@
   // 자전거 (assets 61 bike-v1): the frame in four colours, a wheel (front and back), the crank -- the game turns the last two;
   // in the 잡화점 a small one on the floor
   const BK = '/assets/island/bike-v1'; const bk = (file, extra = {}) => ({ url: `${BK}/${file}.glb`, low: { url: `${BK}/${file}_low.glb` }, near: 30, ...extra });
-  for (const c of ['mint', 'red', 'sky', 'butter']) { REGISTRY[`bike.frame__${c}`] = bk(`bike_frame__${c}`); REGISTRY[`good.bike_${c}`] = bk(`bike_frame__${c}`, { shadows: false }); } /* (1104 C, 총괄 235 검토: on show as big as one ridden) */
+  for (const c of ['mint', 'red', 'sky', 'butter']) { REGISTRY[`bike.frame__${c}`] = bk(`bike_frame__${c}`, { keepNodes: true }) /* (1.10.399 assets 168: its crate's `basket_cushion` a node of its own -- hidden while a pet rides in it) */; REGISTRY[`good.bike_${c}`] = bk(`bike_frame__${c}`, { shadows: false }); } /* (1104 C, 총괄 235 검토: on show as big as one ridden) */
   REGISTRY['bike.wheel'] = bk('bike_wheel'); REGISTRY['bike.crank'] = bk('bike_crank');
   // 묶음 4 내 집 (assets 58 home-v1): the house in its four roofs (front -Z), the room, its floors and wallpapers (laid in
   // the room, one at a time), the nameplate, an empty lot's sign
