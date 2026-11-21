@@ -217,6 +217,10 @@
   const glide = (a, b, k, d) => { const s = smooth(k); return { phase: 'turn', x: a.x + (b.x - a.x) * s, z: a.z + (b.z - a.z) * s, yaw: a.yaw + wrap(b.yaw - a.yaw) * s, d, pitch: 0, roll: 0, k }; };
   // (317) the ride over (the rider out at the other stop) by server time `now`
   const rideOver = (ride, now) => roadNow(ride, now) >= ride.startedAt + durationOf(ride);
+  /* (1.10.401 Codex 391~400 #1: the ride on the table's own clock -- for looking ahead along its road -- keeps where it goes (to, empty, stay,
+     park); only the waits and the aside (warp, side, ghost) are left out. Without `to` a ride from a stop between the terminals had no end:
+     curbOf(undefined) threw in the server's tick and the process stopped) */
+  const timeless = (ride) => ({ from: ride.from, startedAt: ride.startedAt, ...(Number.isFinite(ride.runMs) ? { runMs: ride.runMs } : {}), ...(ride.to ? { to: ride.to } : {}), ...(ride.empty ? { empty: true } : {}), ...(typeof ride.stay === 'boolean' ? { stay: ride.stay, park: ride.park ?? 0 } : {}) });
   function carAt(ride, now) {
     const p = poseAt(ride, now); if (p.phase !== 'done') return p;
     const real = now; now = roadNow(ride, now);
@@ -297,5 +301,5 @@
   const PLACE_IDS = () => ['plaza', 'isle', 'head', ...Object.keys(ROADSTOPS)].sort((a, b) => sOf(a) - sOf(b)); /* (397: by the trunk -- 마을 at its corner, 별마루섬 입구 last) */
   return { boardOf, ROADSTOPS, ROAD_LEN, sOf, atS, curbOf, driveBetween, distanceOf, fareByRoad, PLACE_IDS, isTerminal, labelOf, toOf, sendCar, WAIT, nearestRoom, /* (392 N4-b) */
     LANE, PLACES, BACK, placeOf, laneOffs, createFleet, takeCar, settle, etaAt, fleetView, countAt, standingAt, onBridgeBox: (x, z, m = 0) => bridgeOf(x, z, m) >= 0, bridgeOf, BRIDGES, /* (391 N4-a; 397 both one-lane bridges) */ TRUNK, TRUNK_LEN, SPUR,
-    CROSSINGS, CROSS_HALF, CROSS_CLEAR, ROAD, LEAD, RAMP, sideAt, ghostAt, shifted, roadNow, rateOf, warpTo, realAt, rideOver, TURN, backOf, carAt, easeClock, ROUTE, EXT, ROADS, STREET, ROAD_ENDS: Object.freeze([ROUTE[0], ROUTE[ROUTE.length - 1], EXT[EXT.length - 1]]) /* (395: the stops at the roads' ends -- kept clear round, as the two were) */, STOPS, BRIDGE, ENTER, EXIT, EASE, FAST, SLOW, FARE, DAY_PASS, EXTRA, BOARD, ALIGHT, SEAT, roadOf, stopOf, dropOf, driveOf, tableOf, durationOf, poseAt, arrivalOf, doorOf, fareOf };
+    CROSSINGS, CROSS_HALF, CROSS_CLEAR, ROAD, LEAD, RAMP, sideAt, ghostAt, shifted, roadNow, rateOf, warpTo, realAt, rideOver, timeless, TURN, backOf, carAt, easeClock, ROUTE, EXT, ROADS, STREET, ROAD_ENDS: Object.freeze([ROUTE[0], ROUTE[ROUTE.length - 1], EXT[EXT.length - 1]]) /* (395: the stops at the roads' ends -- kept clear round, as the two were) */, STOPS, BRIDGE, ENTER, EXIT, EASE, FAST, SLOW, FARE, DAY_PASS, EXTRA, BOARD, ALIGHT, SEAT, roadOf, stopOf, dropOf, driveOf, tableOf, durationOf, poseAt, arrivalOf, doorOf, fareOf };
 }));

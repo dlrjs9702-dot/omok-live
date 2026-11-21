@@ -44,3 +44,20 @@ test('택시 부르기: 정류장에서 부르면 가까운 차가 빈 차로 �
   await stand(b, X.boardOf('isleFork').x + 15, X.boardOf('isleFork').z); await sleep(400);
   assert.equal((await req('/api/island/taxi?from=isleFork', b)).data.called, null, 'walked off: the call let go');
 });
+
+// 1.10.401 Codex 391~400 #1: on the real road (no test run time) the server's tick looks ahead along each ride -- a ride from a stop between
+// the terminals lost its end in that copy and threw, stopping the server
+test('택시 Codex #1: 중간 정류장에서 실제 속도로 출발해도 서버가 멈추지 않음', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'taxi-mid-')); rmAtExit(dir);
+  const server = await boot(t, dir); const { req } = server;
+  const a = await server.enter(await server.issue('중간출발')); await req('/api/test/points-credit', a, { amount: 100000 });
+  const stand = (x, z) => req('/api/plaza/state', a, { x, z, yaw: 0, moving: false });
+  await req('/api/test/taxi-run', a, { ms: 3000 }); const board = X.boardOf('dock'); await stand(board.x, board.z);
+  const called = await req('/api/island/taxi/call', a, { stop: 'dock' }); assert.equal(called.status, 200, JSON.stringify(called.data));
+  const coming = (await stand(board.x, board.z)).data.taxiStops.cars.find((c) => c.ride?.empty); await sleep(X.durationOf(coming.ride) + X.TURN + 400); await stand(board.x, board.z);
+  await req('/api/test/taxi-run', a, { ms: 0, back: false }); /* (the real road from here on, the fleet as it is) */
+  const rode = await req('/api/island/taxi', a, { from: 'dock', to: 'museum' }); assert.equal(rode.status, 200, JSON.stringify(rode.data)); assert.equal(rode.data.taxi.runMs, undefined, 'on the real road');
+  await sleep(1500); /* (fifteen of the server's looks ahead along it) */
+  const still = await stand(board.x, board.z); assert.equal(still.status, 200, 'the server still answers');
+  assert.ok(still.data.taxiStops.cars.some((c) => c.ride?.from === 'dock' && c.ride?.to === 'museum'), 'the ride on its way');
+});
