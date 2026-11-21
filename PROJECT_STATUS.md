@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.402 펫 — 에셋 169·169b 연결 + 결정 61(자전거 머리 위 없앰) · 60-1(아이언맨 겹침)
+
+- 작은 8종(PET_SMALL)은 자전거 때 basket, 169 BasketSit, 방석 보임(169b 표 PET_SEAT 0.064~0.087). 새는 birdFly: 파일 안 Fly, 옆 0.9 m·뒤 0.1 m·높이 1.05 m, d×8 따라잡기. tf 고양이 BasketSitPaw(PET_KIND_CLIP), 상자 펫 PET_SEAT 169 값.
+- 배트맨 활공 때 cape_spread 0→1(0.25 s, High·Low 메시). 슈퍼맨 Fly(55°, 주먹 머리 옆), 아이언맨 재질 부드럽게 + 60-1 헬멧 아래 면 잘라 겹침 177→10 cm²(예산 △ 갱신).
+- 걷어 냄(400 머리 위 몫): HEAD_SINK·이름표 어깨 옆(tagBeside)·폰 세로 headPetK·1인칭 머리 펫 숨김. 펫 이름표는 자세 그대로 잰 높이+6 cm(역할 바뀌면 다시).
+- 파일 39개 SHA 일치(HeadSit·HeadSitWide는 안 씀).
+
 ## v1.10.401 핫픽스 — Codex 391~400 #1 택시 중간 정류장 출발 시 서버 종료
 
 - 서버 택시 틱(100 ms)이 앞을 내다볼 때 운행을 `{ from, startedAt }`로만 복사 → 중간 정류장(ROADSTOPS) 출발은 끝(`to`)이 없어 `curbOf(undefined)` 예외로 프로세스 종료(393부터; 부른 빈 차가 돌아갈 때도). `IslandTaxi.timeless(ride)`: to·empty·stay·park는 지키고 warp·side·ghost만 뺌.
@@ -25,10 +32,3 @@
 - 펫 이름표: 모델 높이(보이는 메시만)+6 cm. 밤: 펫 재질 복사본의 색 ×1.45(정점 색·그림 그대로 — emissive는 회색으로 씻겨 버림).
 - 디버그 petFit(key): 펫 가장 낮은 점·주인 머리 위·이름표 높이.
 - 에셋 169(자세·망토)는 401에서 연결.
-
-## v1.10.399 작은 묶음 — 에셋 168 연결 · 배 물결 · 밤 빛 · 폰 다리 위 시점(notes asset-eyes-2-20261121, 결정 52 A)
-
-- 에셋 168(SHA 일치): 자전거 몸체·크랭크(bike.frame__* keepNodes, basket_cushion은 펫이 바구니에 타면 숨김), fence_gate_wide 빗장, fence_gate 잎 팻말, 옷가게 preview_bg, 새 taxi.stop_mark(모든 자리 boardOf)·taxi.lane(종점 쉼터→문양 타일)·dalmaru.dock_board(T.DOCK_BOARDS, dest_plate에 글자, 기둥 원 structureSolids — 배 타는 곳은 걷는 길 피해 (−2.5, −3.5)).
-- 배 물결: 움직이는 탐방선 양옆 두 줄(속도에 따라). 밤 빛: 승선 계단·긴 다리 세 곳 양 끝·택시 문양에 그린 빛 웅덩이(wayLights, 업라이트 수와 따로). 폰 세로 화면 긴 다리 가운데: 시점 8° 낮게·1/5 멀리·옆 2.2 m.
-- 고침: 택시 화면 정류장 출발 빈 차의 머무를 곳(STOPS[from].to → toOf, 392부터 페이지 오류).
-- 예산: 자전거 몸체 메시 2·노드 6, 새 모델 셋.
