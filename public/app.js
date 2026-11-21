@@ -4309,6 +4309,7 @@
   // a tank or the insect case: what is in it (꺼내기 -- back to the bag) and what of my bag fits (넣기)
   const tankBox = document.createElement('div'); tankBox.className = 'homeTank'; tankBox.id = 'homeTank';
   // (362: a fish one a slot -- lists that send a kind show one row a kind, the count summed)
+  const tankPending = new Map(); /* (403 Codex #4: a tank put not answered yet, by tank and kind -> its request) */
   const bagKinds = (items) => { const m = new Map(); for (const e of items) { const k = m.get(e.itemId); if (k) k.qty += e.qty; else m.set(e.itemId, { ...e }); } return [...m.values()]; };
   async function openTank(uid) {
     const H = window.IslandHome; const p = homeInside?.home.pieces.find((x) => x.uid === uid); if (!p) return;
@@ -4316,8 +4317,11 @@
     let bag = { items: [] }; try { bag = await api('/api/island/bag'); } catch (error) { showToast(error.message); return; }
     const act = async (body) => {
       if (homeBusy) return; homeBusy = true;
-      try { const r = await api('/api/home/tank', { method: 'POST', body: JSON.stringify({ tank: uid, ...body, requestId: crypto.randomUUID() }) }); showHome({ ...(await api('/api/home/inside')), home: r.home }); }
-      catch (error) { showToast(error.message, 4000); } finally { homeBusy = false; }
+      /* (1.10.403 Codex 391~400 #4: a put with no answer -- the server gone between the bag and the tank -- pressed again sends the same request, so
+         the server finishes that one (the fish already off the bag goes in) rather than taking a second fish; answered either way, forgotten) */
+      const key = body.put ? `${uid}:${body.put}` : null; const requestId = (key && tankPending.get(key)) || crypto.randomUUID(); if (key) tankPending.set(key, requestId);
+      try { const r = await api('/api/home/tank', { method: 'POST', body: JSON.stringify({ tank: uid, ...body, requestId }) }); if (key) tankPending.delete(key); showHome({ ...(await api('/api/home/inside')), home: r.home }); }
+      catch (error) { if (key && error?.status) tankPending.delete(key); showToast(error.message, 4000); } finally { homeBusy = false; }
       openTank(uid);
     };
     const now = document.createElement('div'); now.className = 'giftList';
@@ -6183,22 +6187,27 @@
     const ride = button('taxiRideBtn', rideText({ label: to, fare: q.fare }), 'primary'); const pass = q.pass ? null : button('taxiPassBtn', `오늘 자유이용권 · ${won(q.dayPass)}`, 'secondary');
     const close = button('taxiCloseBtn', '닫기', 'secondary'); close.addEventListener('click', () => plazaDialog.close());
     const short = (price) => !q.pass && price > 0 && Number.isFinite(balance) && balance < price;
-    if (short(q.fare)) ride.disabled = true; if (pass && short(q.dayPass)) pass.disabled = true;
-    if (short(q.fare)) status.textContent = `포인트가 모자라요(${won(q.fare)})`;
+    if (pass && short(q.dayPass)) pass.disabled = true; /* (타기 and its line: by the place picked -- fit, below) */
     if (q.awayS > 0) { ride.disabled = true; if (pass) pass.disabled = true; status.textContent = `택시가 돌아오는 중이에요 · 약 ${q.awayS}초`; } /* (294 7: one car a stop -- out, coming back) */
     /* (1.10.391 N4-a 「어디로 갈까요?」: where one can go from here, each with its fare -- picked, the line and 타기 say it; one now, the stops in N4-b) */
     const dests = Array.isArray(q.dests) && q.dests.length ? q.dests : [{ id: q.to, label: to, fare: q.fare }]; let pick = dests.find((d) => d.id === q.to) || dests[0]; /* (392: the other terminal picked at a terminal, as before) */
     const list = document.createElement('div'); list.className = 'taxiDests'; list.setAttribute('role', 'radiogroup'); list.setAttribute('aria-label', '어디로 갈까요?');
-    const choose = (d) => { pick = d; for (const b of list.children) b.setAttribute('aria-checked', String(b.dataset.to === d.id)); line.textContent = `${d.label}까지 갈까요?${q.pass ? ' · 오늘 자유이용권 ✓' : ''}`; ride.textContent = rideText(d); };
+    /* (1.10.403 Codex 391~400 #13: the fare picked decides 타기 and the 「모자라요」 line, each time one is picked -- a near place I can pay for is open) */
+    const fit = () => { if (q.awayS > 0) return; ride.disabled = short(pick.fare); if (short(pick.fare)) status.textContent = `포인트가 모자라요(${won(pick.fare)})`; else if (/^포인트가 모자라요/.test(status.textContent)) status.textContent = ''; };
+    let going = false;
+    const choose = (d) => { if (going) return; pick = d; for (const b of list.children) b.setAttribute('aria-checked', String(b.dataset.to === d.id)); line.textContent = `${d.label}까지 갈까요?${q.pass ? ' · 오늘 자유이용권 ✓' : ''}`; ride.textContent = rideText(d); fit(); };
     for (const d of dests) { const b = button(`taxiDest-${d.id}`, `${d.label} · ${won(d.fare)}`, 'ghost taxiDest'); b.dataset.to = d.id; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(d === pick)); b.addEventListener('click', () => choose(d)); list.append(b); }
+    fit();
     const go = async (pay) => {
-      for (const b of [ride, pass]) if (b) b.disabled = true;
+      /* (403 Codex #7: where and for how much fixed at the press -- the places locked till the answer; #5: 「타기」 with today's pass held says so, so a
+         press after midnight is not taken for buying the new day's pass) */
+      const chose = pick; going = true; for (const b of [ride, pass, ...list.children]) if (b) b.disabled = true;
       try {
         const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
-        const r = await api('/api/island/taxi', { method: 'POST', body: JSON.stringify({ from, to: pick.id, pay }) });
-        plaza.controller?.onTaxiEnd?.(() => showToast(`🚕 ${pick.label}에 도착했어요`)); plaza.controller?.startTaxi?.(r.taxi);
+        const r = await api('/api/island/taxi', { method: 'POST', body: JSON.stringify({ from, to: chose.id, pay, fare: q.pass ? 0 : pay === 'pass' ? q.dayPass : chose.fare, ...(q.pass ? { held: true } : {}) }) });
+        plaza.controller?.onTaxiEnd?.(() => showToast(`🚕 ${chose.label}에 도착했어요`)); plaza.controller?.startTaxi?.(r.taxi);
         plazaDialog.close(); if (r.fare) loadPoints(); if (r.fare && r.pass) showToast('🎫 오늘 자유이용권 ✓ · 오늘은 몇 번이든 타요', 3000); plazaStage.focus({ preventScroll: true });
-      } catch (error) { status.textContent = error.message; ride.disabled = short(pick.fare); if (pass) pass.disabled = short(q.dayPass); }
+      } catch (error) { status.textContent = error.message; going = false; for (const b of list.children) b.disabled = false; ride.disabled = short(pick.fare); if (pass) pass.disabled = short(q.dayPass); if (error?.data?.error === 'TAXI_PRICE') { plazaDialog.close(); openTaxi(from); } }
     };
     ride.addEventListener('click', () => go(q.pass ? 'pass' : 'fare')); pass?.addEventListener('click', () => go('pass'));
     row.append(...[ride, pass, close].filter(Boolean)); card.append(line, list, status, row); openPlazaWindow('🚕 어디로 갈까요?', [card]); ride.focus({ preventScroll: true });

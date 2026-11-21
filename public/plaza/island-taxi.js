@@ -253,10 +253,16 @@
   // a ride from `from`: its car (the front one), the one behind pulled up, where it goes after -> { car, undo } or null (none standing)
   function takeCar(fleet, from, ride, now) {
     const standing = standingAt(fleet, from); const car = standing[0]; if (!car) return null;
-    const was = fleet.cars.map((c) => ({ c, at: c.at, place: c.place, ride: c.ride, pulledAt: c.pulledAt }));
-    car.ride = ride; car.at = null; ride.car = car.id; ride.seat = 0;
-    for (const c of standing.slice(1)) if (c.place > 0 && !standingAt(fleet, from).some((o) => o.place === 0)) { c.place = 0; c.pulledAt = now + PULL_AFTER(ride); } /* (403: after the front one has gone) */
-    return { car, undo: () => { for (const w of was) Object.assign(w.c, { at: w.at, place: w.place, ride: w.ride, pulledAt: w.pulledAt }); delete ride.car; delete ride.seat; } };
+    const place = car.place; car.ride = ride; car.at = null; ride.car = car.id; ride.seat = 0; const pulled = [];
+    for (const c of standing.slice(1)) if (c.place > 0 && !standingAt(fleet, from).some((o) => o.place === 0)) { pulled.push({ c, place: c.place, pulledAt: c.pulledAt, at: now + PULL_AFTER(ride) }); c.place = 0; c.pulledAt = now + PULL_AFTER(ride); } /* (403: after the front one has gone) */
+    /* (1.10.403 Codex 391~400 #2: undone -- a fare refused -- only this car back, and the one it had pulled up if that one is still standing as it
+       was left and has not started up yet; never the whole fleet as it stood before: someone else's car taken meanwhile stays theirs) */
+    return { car, undo: () => {
+      if (car.ride !== ride) return; car.ride = null; car.at = from; delete ride.car; delete ride.seat;
+      const back = pulled.filter((w) => !w.c.ride && w.c.at === from && w.c.place === 0 && w.c.pulledAt === w.at);
+      for (const w of back) { w.c.place = w.place; w.c.pulledAt = w.pulledAt; }
+      car.place = back.length ? place : freePlace(fleet, from, car);
+    } };
   }
   // the clock moved on: a ride just over decides where its car goes (stays where that stop has fewer than PLACES, else back home) and
   // which place it takes; each car whose glide or way back is over stands in it -> whether anything changed

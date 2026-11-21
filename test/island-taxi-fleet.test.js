@@ -68,6 +68,20 @@ test('택시 ⑤: 뒤 차는 앞 차가 빠진 뒤에 당겨 섬 — 두 차가 
   }
 });
 
+// 1.10.403 Codex 391~400 #2: A's fare pending, B takes the car pulled up; A's fare refused -- A's undo put the whole fleet back as it stood,
+// B's car with it (B charged, their car standing again). Now only A's car goes back
+test('택시 Codex #2: 결제 실패 되돌리기는 내 차만 — 그사이 남이 탄 차는 그대로', () => {
+  const fleet = X.createFleet(0); const rideA = { from: 'plaza', to: 'head', startedAt: 1000 }; const a = X.takeCar(fleet, 'plaza', rideA, 1000);
+  const rideB = { from: 'plaza', to: 'isle', startedAt: 1200 }; const b = X.takeCar(fleet, 'plaza', rideB, 1200); assert.ok(b && b.car !== a.car);
+  a.undo();
+  assert.equal(b.car.ride, rideB, "B's car still out with B"); assert.equal(rideB.car, b.car.id);
+  assert.equal(a.car.ride, null); assert.equal(a.car.at, 'plaza'); assert.equal(X.standingAt(fleet, 'plaza').length, 1); assert.equal(X.standingAt(fleet, 'plaza')[0].place, 0);
+  check(fleet);
+  // undone before anyone else came: both back as they were, the one behind behind again
+  const f2 = X.createFleet(0); const before = JSON.stringify(f2.cars); const t = X.takeCar(f2, 'isle', { from: 'isle', to: 'plaza', startedAt: 500 }, 500); t.undo();
+  assert.equal(JSON.stringify(f2.cars), before);
+});
+
 // 1.10.401 Codex 391~400 #1: the server's tick looks ahead on the ride's own table clock -- that copy kept only from and startedAt, so a ride
 // from a stop between the terminals (박물관 …) had no end and curbOf(undefined) threw, stopping the server; an empty car fetching a caller
 // there and going back the same. timeless keeps where it goes, leaves out only the waits and the aside

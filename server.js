@@ -1805,7 +1805,7 @@ const homeInside = new Map(); const homeCache = new Map();
 // there (that floor's pieces; the 2층 its own stage) and its room
 const homeFloor = new Map(); const floorOf = (token) => (homeFloor.get(token) === 2 ? 2 : 1);
 const homeLotOn = (h, floor) => { const lot = IslandHome.lotById(h?.lot); return floor === 2 ? IslandHome.upperLot(lot) : lot; };
-const homeAs = (token, h) => IslandHome.floorView(h, floorOf(token));
+const homeAs = (token, h) => { const v = IslandHome.floorView(h, floorOf(token)); if (!v?.tankPuts) return v; const { tankPuts, ...shown } = v; return shown; }; /* (403: the tank's done puts stay here) */
 async function homeOf(account) {
   if (!homeCache.has(account)) homeCache.set(account, (await pointStore.worldValue(`home:${account}`)) || null);
   let h = homeCache.get(account);
@@ -1835,6 +1835,9 @@ async function homeOf(account) {
 }
 const homeStage = (h) => IslandHome.stageOf(h?.stage);
 async function saveHome(account, home) { await pointStore.setWorldValue(`home:${account}`, home); homeCache.set(account, home); }
+/* (1.10.403 Codex 391~400 #3: the tank's done puts by request -- a week's, at most 300 -- with the home they belong to, saved with the fish) */
+const TANK_PUTS_KEEP = 300; const TANK_PUTS_MS = 7 * 86400000;
+function tankPutsWith(puts, claim, now = nowMs()) { const kept = Object.entries(puts || {}).filter(([, at]) => Number.isFinite(at) && now - at < TANK_PUTS_MS).sort((a, b) => b[1] - a[1]).slice(0, TANK_PUTS_KEEP - 1); return Object.fromEntries([[claim, now], ...kept]); }
 async function homeLots() { return (await pointStore.worldValue('homeLots')) || {}; }
 // v1.10.227 주간 신상: the week (Monday 00:00 Seoul) -- NEW_WEEK or a test's /api/test/new-week holds it; on the test server
 // the shops keep to the week only once a test holds one (the other tests buy whatever they need)
@@ -7525,7 +7528,7 @@ async function requestHandler(req, res) {
       const fishes = h.tanks[tank.uid] || []; const total = Object.values(h.tanks).reduce((n, l) => n + l.length, 0); const claim = `home_tank_${body.requestId}`;
       if (body.put) {
         const itemId = String(body.put); if (!IslandHome.FISH_SIZE[itemId] && !IslandHome.INSECTS.has(itemId)) return sendError(res, 400, 'BAD_FISH', '물고기를 확인해 주세요.');
-        if (fishes.some((f) => f.claim === claim)) return sendJson(res, 200, { ok: true, home: homeAs(session.token, h) });
+        if (fishes.some((f) => f.claim === claim) || h.tankPuts?.[claim]) return sendJson(res, 200, { ok: true, home: homeAs(session.token, h) }); /* (1.10.403 Codex 391~400 #3: done once -- even after that fish was taken out again, a late copy of the request puts no second one) */
         if (!IslandHome.fits(IslandHome.shapeOf(tank.id), itemId)) return sendError(res, 409, 'TOO_BIG', T.insects ? '곤충 상자에는 곤충만 넣어요.' : IslandHome.INSECTS.has(itemId) ? '수조에는 물고기만 넣어요.' : '이 수조에는 너무 큰 물고기예요.');
         if (!T.insects && fishes.length && h.tankMixed?.[tank.uid]) return sendError(res, 409, 'TANK_WATER', '섞인 수조예요. 꺼내기만 할 수 있고, 다 비우면 다시 넣을 수 있어요.'); /* (Codex 361~370 #13: once mixed, until empty) */
         if (!T.insects && !IslandHome.waterFits(fishes, itemId)) { const w = IslandHome.tankWater(fishes); return sendError(res, 409, 'TANK_WATER', w === 'mixed' ? '섞인 수조예요. 꺼내기만 할 수 있고, 다 비우면 다시 넣을 수 있어요.' : `${IslandHome.WATER_WORD[w]} 수조예요. ${IslandHome.WATER_WORD[w]} 물고기만 넣어요.`); } /* (368 민물·바다 수조: the first fish sets the water) */
@@ -7535,7 +7538,7 @@ async function requestHandler(req, res) {
         if (!out.applied && !out.already) return sendError(res, 409, 'NOT_IN_BAG', '가방에 없는 물고기예요.');
         /* (1.10.395 Codex 381~390 #1: the same request again after the tank failed and the fish went back to the bag -- not into the tank as well) */
         if (out.already && await pointStore.settlementOf(`island_give:hometank-back-${body.requestId}`)) return sendError(res, 409, 'NOT_IN_BAG', '가방으로 돌려 둔 물고기예요. 다시 넣어 주세요.');
-        const next = { ...h, tanks: { ...h.tanks, [tank.uid]: [...fishes, { fid: crypto.randomUUID(), itemId, claim, ...(out.bought ? { bought: true } : {}), ...(Number.isFinite(out.size) ? { size: out.size } : {}) }] } }; /* (1.10.344 P2-6: a 「산 것」 stays one in the tank; Codex 361~370 #1: and its length) */
+        const next = { ...h, tankPuts: tankPutsWith(h.tankPuts, claim), tanks: { ...h.tanks, [tank.uid]: [...fishes, { fid: crypto.randomUUID(), itemId, claim, ...(out.bought ? { bought: true } : {}), ...(Number.isFinite(out.size) ? { size: out.size } : {}) }] } }; /* (1.10.344 P2-6: a 「산 것」 stays one in the tank; Codex 361~370 #1: and its length) */
         /* (383 Codex 371~380 #3: the tank not saved -- the fish back in the bag (its own claim), never gone between the two) */
         try { await saveHome(account, next); } catch (error) { if (out.applied) await pointStore.islandGive({ userId: account, claimId: `hometank-back-${body.requestId}`, itemId, qty: 1, quiet: true, ...((out.bought || Number.isFinite(out.size)) ? { meta: { ...(out.bought ? { bought: true } : {}), ...(Number.isFinite(out.size) ? { size: out.size } : {}) } } : {}) }, nowMs()).catch((e) => console.error('수조 되돌리기 실패:', e.message)); throw error; }
         return sendJson(res, 200, { ok: true, home: homeAs(session.token, next) });
@@ -8724,6 +8727,10 @@ async function requestHandler(req, res) {
     if (req.method === 'GET') return sendJson(res, 200, { ok: true, from, to, fare, dayPass, pass: hasPass, awayS: Math.ceil(taxiAwayMs(from) / 1000), dests, cars: IslandTaxi.standingAt(taxiFleet, from).length, ...(IslandTaxi.ROADSTOPS[from] ? { called: called?.stop === from ? { place: called.queued ? taxiQueuePlace(session.token) : 0 } : null } : {}) });
     if (!dest) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
     const pay = hasPass ? 'pass' : body.pay === 'pass' ? 'pass' : 'fare';
+    /* (1.10.403 Codex 391~400 #5: 「타기」 pressed with yesterday's pass held -- the window opened before midnight -- is not buying today's: say so, the
+       window shows the new day's prices; #7: the price the window showed, if it said one, is the price -- otherwise asked again) */
+    if (body.held === true && !hasPass) return sendError(res, 409, 'TAXI_PRICE', '자정이 지나 어제 자유이용권이 끝났어요. 요금을 다시 확인해 주세요.');
+    { const price = hasPass ? 0 : pay === 'pass' ? dayPass : fare; if (body.fare != null && !(Number(body.fare) >= price)) return sendError(res, 409, 'TAXI_PRICE', '요금이 바뀌었어요. 다시 확인해 주세요.'); } /* (never more than shown; less -- a pass bought on another screen -- is fine) */
     const here = plazaPresence.get(session.token);
     if (taxiRides.has(session.token)) return sendError(res, 409, 'TAXI_RIDING', '이미 택시를 타고 있어요.');
     if (!here || (here.space || 'island') !== 'island' || Math.hypot(here.x - stop.x, here.z - stop.z) > (IslandTaxi.STOPS[from] ? 5.5 : 6.5)) return sendError(res, 409, 'TOO_FAR', '택시 정류장 가까이 가서 다시 시도해 주세요.');

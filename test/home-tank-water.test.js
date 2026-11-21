@@ -61,4 +61,9 @@ test('수조 물 서버: 민물 붕어를 넣은 수조에 망둑어는 TANK_WAT
   assert.equal(await bagCount('fish_goby'), 1, '두 번 눌러도 망둑어 하나'); assert.deepEqual((await req('/api/home/inside', a)).data.home.tanks[tank.uid], [], '수조는 비었음');
   await req('/api/test/store/fail', null, { method: 'setWorldValue' });
   assert.notEqual((await put('fish_goby', 7)).status, 200); assert.equal(await bagCount('fish_goby'), 1, '못 넣었으면 가방에 그대로');
+  /* (1.10.403 Codex 391~400 #3: put in, taken out, then a late copy of that same put -- it was done once: no second goby in the tank, the one in the bag stays) */
+  assert.equal((await put('fish_goby', 8)).status, 200); const g8 = (await req('/api/home/inside', a)).data.home.tanks[tank.uid][0].fid;
+  assert.equal((await req('/api/home/tank', a, { tank: tank.uid, take: g8, requestId: 'tank-water-9-0001' })).status, 200); assert.equal(await bagCount('fish_goby'), 1);
+  r = await put('fish_goby', 8); assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.deepEqual(r.data.home.tanks[tank.uid], [], '늦게 온 같은 넣기: 수조에 새 물고기 없음'); assert.equal(await bagCount('fish_goby'), 1, '가방의 망둑어 그대로'); assert.equal(r.data.home.tankPuts, undefined, '기록은 서버에만');
 });
