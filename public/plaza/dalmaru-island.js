@@ -513,8 +513,10 @@
   let guards_ = null;
   function rampGuards() {
     if (guards_) return guards_; const out = [];
-    for (const b of bridges) { if (!b.high) continue;
-      for (let u = -b.half; u <= b.half + 1e-6; u += 0.5) for (const v of [-3.25, 3.25]) { const x = b.x + b.ux * u - b.uz * v; const z = b.z + b.uz * u + b.ux * v; if (deckAt({ b, u }) - ground(x, z) > 0.4 && walkable(x, z)) out.push({ x, z, r: 0.4, guard: true }); } }
+    /* (1.10.396 문제 기록 937dce24 「다리 끝에서 자전거가 묻힘」, 검토 isle2-fence-bridge-whale: the two low model bridges too -- their sides
+       over walkable sand stood up to 0.78 m over one's feet; their side kept from 0.15 m over the ground (the high one's ramps 0.4)) */
+    for (const b of bridges) { if (!b.model) continue; const rise = b.high ? 0.4 : 0.15;
+      for (let u = -b.half; u <= b.half + 1e-6; u += 0.5) for (const v of [-3.25, 3.25]) { const x = b.x + b.ux * u - b.uz * v; const z = b.z + b.uz * u + b.ux * v; if (deckAt({ b, u }) - ground(x, z) > rise && walkable(x, z)) out.push({ x, z, r: 0.4, guard: true }); } }
     return (guards_ = out);
   }
   function structureSolids() {

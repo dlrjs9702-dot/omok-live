@@ -6498,7 +6498,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (let k = 0; k < 16; k += 1) {
       const a = camYaw + Math.PI + (Math.random() - 0.5) * 1.3; const d = 22 + Math.random() * 23; // in front of the camera, close enough to be in the picture
       const x = p.x + Math.sin(a) * d; const z = p.z + Math.cos(a) * d;
-      if (T.coastDist(x, z) > -14 || Math.hypot(x - T.PIER.x, z - T.PIER.z) < 25 || Math.hypot(x - T.BREAKWATER.x, z - T.BREAKWATER.z) < 25) continue;
+      if (T.coastDist(x, z) > -14 || Math.hypot(x - T.PIER.x, z - T.PIER.z) < 25 || Math.hypot(x - T.BREAKWATER.x, z - T.BREAKWATER.z) < 25 || byBridge(x, z)) continue; /* (396 문제 기록 a3408e31: not by a bridge) */
       const splash = (at) => assets.once('sea.splash', { parent: scene, x: at.x, y: SEA_Y, z: at.z });
       assets.once('sea.whale', { parent: scene, x, y: SEA_Y, z, ry: Math.random() * TAU }, { onCross: splash });
       return true;
@@ -6533,6 +6533,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   const seen = new THREE.Vector3();
   const inPicture = (x, y, z) => { seen.set(x, y, z).project(camera); return seen.z < 1 && Math.abs(seen.x) < 0.88 && seen.y > -0.55 && seen.y < 0.82; };
   const seaRay = new THREE.Raycaster(); const ndc = new THREE.Vector2(); const level = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); const hitAt = new THREE.Vector3();
+  /* (1.10.396 문제 기록 a3408e31 「윤슬다리 옆 고래」, 검토 isle2-fence-bridge-whale: a whale (up to 19.5 m from where it comes up, 10.4 m tall)
+     came out beside the bridges -- the sea's shows keep 25 m off every long bridge, along it and to its sides) */
+  const byBridge = (x, z) => (T.bridges || []).some((b) => b.half > 10 && Math.abs((x - b.x) * b.ux + (z - b.z) * b.uz) < b.half + 25 && Math.abs((z - b.z) * b.ux - (x - b.x) * b.uz) < 25);
   function seaSpot(dMin, dMax, clear, above = 0) { // `above`: the height over the sea it will be seen at
     const T = globalThis.IslandTerrain; const p = me.root.position;
     level.constant = -SEA_Y;
@@ -6540,7 +6543,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       seaRay.setFromCamera(ndc.set((Math.random() - 0.5) * 1.7, 0.05 + Math.random() * 0.75), camera);
       if (!seaRay.ray.intersectPlane(level, hitAt)) continue;
       const { x, z } = hitAt; const d = Math.hypot(x - p.x, z - p.z);
-      if (d < dMin || d > dMax || T.coastDist(x, z) > -clear || Math.hypot(x - T.PIER.x, z - T.PIER.z) < 30 || Math.hypot(x - T.BREAKWATER.x, z - T.BREAKWATER.z) < 30) continue;
+      if (d < dMin || d > dMax || T.coastDist(x, z) > -clear || Math.hypot(x - T.PIER.x, z - T.PIER.z) < 30 || Math.hypot(x - T.BREAKWATER.x, z - T.BREAKWATER.z) < 30 || byBridge(x, z)) continue;
       if (above && !inPicture(x, SEA_Y + above, z)) continue;
       return { x, z, a: Math.atan2(x - p.x, z - p.z) };
     }
