@@ -97,7 +97,10 @@
     const TX = (typeof module === 'object' && module.exports ? require('./island-taxi.js') : (typeof self !== 'undefined' ? self : globalThis).IslandTaxi);
     const roads = TX ? (TX.ROADS || [TX.ROUTE]) : []; const crossings = TX?.CROSSINGS || []; const half = TX?.CROSS_HALF ?? 2.2; const LANE = TX?.ROAD?.lane ?? 1.45; const ROADW = TX?.ROAD?.half ?? 3.2;
     /* (건널목: the road's middle within `half` of one is a walk to cross on; a bridge's deck stays as it was -- the way over the stream) */
-    const crossingAt = (x, z) => crossings.some((c) => Math.hypot(x - c.x, z - c.z) < half + 0.75);
+    /* (1.10.407: its stripe across the road, not a disc -- two 7 m apart at the wide 윤슬다리's east end made one cheap run down the lanes between them;
+       each crossing's own way along the road read once from the nearest piece of it) */
+    const along = crossings.map((c) => { let best = { d: Infinity, ux: 1, uz: 0 }; for (const route of roads) for (let s = 1; s < route.length; s += 1) { const [ax, az] = route[s - 1]; const [bx, bz] = route[s]; const L = Math.hypot(bx - ax, bz - az) || 1e-9; const u = Math.max(0, Math.min(1, ((c.x - ax) * (bx - ax) + (c.z - az) * (bz - az)) / (L * L))); const d = Math.hypot(c.x - ax - (bx - ax) * u, c.z - az - (bz - az) * u); if (d < best.d) best = { d, ux: (bx - ax) / L, uz: (bz - az) / L }; } return best; });
+    const crossingAt = (x, z) => crossings.some((c, k) => Math.hypot(x - c.x, z - c.z) < half + 0.75 && Math.abs((x - c.x) * along[k].ux + (z - c.z) * along[k].uz) < half + 0.3);
     const onWideBridge = (x, z) => (T.bridges || []).some((b) => b.w >= 7.8 && Math.abs((x - b.x) * b.ux + (z - b.z) * b.uz) <= b.half && Math.abs(-(x - b.x) * b.uz + (z - b.z) * b.ux) <= b.w / 2); /* (407) */
     for (const route of roads) for (let s = 1; s < route.length; s += 1) { /* (1.10.395 N4-c: the road on to 별마루섬 too) */
       const [ax, az] = route[s - 1]; const [bx, bz] = route[s]; const len2 = (bx - ax) ** 2 + (bz - az) ** 2 || 1e-9;
