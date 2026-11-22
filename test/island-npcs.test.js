@@ -184,5 +184,5 @@ test('택시 C1: 멈출 자리는 택시 길 밖, 건너기는 건널목에서�
   }
   assert.ok(along < 80 + 10 * X.CROSSINGS.length && worst < 12, `along the road's middle ${along} m, longest ${worst} m`); /* (T1: twelve 건널목, each walked over -- the sum by their number; one long run still under 12 m) */
   const solids = [...T.natureSolids(), ...T.villageSolids(), ...(T.structureSolids?.() || [])];
-  for (const c of X.CROSSINGS) for (const o of solids) assert.ok(Math.hypot(c.x - o.x, c.z - o.z) - (o.r || 0) > X.CROSS_CLEAR, `건널목 ${c.x},${c.z}: ${o.x.toFixed(1)},${o.z.toFixed(1)}`);
+  for (const c of X.CROSSINGS) for (const o of solids) if (!o.rail) /* (411: the bay's railing runs along the walk's edge -- a crossing comes up to it) */ assert.ok(Math.hypot(c.x - o.x, c.z - o.z) - (o.r || 0) > X.CROSS_CLEAR, `건널목 ${c.x},${c.z}: ${o.x.toFixed(1)},${o.z.toFixed(1)}`);
 });

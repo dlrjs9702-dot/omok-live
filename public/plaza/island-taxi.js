@@ -30,12 +30,15 @@
      for now (L3 closes the ring over the west 윤슬다리). The east road mirrored (x -> -x), 2.6 m west round (-100, 72) and 1.5 m east at the cape
      where the band's edge met the water (work: l2gen) */
   const L2 = [[0.4,-16.2],[-0.6,-14.3],[-1.2,-12.4],[-2.1,-10],[-2.5,-8.4],[-4,-7.7],[-7.8,-7.3],[-11.6,-6.9],[-15.4,-6.5],[-19.2,-6.1],[-22.9,-5.7],[-26.5,-4.6],[-30,-3.4],[-33.3,-2.2],[-36.7,-1.1],[-40.2,0.1],[-43.9,1.4],[-47.1,3.3],[-50.5,5.3],[-53.9,7.3],[-57.3,9.3],[-58.5,10.2],[-59.6,11.4],[-60.7,12.6],[-62,14.9],[-63.1,16.6],[-64.4,18],[-67.3,20.5],[-70.2,23.1],[-73,25.7],[-74.8,27.3],[-77.1,30.5],[-79.4,33.6],[-81.6,36.6],[-83.9,39.6],[-86.3,42.8],[-87.3,44.3],[-88.78,47.31],[-89.6,49.13],[-95.4,61.87],[-96.22,63.69],[-99.1,66.7],[-100.7,68.3],[-102.1,70.1],[-102.9,74],[-103.6,78],[-104.2,81.9],[-104.8,85.4],[-105.4,88.7],[-105.3,92.5],[-105.2,96.1],[-105.1,99.7],[-105,103.3],[-104.9,107],[-104.3,110.5],[-103.6,114.3],[-103,117.8],[-102.7,119.3],[-101.5,123],[-99.8,126.5],[-97.3,129.2],[-95.5,131],[-94.2,132.4],[-93,133.6],[-91.3,135.6],[-89.4,136.9],[-86.5,139.2]];
-  const ROADS = Object.freeze([ROUTE, EXT, L2]);
+  /* 1.10.411 L1 (사용자 결정 65-4 A, notes issues-taxi-resident §4 · assets 179 ①): the village street's west half -- off EXT at the neck's corner (its
+     vertex (-19.2, 232.2)), round the corner as EXT turns east (mirrored), along z 236 between the yards' front fences (232.1 · 239.9) to x -126 */
+  const L1 = [[-19.2, 232.2], [-21.4, 235.2], [-23.4, 235.6], [-25.4, 236], ...Array.from({ length: 26 }, (_, i) => [-29.4 - i * 3.8, 236]), [-126, 236]];
+  const ROADS = Object.freeze([ROUTE, EXT, L2, L1]);
   /* (1.10.405 L0: the roads whose ground is banked up where it is low (dalmaru-island roadBank) -- the first road; the loop's new roads go here too.
      Not EXT: banked, it would build 8 m out into the sea by 별마루다리's west end. 411: L2, along the west shore) */
   const BANKED = Object.freeze([ROUTE, L2]);
   /* (the village street: its lamps keep to its walks -- 3.3 m out, as they stood -- the yards' fences right behind them) */
-  const STREET = Object.freeze({ x0: -13, x1: 116, z: 236, lamp: 3.3 });
+  const STREET = Object.freeze({ x0: -126, x1: 116, z: 236, lamp: 3.3 }); /* (411 L1: its west half too -- assets 179 ①) */
   const BRIDGE = { x0: 31, x1: 88, z0: 136, z1: 144 }; // (the east 윤슬다리: slower there until 1.10.327 -- SLOW is FAST now; 1.10.389 N3-a: the high one, 56 m)
   // v1.10.317 C1 건널목 (notes docs/taxi-yield-20261109.md, 사용자 「큰길을 건너는 자리는 건널목 몇 곳으로 모아요」): where the islanders go
   // over the road -- where their rounds did cross (before the stop and 대청마당, the bend by the hall's walk, off the bridge's
@@ -51,7 +54,13 @@
   const CROSSINGS = Object.freeze([[2.4,-52.4],[0.8,-13.7],[92.7,55.1],[102.5,101],[92.8,135.6],[25.5,140.6],[-10.9,141.1],[-19.3,146.5],[-19.7,168],[96.7,129.7],[100.1,119.3],
     /* (1.10.395 N4-c: on the new road -- the neck before the corner (the west street's walk to its east side) and the village street where
        each yard's walk comes to it, -14 (at -12: off the corner's bend) · 14 · 42 · 70 · 98) */
-    [-20,224],[-12,236],[14,236],[42,236],[70,236],[98,236]].map(([x, z]) => Object.freeze({ x, z })));
+    [-20,224],[-12,236],[14,236],[42,236],[70,236],[98,236],
+    /* (1.10.411 L1: the west half's yard gates, as the east's -- assets 179 ①) */
+    [-42,236],[-70,236],[-98,236],[-126,236],
+    /* (1.10.411 L2: where the islanders' rounds cross it, as T1 did the east -- the west waterfront (3), the west shore, by its end at the cape) */
+    [-25.2,-5],[-34.2,-1.9],[-48.3,4],[-102.4,71.5],[-88.2,137.9], /* (the third slid 6.5 m on: a waterfront lamp 4.6 m off at -42.6) */
+    /* (and its mirror on the east waterfront -- the bench there by the bay (40.1, 3.3) a round's stop now) */
+    [42.6,0.9]].map(([x, z]) => Object.freeze({ x, z })));
   const CROSS_CLEAR = 5;
   const CROSS_HALF = 2.2;
   const ROAD = Object.freeze({ lane: 2.3, walk: 1.6, half: 3.9 });

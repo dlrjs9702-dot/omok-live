@@ -567,7 +567,7 @@
     for (let u = 1.1; u <= SL - 2; u += 0.5) for (const v of [-0.05, 3.45]) out.push( /* (the rails' run: the foot and the top meet level ground, nothing drawn there to stop one) */{ x: STAIRS.x + STAIRS.ux * u + STAIRS.nx * v, z: STAIRS.z + STAIRS.uz * u + STAIRS.nz * v, r: 0.28, rail: true });
     for (const n of PL.niches) for (let lx = -0.4 * n.m; lx <= 0.4 * n.m + 1e-6; lx += 0.8) out.push({ x: n.x + Math.cos(n.yawToCentre) * lx + Math.sin(n.yawToCentre) * 0.6, z: n.z - Math.sin(n.yawToCentre) * lx + Math.cos(n.yawToCentre) * 0.6, r: 0.6 });
     /* (316 ④ `batch`: drawn instanced -- the map check counts them as seen) */
-    for (const r of WATERFRONT.rails) for (const d of [-1.6, -0.55, 0.55, 1.6]) out.push({ x: r.x + Math.cos(r.yaw) * d, z: r.z - Math.sin(r.yaw) * d, r: 0.3, batch: true });
+    for (const r of WATERFRONT.rails) for (const d of [-1.6, -0.55, 0.55, 1.6]) out.push({ x: r.x + Math.cos(r.yaw) * d, z: r.z - Math.sin(r.yaw) * d, r: 0.3, batch: true, rail: true }); /* (411: `rail` -- the bay's railing along the walk's edge: a crossing comes up to it, not through it) */
     for (const l of WATERFRONT.lamps) out.push({ x: l.x, z: l.z, r: l.r, batch: true });
     for (const b of WATERFRONT.benches) out.push({ x: b.x, z: b.z, r: b.r, batch: true });
     for (const p of farmFence()) out.push({ ...p, r: 0.22, fence: true }); // (3회차 15: the farm's fence, its shed and scarecrow)
