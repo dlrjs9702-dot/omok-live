@@ -266,7 +266,8 @@
     const foot = (u) => { const x = STAIRS.x + STAIRS.ux * u + STAIRS.nx * 1.7 - s.x; const z = STAIRS.z + STAIRS.uz * u + STAIRS.nz * 1.7 - s.z; return { lx: x * c - z * sn, lz: x * sn + z * c }; };
     const near = [0, 2, 4, 6].map(foot).filter((p) => Math.abs(p.lx) < FACADE.w / 2 + 8 && p.lz > -4 && p.lz < FACADE.d + 3);
     return { x: s.x, z: s.z, c, s: sn, top: D.landHeight(s.x - sn * 7, s.z - Math.cos(ry) * 7), skip: near.length ? Math.sign(near[0].lx) : 0 }; });
-  function land(x, z) {
+  function land(x, z) { return bridgeEndFlat(x, z, landBefore(x, z)); } /* (404: the ends' flat last -- the road's bank had raised the south half) */
+  function landBefore(x, z) {
     let h = D.landHeight(x, z);
     for (const k of CUTS) {
       const dx = x - k.x; const dz = z - k.z; const lx = dx * k.c - dz * k.s; if (k.skip && Math.sign(lx) === k.skip && stairsBand(x, z)) continue; const side = Math.abs(lx) - FACADE.w / 2; const lz = dx * k.s + dz * k.c; // (2회차 16: only the stairs' own way left uncut -- the 관공서 dug in as the 백화점)
@@ -280,24 +281,27 @@
     const dx = x - TOP.x; const dz = z - TOP.z; const along = dx * STAIRS.ux + dz * STAIRS.uz; const out = -(dx * STAIRS.nx + dz * STAIRS.nz);
     // (문제 기록 4회차: 2.4 m deep it fell between the 2.5 m mesh's points -- drawn 7 m under where one stood at the top; 5 m deep)
     const edge = Math.max(-along - 0.4, along - 5, -out - 1.5, out - 9); if (edge < 2.5) h = Math.max(h, lerp(TOP.h, h, smooth(0, 2.5, edge))); // (from the stairs' end on: over their last steps it stood flat at the top -- a 1.9 m step up)
-    return bridgeEndFlat(x, z, roadBank(x, z, h)); /* (404: last -- the road's bank had raised the south half) */
+    return roadBank(x, z, h);
   }
   /* (1.10.404 문제 기록 dddccb8f, notes issues-taxi-resident §9 · bridges-two-way §0 ①: the high 윤슬다리's east end -- the ground there leans 0.51 m
      across, and the deck, lying on its middle line, dug into the south half. Flat at the end's own height 9.8 m across (the wide bridge's 7.8 and 1 m
      each side, made so once: the wider bridge needs no second cut) from 1.5 m under the deck's end to 3 m out, eased into the ground as it was
      over 3 m) */
-  /* (1.10.408 assets 171, bridges-two-way §5: 별마루다리's two ends too -- 0.47 / 0.43 m across 7.8 m. Its east end by the road gate: the flat let go over
-     the 1.5 m before the gate's line, so the ground inside it stays the gate's own cut (dalmaru-terrain gateCut: its leaves' room)) */
+  /* (1.10.408 assets 171, bridges-two-way §5: 별마루다리's two ends too -- 0.47 / 0.43 m across 7.8 m. Its ends ramp down to it (0.27 a metre on the west),
+     so there level only across: each point the height of the middle line beside it (landBefore), that line lifted to meet the deck's end at the
+     end and as it was 3 m out. Its east end by the road gate: the flat let go over the 1.5 m before the gate's line, so the ground inside it stays
+     the gate's own cut (dalmaru-terrain gateCut: its leaves' room)) */
   const END_FLAT = Object.freeze({ hw: 4.9, inside: 1.5, out: 3, ease: 3 }); let endFlats = null;
   function bridgeEndFlat(x, z, h) {
-    if (!endFlats) { const list = []; endFlats = []; /* (none while the ends' own height is read) */ for (const b of D.BRIDGES) for (const k of b.high ? [1] : b.isle2 ? [0, 1] : []) { const [ex, ez] = b.ends[k]; list.push({ x: ex, z: ez, dir: Math.sign(ex - b.x) || 1, h: b.isle2 ? Math.max(...b.ends.map(([x0, z0]) => D.ground(x0, z0)), SEA) + 0.1 /* (its arched deck's one end height, base + YB.top, less 2 cm) */ : land(ex, ez), gate: b.isle2 && k === 1 ? (D.TAXI_GATES || [])[0] : null }); } endFlats = list; }
+    if (!endFlats) { const list = []; endFlats = []; /* (none while the ends' own height is read) */ for (const b of D.BRIDGES) for (const k of b.high ? [1] : b.isle2 ? [0, 1] : []) { const [ex, ez] = b.ends[k]; list.push({ x: ex, z: ez, dir: Math.sign(ex - b.x) || 1, h: b.isle2 ? Math.max(...b.ends.map(([x0, z0]) => D.ground(x0, z0)), SEA) + 0.1 /* (its arched deck's one end height, base + YB.top, less 2 cm) */ : land(ex, ez), gate: b.isle2 && k === 1 ? (D.TAXI_GATES || [])[0] : null, across: Boolean(b.isle2), mid: landBefore(ex, ez) }); } endFlats = list; }
     for (const f of endFlats) {
       const u = (x - f.x) * f.dir; const v = Math.abs(z - f.z); if (u < -END_FLAT.inside - END_FLAT.ease || u > END_FLAT.out + END_FLAT.ease || v > END_FLAT.hw + END_FLAT.ease) continue;
       const du = Math.max(0, -END_FLAT.inside - u, u - END_FLAT.out); const dv = Math.max(0, v - END_FLAT.hw); const dd = Math.hypot(du, dv);
       /* (a station's own pad keeps its level -- 달끝역's walkway by the end: the flat let go over its 2 m rim) */
       let keep = 1; for (const p of PADS) { const pd = Math.hypot(x - p.x, z - p.z); if (pd < p.r + 2) keep = Math.min(keep, smooth(p.r, p.r + 2, pd)); }
       if (f.gate) { const lz = (x - f.gate.x) * Math.sin(f.gate.yaw) + (z - f.gate.z) * Math.cos(f.gate.yaw); keep = Math.min(keep, 1 - smooth(-1.5, 0, lz)); }
-      if (dd < END_FLAT.ease) h = lerp(h, lerp(f.h, h, smooth(0, END_FLAT.ease, dd)), keep);
+      const want = f.across ?landBefore(x, f.z) + (f.h - f.mid) * (1 - smooth(0, END_FLAT.out, Math.max(0, u))) : f.h;
+      if (dd < END_FLAT.ease) h = lerp(h, lerp(want, h, smooth(0, END_FLAT.ease, dd)), keep);
     }
     return h;
   }
