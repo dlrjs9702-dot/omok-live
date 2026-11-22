@@ -263,13 +263,31 @@
   // (1.10.391 N4-a) a car that stays where it let its rider out (`ride.stay`, the server's call as it set off: that stop had fewer than two)
   // glides from where it stopped into its standing place there (`ride.park`) over TURN ms; one going back ends in `ride.park` at home
   const TURN = 3000;
-  const backRoad = (ride) => ride.startedAt + durationOf(ride) + (ride.stay && isTerminal(toOf(ride)) ? PARK : TURN) + (ride.stay ? 0 : tableOf(ride.from, ride.runMs, toOf(ride)).runMs + TURN); /* (404: a terminal's way round, PARK) */
+  const backRoad = (ride) => { const t = ride.stay ? null : tableOf(ride.from, ride.runMs, toOf(ride)); const tail = t && isTerminal(ride.from) ? homeTail(ride, t) : null; /* (404: a terminal's way round, PARK; 405 L0: home by the drop spot) */
+    return ride.startedAt + durationOf(ride) + (ride.stay && isTerminal(toOf(ride)) ? PARK : TURN) + (ride.stay ? 0 : tail ? tail.rCut + tail.ms + PARK : t.runMs + TURN); };
   const backOf = (ride, now = Date.now()) => realAt(ride, backRoad(ride), now); // (317: in server time -- later by every wait; 391: or parked where it stays)
   const PLACES = 2; const BACK = 4.5; // (391: a stop's standing places -- 0 its front, where one gets in; 1 the same way 4.5 m behind it)
   function placeOf(id, k = 0) { if (!STOPS[id]) { const c = curbOf(id); return { x: c.x, z: c.z, yaw: c.yaw }; } /* (392: a stop's one place, its curb) */ const s = stopOf(id); const b = k ? BACK : 0; return { x: s.x - Math.sin(s.yaw) * b, z: s.z - Math.cos(s.yaw) * b, yaw: s.yaw }; }
   /* (1.10.404 문제 기록 de84f895, notes issues-taxi-resident §12: a car staying at a terminal went from where it let its rider out into its place in a
      straight line, turning round as it slid -- sideways and backwards, through the shelter. Now front first: on from the drop spot the way it faces,
      round the shelter's far side in a half circle (DROP across), and up into its place from behind; PARK ms, eased at both ends) */
+  /* (1.10.405 L0: a car back home empty leaves the road HOME_CUT m out and goes to the drop spot at HOME_V m/s, as one arriving with a rider -- then the same
+     way round into its place) */
+  const HOME_CUT = 11; const HOME_V = 6; const homeTails = new Map();
+  function homeTail(ride, t) {
+    const key = `${ride.from}:${ride.runMs || 0}:${toOf(ride)}`; if (homeTails.has(key)) return homeTails.get(key);
+    const s = stopOf(ride.from); /* (off the road where one arriving with a rider leaves it: HOME_CUT m from the stop in a straight line -- the road bends by it) */
+    let i = t.ds.findIndex((dd) => { const q = along(t, dd); return Math.hypot(q.x - s.x, q.z - s.z) >= HOME_CUT; }); if (i < 0) i = t.ds.length - 1; const a = along(t, t.ds[i]); const d = dropOf(ride.from);
+    const by = a.yaw + Math.PI; const p0 = [a.x + Math.cos(by) * a.o, a.z - Math.sin(by) * a.o]; /* (where it is then: in its lane, going back) */
+    let pts = [p0, [p0[0] + Math.sin(by) * 3, p0[1] + Math.cos(by) * 3], d.approach, [d.x, d.z]]; /* (on as it goes 3 m, then the corners rounded -- two passes a quarter in, the ends kept) */
+    for (let pass = 0; pass < 2; pass += 1) { const r = [pts[0]]; for (let k = 0; k < pts.length - 1; k += 1) { const [ax, az] = pts[k]; const [bx, bz] = pts[k + 1]; if (k > 0) r.push([ax * 0.75 + bx * 0.25, az * 0.75 + bz * 0.25]); if (k < pts.length - 2) r.push([ax * 0.25 + bx * 0.75, az * 0.25 + bz * 0.75]); } r.push(pts[pts.length - 1]); pts = r; } const cum = [0]; for (let k = 1; k < pts.length; k += 1) cum.push(cum[k - 1] + Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]));
+    const out = { rCut: t.runMs - i * t.step, pts, cum, len: cum[cum.length - 1], ms: (cum[cum.length - 1] / HOME_V) * 1000, endYaw: d.yaw }; homeTails.set(key, out); return out;
+  }
+  function tailAt(tl, s) {
+    const at = (u) => { u = Math.max(0, Math.min(tl.len, u)); let i = 1; while (i < tl.pts.length - 1 && tl.cum[i] < u) i += 1; const f = (u - tl.cum[i - 1]) / ((tl.cum[i] - tl.cum[i - 1]) || 1); return [tl.pts[i - 1][0] + (tl.pts[i][0] - tl.pts[i - 1][0]) * f, tl.pts[i - 1][1] + (tl.pts[i][1] - tl.pts[i - 1][1]) * f]; };
+    const p = at(s); const a = at(s - 0.5); const b = at(s + 0.5); /* (its heading the way it goes there -- the corners are round) */
+    return { x: p[0], z: p[1], yaw: s >= tl.len - 0.01 ? tl.endYaw : Math.atan2(b[0] - a[0], b[1] - a[1]) };
+  }
   const PARK = 5000; const PARK_OUT = 4.5; /* (out as far as the place behind -- the half circle starts there: clear of 대청마당's tree at (16.3, -47.1)) */
   function parkPose(id, place, k) {
     const s = stopOf(id); const fx = Math.sin(s.yaw); const fz = Math.cos(s.yaw); const rx = Math.cos(s.yaw); const rz = -Math.sin(s.yaw);
@@ -295,7 +313,12 @@
     const turn = (q, k) => ({ phase: 'turn', ...q, yaw: wrap(q.yaw + Math.PI * smooth(k)), d: q.d, pitch: 0, roll: 0, k });
     if (ride.stay) { if (isTerminal(toOf(ride))) { if (e >= PARK) return null; return parkPose(toOf(ride), ride.park || 0, e / PARK); } if (e >= TURN) return null; const a = along(t, t.total); return glide(a, placeOf(toOf(ride), ride.park || 0), e / TURN, t.total); } /* (391: into its place there; 404: a terminal's the way round) */
     if (e < TURN) return turn({ ...along(t, t.total), d: t.total }, e / TURN);
-    const r = e - TURN; if (r < t.runMs) {
+    const r = e - TURN; const tail = isTerminal(ride.from) ? homeTail(ride, t) : null;
+    if (tail && r >= tail.rCut) { /* (1.10.405 L0 · 문제 기록 de84f895: home the way it came in -- to the drop spot, then front first into its place; never into the front place's middle) */
+      const q = r - tail.rCut; if (q < tail.ms) { const p = tailAt(tail, (q / tail.ms) * tail.len); return { phase: 'turn', ...p, d: 0, pitch: 0, roll: 0, k: q / tail.ms }; }
+      const k = (q - tail.ms) / PARK; return k >= 1 - 1e-9 ? null : parkPose(ride.from, ride.park || 0, k); /* (at backOf itself: in its place, done -- its sum's rounding aside) */
+    }
+    if (r < t.runMs) {
       const i = (t.runMs - r) / t.step; const i0 = Math.floor(i); const at = (j) => t.ds[Math.min(t.ds.length - 1, Math.max(0, j))]; const d = at(i0) + (at(i0 + 1) - at(i0)) * (i - i0);
       const q = along(t, d); return shifted({ phase: 'back', ...q, yaw: wrap(q.yaw + Math.PI), d, pitch: 0, roll: 0, k: 1 - d / t.total }, sideAt(ride, real) + q.o); /* (391: its own lane, its right going back) */
     }
@@ -378,7 +401,13 @@
   // (392 N4-b, 결정 40 A · n4-plan §5-5) a fare by the road's length: per100 a 100 m (the nearest 100 m), at least min
   const fareByRoad = (from, to, per100 = 250, min = 500) => Math.max(Math.round(Number(min) || 0), Math.round(Number(per100) || 0) * Math.round(distanceOf(from, to) / 100));
   const PLACE_IDS = () => ['plaza', 'isle', 'head', ...Object.keys(ROADSTOPS)].sort((a, b) => sOf(a) - sOf(b)); /* (397: by the trunk -- 마을 at its corner, 별마루섬 입구 last) */
-  return { GRAPH, footOn, BANKED, boardOf, ROADSTOPS, ROAD_LEN, sOf, atS, curbOf, driveBetween, distanceOf, fareByRoad, PLACE_IDS, isTerminal, labelOf, toOf, sendCar, WAIT, nearestRoom, /* (392 N4-b) */
+  /* (1.10.405 L0: the terminals' ways off the road -- round the shelter into each place, and home from the road to the drop spot -- as lines, for what keeps
+     clear of them (dalmaru-island taxiClear: nothing growing there)) */
+  let parkPaths = null;
+  const PARK_PATHS = () => parkPaths || (parkPaths = Object.keys(STOPS).flatMap((id) => [
+    ...[0, 1].map((k) => Array.from({ length: 41 }, (_, i) => { const p = parkPose(id, k, i / 40); return [p.x, p.z]; })),
+    homeTail({ from: id, to: STOPS[id].to, startedAt: 0 }, tableOf(id, undefined, STOPS[id].to)).pts]));
+  return { GRAPH, footOn, BANKED, PARK_PATHS, boardOf, ROADSTOPS, ROAD_LEN, sOf, atS, curbOf, driveBetween, distanceOf, fareByRoad, PLACE_IDS, isTerminal, labelOf, toOf, sendCar, WAIT, nearestRoom, /* (392 N4-b) */
     LANE, PLACES, BACK, placeOf, laneOffs, createFleet, takeCar, settle, etaAt, fleetView, countAt, standingAt, onBridgeBox: (x, z, m = 0) => bridgeOf(x, z, m) >= 0, bridgeOf, BRIDGES, /* (391 N4-a; 397 both one-lane bridges) */ TRUNK, TRUNK_LEN, SPUR,
     CROSSINGS, CROSS_HALF, CROSS_CLEAR, ROAD, LEAD, RAMP, sideAt, ghostAt, shifted, roadNow, rateOf, warpTo, realAt, rideOver, timeless, PULL_AFTER, PARK, parkPose, TURN, backOf, carAt, easeClock, ROUTE, EXT, ROADS, STREET, ROAD_ENDS: Object.freeze([ROUTE[0], ROUTE[ROUTE.length - 1], EXT[EXT.length - 1]]) /* (395: the stops at the roads' ends -- kept clear round, as the two were) */, STOPS, BRIDGE, ENTER, EXIT, EASE, FAST, SLOW, FARE, DAY_PASS, EXTRA, BOARD, ALIGHT, SEAT, roadOf, stopOf, dropOf, driveOf, tableOf, durationOf, poseAt, arrivalOf, doorOf, fareOf };
 }));

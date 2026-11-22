@@ -83,6 +83,21 @@ test('택시 종점: 내려 준 뒤 서는 자리로 갈 때 차 앞이 가는 �
   }
 });
 
+// 1.10.405 L0 (문제 기록 de84f895의 나머지): a car back home empty leaves the road where an arriving one does, goes to the drop spot and round into its
+// place front first -- its heading within 25° of the way it goes, never back through the front place, ending in its place facing the road
+test('택시 종점: 빈 차로 돌아올 때도 내리는 자리를 거쳐 앞으로 들어감 — 앞자리 한가운데로 안 감', () => {
+  const w = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+  for (const [from, to] of [['plaza', 'isle'], ['isle', 'plaza'], ['head', 'isle']]) for (const park of [0, 1]) {
+    const ride = { from, to, startedAt: 0, stay: false, park }; const end = X.backOf(ride, 0); const q0 = X.placeOf(from, 0); let last = null; let turned = false;
+    for (let t = end - 25000; t < end; t += 20) { const p = X.carAt(ride, t); if (!p) continue;
+      if (p.phase === 'turn') { turned = true; if (last && last.phase === 'turn') { const step = Math.hypot(p.x - last.x, p.z - last.z); if (step > 0.02) { const off = Math.abs(w(Math.atan2(p.x - last.x, p.z - last.z) - p.yaw)) * 180 / Math.PI; assert.ok(off < 25, `${from} ${park}: ${off.toFixed(0)}° at ${t}`); } }
+        if (park === 1) assert.ok(Math.hypot(p.x - q0.x, p.z - q0.z) > 4.4, `${from}: through the front place at ${t}`); }
+      last = p; }
+    assert.ok(turned, `${from}: home by the drop spot`); const fin = X.carAt(ride, end - 1); const q = X.placeOf(from, park);
+    assert.ok(Math.hypot(fin.x - q.x, fin.z - q.z) < 0.02 && Math.abs(w(fin.yaw - q.yaw)) < 0.02, `${from} ${park}: in its place, facing the road`);
+  }
+});
+
 // 1.10.403 Codex 391~400 #10: 마을's two cars off to the full 별마루섬 입구 while 대청마당's two stay at 마을 -- the two coming back from 입구 went to
 // 마을's taken places (two cars a place) and 대청마당 had none. Now they go where there is room
 test('택시 Codex #10: 돌아갈 종점이 찼으면 빈자리 있는 가까운 종점으로 — 한 자리에 두 대 없음', () => {
