@@ -141,6 +141,12 @@
         out[k * 3 + 1] = d < MASK ? 255 : 0; out[k * 3 + 2] = d < MASK ? Math.round(cross * 255) : 0;
       }
     }
+    /* (1.10.412 L3: a dead end's round place (X.TURN_PADS) -- asphalt to r - 1.6 with its white edge line 0.44 m in, a kerb, the walk to r; no yellow middle.
+       As a distance from the road's middle: 0.2 at its centre to 2.3 at the kerb, then the walk's own; the road's own where that is further in) */
+    for (const pad of X.TURN_PADS || []) { const inner = pad.r - (3.9 - 2.3); const i0 = Math.max(0, Math.floor((pad.x - pad.r - x0) / cell)); const i1 = Math.min(res - 1, Math.ceil((pad.x + pad.r - x0) / cell)); const j0 = Math.max(0, Math.floor((pad.z - pad.r - z0) / cell)); const j1 = Math.min(res - 1, Math.ceil((pad.z + pad.r - z0) / cell));
+      for (let j = j0; j <= j1; j += 1) for (let i = i0; i <= i1; i += 1) { const x = x0 + (i + 0.5) * cell; const z = z0 + (j + 0.5) * cell; const k = j * res + i; const r = Math.hypot(x - pad.x, z - pad.z); if (r >= pad.r) continue;
+        const off = r <= inner ? 0.2 + (r * 2.1) / inner : 2.3 + (r - inner); const was = out[k * 3 + 1] ? Math.abs((out[k * 3] / 255 - 0.5) * 2 * ROAD_RANGE) : Infinity; if (off >= was) continue;
+        out[k * 3] = Math.round((off / ROAD_RANGE * 0.5 + 0.5) * 255); out[k * 3 + 1] = 255; out[k * 3 + 2] = 0; } }
     for (let j = 0; j < res; j += 1) for (let i = 0; i < res; i += 1) { const k = j * res + i; if (out[k * 3 + 1] && !keep(x0 + (i + 0.5) * cell, z0 + (j + 0.5) * cell)) { out[k * 3 + 1] = 0; out[k * 3 + 2] = 0; } }
     return out;
   }

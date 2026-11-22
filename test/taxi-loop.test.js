@@ -24,3 +24,13 @@ test('섬 한 바퀴: 고리 610 m, 윤슬만이 차 오른쪽, 탄 곳으로 �
   /* (a car back from a loop is never sent empty once round again: the nearest room is another terminal) */
   for (const t of ['plaza', 'isle', 'head']) assert.notEqual(X.nearestRoom(X.createFleet(0), t), t, `${t}: not round again`);
 });
+
+/* (1.10.412 총괄 · assets 179 ⑤: L1's dead end a painted round place -- asphalt, no yellow middle in it, its walk to r; nothing solid or growing in it) */
+test('L1 끝 도는 자리: 칠해짐(가운데 노란 선 없음, 바깥은 인도), 안에 막는 것 없음', () => {
+  const T = require('../public/plaza/island-terrain.js'); const Pth = require('../public/plaza/island-paths.js'); const [pad] = X.TURN_PADS; assert.ok(pad);
+  const at = { size: 20, x0: pad.x - 10, z0: pad.z - 10 }; const res = 80; const map = Pth.buildRoadMap(T, X, res, at); const cell = at.size / res;
+  const offAt = (x, z) => { const i = Math.floor((x - at.x0) / cell); const j = Math.floor((z - at.z0) / cell); const k = j * res + i; return map[k * 3 + 1] ? Math.abs((map[k * 3] / 255 - 0.5) * 2 * Pth.ROAD_RANGE) : null; };
+  for (const [r, lo, hi] of [[0, 0.15, 0.4], [3, 1.3, 1.7], [5.5, 3, 3.6]]) for (const a of [0, 90, 180]) { const o = offAt(pad.x + r * Math.cos((a * Math.PI) / 180), pad.z + r * Math.sin((a * Math.PI) / 180)); assert.ok(o != null && o >= lo - 0.05 && o <= hi + 0.05, `r ${r} at ${a}°: ${o}`); }
+  const solids = [...T.natureSolids(), ...T.villageSolids(), ...T.structureSolids()]; assert.deepEqual(solids.filter((o) => Math.hypot(o.x - pad.x, o.z - pad.z) < pad.r + (o.r || 0)).map((o) => [o.x, o.z]), []);
+  assert.ok(T.nature().lampSpots.every((p) => Math.hypot(p.x - pad.x, p.z - pad.z) > pad.r), 'no lamp in it');
+});

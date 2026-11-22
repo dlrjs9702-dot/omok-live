@@ -650,6 +650,7 @@
   /* (1.10.407 assets 170: the wide 윤슬다리's guards at 4.35 -- nothing grows within 1 m of them, nor 3 m past its ends) */
   const byWideBridge = (x, z, r) => bridges.some((b) => b.guard && Math.abs(x - b.x) < b.half + 3 + r && Math.abs(z - b.z) < b.guard + 1 + r);
   addNatureBlock(byWideBridge);
+  addNatureBlock((x, z, r) => (TX?.TURN_PADS || []).some((p) => Math.hypot(x - p.x, z - p.z) < p.r + r)); /* (1.10.412 L3: a dead end's round place, painted -- clear) */
   if (Q) addNatureBlock((x, z, r) => Q.inArea(x, z, r + 1)); // (1.10.323 채석장: the quarry's ground clear of trees, bushes and rocks)
   if (Q) { const out = Q.solidsOf().filter((s) => s.quarryProp && !Q.inArea(s.x, s.z, 1)); addNatureBlock((x, z, r) => out.some((s) => Math.hypot(x - s.x, z - s.z) < s.r + r + 1)); } // (1.10.342: and round its props outside it -- the bench faces along the cliff edge)
   /* (385 부팅 무게 2, lib/boot-cache.js: the server's start hands in what this made before from the same code -- taken when the same
@@ -721,7 +722,7 @@
       const spots = atRoad ? [foot.side, -foot.side].map((s) => [foot.x + foot.nx * out * s, foot.z + foot.nz * out * s]) : [[lx0, lz0]];
       const fits = ([lx, lz]) => !(!walkable(lx, lz) || inPlaza(lx, lz, 1) || onBridge(lx, lz) || onStairs(lx, lz) || inTownhall(lx, lz, 1) || (!atRoad && walkDist(lx, lz) < 0.2) || roadDist(lx, lz) < (street ? out - 0.05 : ROAD.half + 0.5))
         && !(structureSolids().some((o) => Math.hypot(o.x - lx, o.z - lz) < o.r + 0.6) || BUILDINGS.some((b) => Math.hypot(b.x - lx, b.z - lz) < (b.kind === 'facade' ? FACADE.w / 2 + 1 : 4)))
-        && ![...keptTrees, ...keptBushes].some((t) => Math.hypot(t.x - lx, t.z - lz) < 1.5) && !atCrossing({ x: lx, z: lz }, 0.4);
+        && ![...keptTrees, ...keptBushes].some((t) => Math.hypot(t.x - lx, t.z - lz) < 1.5) && !atCrossing({ x: lx, z: lz }, 0.4) && !(TX?.TURN_PADS || []).some((p) => Math.hypot(lx - p.x, lz - p.z) < p.r + 0.3) /* (412: off a dead end's round place) */;
       const at = spots.find(fits); if (at) lampSpots.push({ x: at[0], z: at[1], ...(D.newIsleCoast(at[0], at[1]) > -5 ? { isle2: true } : {}) }); /* (N1: 새 섬's shown with it) */
     } }
     // G4a 흩뿌리기 (notes docs/graphics-island-wide-20261108.md G4, assets 112; 사용자 「덤불, 바위들은 뚫고 지나가지 못하게」):
