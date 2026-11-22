@@ -63,7 +63,8 @@
   const FARE = 1000; const DAY_PASS = 5000; const EXTRA = Object.freeze({});
   const roadOf = (from) => (from === 'isle' ? ROUTE.slice().reverse() : from === 'head' ? EXT.slice().reverse() /* (397: from its end back) */ : ROUTE.slice());
   const segs = (pts) => pts.slice(1).map((q, i) => { const p = pts[i]; const len = Math.hypot(q[0] - p[0], q[1] - p[1]); const mx = (p[0] + q[0]) / 2; const mz = (p[1] + q[1]) / 2;
-    return { p, q, len, yaw: Math.atan2(q[0] - p[0], q[1] - p[1]), slow: mx >= BRIDGE.x0 && mx <= BRIDGE.x1 && mz >= BRIDGE.z0 && mz <= BRIDGE.z1 }; });
+    return { p, q, len, yaw: Math.atan2(q[0] - p[0], q[1] - p[1]), slow: mx >= BRIDGE.x0 && mx <= BRIDGE.x1 && mz >= BRIDGE.z0 && mz <= BRIDGE.z1, turn: i < (pts.turn || 0) - 1 /* (411: a road stop's turning round) */ }; });
+  const TURN_V = 2.5; /* (411: m/s round a stop's half circle -- a walk) */
   const smooth = (t) => { const k = Math.min(1, Math.max(0, t)); return k * k * (3 - 2 * k); };
   const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
   // (assets 99 motions.json, the model's frame turned round: one gets in by the door on the car's right -- enter_L [-1.5, 0, 1.18]
@@ -118,6 +119,7 @@
   /* (`far`: the far side's own -- along the road by ds, its sign signOut from the curb -- where its first place met the gangway, the bay's railing or a
      lamp: test/island-taxi's stop checks) */
   const FAR = Object.freeze({ dock: { ds: -0.5 }, waterfront: { ds: 2, signOut: 0.8 }, dalkkeut: { ds: -1 }, isleFork: { ds: 1 } });
+  const curbS = (id, side) => ROADSTOPS[id].s + (side !== ROADSTOPS[id].side ? FAR[id]?.ds || 0 : 0); /* (a side's place along the road) */
   function curbOf(id, side = ROADSTOPS[id].side) { const base = ROADSTOPS[id]; const s0 = side < 0 ? -1 : 1; const far = s0 !== base.side ? FAR[id] || {} : {};
     const r = { ...base, side: s0, s: base.s + (far.ds || 0), signOut: far.signOut ?? base.signOut }; const p = atS(r.s); const c = (LANE + 1.2) * r.side; const so = (r.signOut ?? 2.2) * r.side; return { x: p.x + Math.cos(p.yaw) * c, z: p.z - Math.sin(p.yaw) * c, yaw: r.side < 0 ? Math.atan2(-Math.sin(p.yaw), -Math.cos(p.yaw)) : p.yaw /* (410: the far side's car faces the other way) */, side: r.side, sign: { x: p.x + Math.cos(p.yaw) * (c + so), z: p.z - Math.sin(p.yaw) * (c + so), yaw: p.yaw - (Math.PI / 4) * r.side } }; } /* (1.10.398 에셋 검사 2회차 「길에서 옆면만」: its plate turned 45° -- read coming along the road and from across it, both faces) */ /* (397 ⑥⑦: on the village street the sign on its walk -- signOut 1.0, the yards' fences behind) */
   // the road between two places: its start (a terminal's front place, or a stop's curb), the road's points past 10 m of a terminal end and
@@ -183,9 +185,15 @@
     const st = to === 'isle' ? stopOf('isle') : null;
     const mids = w.filter((p, i) => i > 0 && i < w.length - 1 && cum[i] > m0 && total - cum[i] > m1 && !(st && Math.hypot(p[0] - st.x, p[1] - st.z) <= 10));
     const out = leaveSide(from, to); const k = ROADSTOPS[from] ? (curb === 1 || curb === -1 ? curb : out) : null;
-    const start = isTerminal(from) ? [(() => { const s = stopOf(from); return [s.x, s.z]; })()] : (() => { const c = curbOf(from, k); if (k === out) return [[c.x, c.z]]; const p = atS(ROADSTOPS[from].s); return [[c.x, c.z], [p.x + Math.sin(p.yaw) * 5 * k, p.z + Math.cos(p.yaw) * 5 * k]]; })();
+    /* (1.10.411 총괄 「옆으로 미끄러짐 · 제자리 돌기」: one standing on the other side turns round slowly -- 3 m on, then a half circle (1.75 m) from its curb
+       into the far lane, at a walk, the bow along it, a moment's stop; its lane from there, no easing out of the middle) */
+    let turn = 0;
+    const start = isTerminal(from) ? [(() => { const s = stopOf(from); return [s.x, s.z]; })()] : (() => { const c = curbOf(from, k); if (k === out) return [[c.x, c.z]];
+      const p = atS(curbS(from, k)); const a = [Math.sin(p.yaw), Math.cos(p.yaw)]; const b = [Math.cos(p.yaw), -Math.sin(p.yaw)]; const at = (u, v) => [p.x + a[0] * u + b[0] * v, p.z + a[1] * u + b[1] * v];
+      const pts = [[c.x, c.z], at(3 * k, (LANE + 1.2) * k)]; const cv = ((LANE + 1.2 - LANE) / 2) * k; const R = (LANE + 1.2 + LANE) / 2;
+      for (let i = 1; i <= 24; i += 1) { const th = (Math.PI * i) / 24; pts.push(at(3 * k + R * k * Math.sin(th), cv + R * k * Math.cos(th))); } turn = pts.length; return pts; })();
     const end = isTerminal(to) ? (() => { const d = dropOf(to); return [d.approach, [d.x, d.z]]; })() : (() => { const c = curbOf(to, arriveSide(from, to)); return [[c.x, c.z]]; })();
-    return [...start, ...mids, ...end];
+    const road = [...start, ...mids, ...end]; if (turn) road.turn = turn; return road;
   }
   const distanceByGraph = (from, to) => (from === to ? 0 : wayBetween(footOf(from), footOf(to)).len);
   // the road's length between two places -- what a fare is by (n4-plan §5-5)
@@ -206,25 +214,29 @@
   const bridgeOf = (x, z, m = 0) => BRIDGES.findIndex((b) => x >= b.x0 - m && x <= b.x1 + m && z >= b.z0 && z <= b.z1); /* (which one-lane bridge a point is on, -1 none) */
   function laneOffs(road) {
     const ds = [0]; for (let i = 1; i < road.length; i += 1) ds.push(ds[i - 1] + Math.hypot(road[i][0] - road[i - 1][0], road[i][1] - road[i - 1][1])); const total = ds[ds.length - 1];
-    return road.map(([x, z], i) => LANE * Math.min(1, ds[i] / LANE_EASE, (total - ds[i]) / LANE_EASE, bridgeOut(x, z) / LANE_EASE));
+    const turn = road.turn || 0; /* (411: a turning round's points lie where they are; after it the car is in its lane already) */
+    return road.map(([x, z], i) => (i < turn ? 0 : LANE * Math.min(1, turn ? 1 : ds[i] / LANE_EASE, (total - ds[i]) / LANE_EASE, bridgeOut(x, z) / LANE_EASE)));
   }
   // the time table of a ride's drive: distance gone by each 50 ms, easing in and out; a short road (runMs) is the same drive faster
   const tables = new Map();
   function tableOf(from, runMs, to = STOPS[from]?.to, curb) {
     const key = `${from}|${to}|${runMs || 0}|${curb ?? ''}`; if (tables.has(key)) return tables.get(key);
     const road = driveBetween(from, to, curb); /* (392: between any two places; the two terminals as before; 410: from the side the car stands on) */ const ss = segs(road); const total = ss.reduce((n, s) => n + s.len, 0); const offs = laneOffs(road);
-    const speedAt = (d) => { let k = 0; let at = 0; while (k < ss.length - 1 && at + ss[k].len < d) { at += ss[k].len; k += 1; } return ss[k].slow ? SLOW : FAST; };
+    const paceOf = (s) => (s.turn ? TURN_V : s.slow ? SLOW : FAST);
+    const speedAt = (d) => { let k = 0; let at = 0; while (k < ss.length - 1 && at + ss[k].len < d) { at += ss[k].len; k += 1; } return paceOf(ss[k]); };
     /* (1.10.406 사용자 결정 65-1 A: a wide gate on the way, met on the road -- not one the car starts beside (its leaves open as it is boarded) -- the car
        eases to a stand GATE_STOP m before it, waits GATE_HOLD ms while it swings fully open, then eases on; in the table, so every screen has it) */
     const holds = [];
     for (const g of TAXI_GATES) { let best = null; let at = 0; for (const s of ss) { const dx = s.q[0] - s.p[0]; const dz = s.q[1] - s.p[1]; const t = Math.max(0, Math.min(1, ((g.x - s.p[0]) * dx + (g.z - s.p[1]) * dz) / ((s.len * s.len) || 1e-9))); const e = Math.hypot(g.x - s.p[0] - dx * t, g.z - s.p[1] - dz * t); if (!best || e < best.e) best = { e, along: at + s.len * t }; at += s.len; }
-      if (best && best.e < 3 && best.along > GATE_FAR && best.along < total - 1) holds.push(best.along - GATE_STOP); }
-    holds.sort((a, b) => a - b);
-    const out = [0]; let d = 0; let legFrom = 0; const legs = [...holds, total];
+      if (best && best.e < 3 && best.along > GATE_FAR && best.along < total - 1) holds.push({ at: best.along - GATE_STOP, ms: GATE_HOLD }); }
+    /* (411: round at a walk, then a moment's stand before it pulls away) */
+    if (road.turn) holds.push({ at: ss.filter((s) => s.turn).reduce((n, s) => n + s.len, 0), ms: 400 });
+    holds.sort((a, b) => a.at - b.at);
+    const out = [0]; let d = 0; let legFrom = 0; const legs = [...holds.map((h) => h.at), total];
     for (let li = 0; li < legs.length; li += 1) {
-      const end = legs[li]; let cruise = 0; { let at = 0; for (const s of ss) { const a = Math.max(at, legFrom); const b = Math.min(at + s.len, end); if (b > a) cruise += (b - a) / (s.slow ? SLOW : FAST); at += s.len; } } const M = cruise * 1000 + EASE; // (easing in and out costs half a ramp each)
+      const end = legs[li]; let cruise = 0; { let at = 0; for (const s of ss) { const a = Math.max(at, legFrom); const b = Math.min(at + s.len, end); if (b > a) cruise += (b - a) / paceOf(s); at += s.len; } } const M = cruise * 1000 + EASE; // (easing in and out costs half a ramp each)
       let u = 0; while (d < end && out.length < 100000) { u += STEP; const f = smooth(u / EASE) * smooth((M - u) / EASE + 0.02); d = Math.min(end, d + speedAt(d) * Math.max(0.04, f) * STEP / 1000); out.push(d); }
-      if (li < legs.length - 1) for (let k = 0; k < GATE_HOLD / STEP; k += 1) out.push(d);
+      if (li < legs.length - 1) for (let k = 0; k < holds[li].ms / STEP; k += 1) out.push(d);
       legFrom = end;
     }
     const scale = runMs ? runMs / (out.length * STEP) : 1;
@@ -266,8 +278,14 @@
     let k = 0; let at = 0; while (k < t.ss.length - 1 && at + t.ss[k].len < d) { at += t.ss[k].len; k += 1; }
     const s = t.ss[k]; const u = s.len ? Math.min(1, Math.max(0, (d - at) / s.len)) : 0; const x = s.p[0] + (s.q[0] - s.p[0]) * u; const z = s.p[1] + (s.q[1] - s.p[1]) * u;
     let yaw = s.yaw; const R = 4; // (a corner taken over 4 m either side)
-    if (k > 0 && d - at < R) yaw = t.ss[k - 1].yaw + wrap(s.yaw - t.ss[k - 1].yaw) * (0.5 + 0.5 * smooth((d - at) / R));
+    /* (411: round a stop's half circle the bow along it -- from one chord's middle way to the next's, unbroken where the circle meets the straight) */
+    const mid = (a, b) => a + wrap(b - a) / 2;
+    if (s.turn) { const prev = k > 0 ? t.ss[k - 1].yaw : s.yaw; const next = k < t.ss.length - 1 ? t.ss[k + 1].yaw : s.yaw; const a0 = mid(prev, s.yaw);
+      yaw = a0 + wrap(mid(s.yaw, next) - a0) * u; return { x, z, yaw, k, o: t.offs ? t.offs[k] + (t.offs[k + 1] - t.offs[k]) * u : 0 }; }
+    const afterTurn = k > 0 && t.ss[k - 1].turn;
+    if (k > 0 && !afterTurn && d - at < R) yaw = t.ss[k - 1].yaw + wrap(s.yaw - t.ss[k - 1].yaw) * (0.5 + 0.5 * smooth((d - at) / R));
     else if (k < t.ss.length - 1 && at + s.len - d < R) yaw = s.yaw + wrap(t.ss[k + 1].yaw - s.yaw) * 0.5 * (1 - smooth((at + s.len - d) / R));
+    if (afterTurn && d - at < 1) { const a0 = mid(t.ss[k - 1].yaw, s.yaw); yaw = a0 + wrap(yaw - a0) * smooth(d - at); } /* (411: out of the circle onto the way, unbroken) */
     const o = t.offs ? t.offs[k] + (t.offs[k + 1] - t.offs[k]) * u : 0; /* (391: the lane's offset here) */
     return { x, z, yaw, k, o };
   }

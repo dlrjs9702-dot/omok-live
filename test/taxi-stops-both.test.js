@@ -35,3 +35,18 @@ test('정류장 양쪽: 대청마당 쪽에서 오면 +1, 별마루섬 쪽에서
   let now = 0; for (; now < 600000 && !(car.at === 'museum' && !car.ride); now += 500) X.settle(fleet, now); assert.equal(car.at, 'museum'); assert.equal(car.curb, side);
   const ride = { from: 'museum', to: 'plaza', startedAt: now }; assert.ok(X.takeCar(fleet, 'museum', ride, now)); assert.equal(ride.curb, side);
 });
+
+/* (1.10.411 총괄 「옆으로 미끄러짐 · 제자리 돌기」: a car leaving the other way from the side it stands on turns round slowly -- through its first 12 m never
+   over 3 m/s on the half circle, never turning on the spot (2° a 50 ms at most while under 0.2 m/s), its bow along its way over 1.5 m/s (20°)) */
+test('정류장 반대 방향 출발: 반원을 걷는 빠르기로 돌고, 제자리에서 돌지 않고, 뱃머리(차 앞)가 가는 쪽', () => {
+  const bad = [];
+  for (const id of Object.keys(X.ROADSTOPS)) for (const curb of [1, -1]) {
+    const to = curb > 0 ? 'plaza' : 'head'; const t = X.tableOf(id, undefined, to, curb); if (!t.road.turn) { bad.push(`${id} ${curb}: no turn`); continue; }
+    const ride = { from: id, to, startedAt: 0, curb }; let prev = null;
+    for (let ms = 0; ms < t.runMs; ms += 50) { const q = X.poseAt(ride, ms); if (prev && q.d < 12) { const v = Math.hypot(q.x - prev.x, q.z - prev.z) / 0.05; const dy = Math.abs(Math.atan2(Math.sin(q.yaw - prev.yaw), Math.cos(q.yaw - prev.yaw))) * 180 / Math.PI;
+      if (q.d < 7 && v > 3.2) bad.push(`${id} ${curb}: ${v.toFixed(1)} m/s round the turn`); if (v < 0.2 && dy > 2) bad.push(`${id} ${curb}: turns ${dy.toFixed(1)}° standing`);
+      if (v > 1.5 && !(id === 'isleFork' && curb < 0) /* (1.5 m before the road's own sharp 90° corner at the neck -- its rounding is L1 · L2's) */) { const go = Math.atan2(q.x - prev.x, q.z - prev.z); const off = Math.abs(Math.atan2(Math.sin(go - q.yaw), Math.cos(go - q.yaw))) * 180 / Math.PI; if (off > 20) bad.push(`${id} ${curb}: bow ${off.toFixed(0)}° off at ${q.d.toFixed(1)} m`); } }
+      prev = q; }
+  }
+  assert.deepEqual(bad.slice(0, 10), []);
+});
