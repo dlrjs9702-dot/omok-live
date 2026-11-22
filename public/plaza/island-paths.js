@@ -118,7 +118,11 @@
     const keep = (x, z) => !T.onBridge(x, z) && plazaDist(x, z) >= -0.2 && T.coastDist(x, z) > -1.5;
     /* (1.10.395 N4-c: every road -- the road on to 별마루섬 too; a 건널목 counts on the road it stands on) */
     const crossAlong = []; const segs = [];
-    (X.ROADS || [X.ROUTE]).forEach((route, r) => { let total = 0; for (let i = 1; i < route.length; i += 1) { const p = route[i - 1]; const q = route[i]; const len = Math.hypot(q[0] - p[0], q[1] - p[1]); segs.push({ p, q, len, at: total, r }); total += len; } });
+    /* (1.10.404 문제 기록 3353cf17, notes issues-taxi-resident §13 A 「마당으로」: the stretch along 대청마당's north edge (both its ends within 2 m of it)
+       not painted -- half of it lay on the paving, a lane and a walk cut off at the tiles; the road coming down ends square at the edge, the
+       terminal on the paving. Still a road for the cars -- only its paint) */
+    const alongPlaza = (p, q) => P && Math.abs(plazaDist(p[0], p[1])) < 2 && Math.abs(plazaDist(q[0], q[1])) < 2;
+    (X.ROADS || [X.ROUTE]).forEach((route, r) => { let total = 0; for (let i = 1; i < route.length; i += 1) { const p = route[i - 1]; const q = route[i]; const len = Math.hypot(q[0] - p[0], q[1] - p[1]); if (!alongPlaza(p, q)) segs.push({ p, q, len, at: total, r }); total += len; } });
     const footOf = (x, z) => { let b = null; for (const s of segs) { const dx = s.q[0] - s.p[0]; const dz = s.q[1] - s.p[1]; const t = Math.max(0, Math.min(1, ((x - s.p[0]) * dx + (z - s.p[1]) * dz) / (s.len * s.len || 1e-9))); const d = Math.hypot(x - s.p[0] - dx * t, z - s.p[1] - dz * t); if (!b || d < b.d) b = { d, along: s.at + s.len * t, r: s.r }; } return b; };
     for (const c of X.CROSSINGS || []) { const f = footOf(c.x, c.z); crossAlong.push({ r: f.r, along: f.along }); }
     const reach = ROAD_RANGE;

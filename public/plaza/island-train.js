@@ -24,6 +24,9 @@
   // on its right, so its carriage is drawn mirrored across its length -- doors, seats and all)
   const DAL_STOPS = DAL ? Object.fromEntries(Object.entries({ E: '달끝역', I: '툇마루역', W: '초승역', N: '영웅마루역' }).map(([id, name]) => [id, { name, ...DAL.TRAIN.stops[id] }])) : null; // (v1.10.160: the stops' numbers in dalmaru-terrain, the ground levelled by them)
   const STATIONS = DAL ? Object.fromEntries(Object.entries(DAL_STOPS).map(([id, s]) => [id, { name: s.name }])) : { B: { name: '동해안역', entry: [99.78, -8.73] }, D: { name: '남서해안역', entry: [-83.1, 69.73] } };
+  /* (1.10.404 문제 기록 a0d86433, notes issues-taxi-resident §11 · bridges-two-way §0: 달끝역 and 초승역 their way in due south of the lift, 7 m -- square to
+     the bridge and the road beside it, clear of the wide bridge's rail; inland toward the island's middle it went in at 32°) */
+  if (DAL) { if (STATIONS.E) STATIONS.E.entry = [91.9, 142.9]; if (STATIONS.W) STATIONS.W.entry = [-91.9, 142.9]; }
   const LINES = {
     tour: { name: '관광 열차', side: DAL ? 1 : -1, order: DAL ? ['E', 'I', 'W', 'N'] : ['B', 'D'], trains: [{ id: 1, offset: 0 }, { id: 2, offset: 60 }, { id: 3, offset: 120 }, { id: 4, offset: 180 }] }, // (달마루섬: the platforms on the island's side)
   };

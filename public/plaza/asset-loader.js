@@ -264,7 +264,12 @@ const depthOf = (o) => { const m = o.material; if (!m || Array.isArray(m) || m.a
         const i = lods.indexOf(object); if (i >= 0) lods.splice(i, 1);
         return;
       }
-      if (object && rec.holder.userData.fit) object = fitted(object, rec.holder.userData.fit);
+      /* (1.10.404 문제 기록 c086f60d, notes issues-taxi-resident §8: a near/far pair (THREE.LOD) is fitted a level at a time, each in its own place --
+         fitted whole it made one group of both, drawn together 0.2 mm apart: the high bridge flickered from 1.10.389) */
+      if (object && rec.holder.userData.fit) {
+        if (object.isLOD) { const own = []; for (const lv of object.levels) { const f = fitted(lv.object, rec.holder.userData.fit); own.push(...(fittedOwn.get(f) || [])); const base = lodBase.get(lv.object); if (base) { lodBase.set(f, base); lodBase.delete(lv.object); } object.remove(lv.object); object.add(f); lv.object = f; } fittedOwn.set(object, own); }
+        else object = fitted(object, rec.holder.userData.fit);
+      }
       swapAttach(rec, object, hit.entry); shown[hit.id] = object ? 'model' : 'procedural';
     }).catch((error) => {
       if (disposed || rec.selection !== selection) return;
