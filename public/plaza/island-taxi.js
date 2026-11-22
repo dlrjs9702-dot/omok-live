@@ -184,6 +184,7 @@
   const TERRAIN = typeof module === 'object' && module.exports ? (() => { try { return require('./dalmaru-terrain.js'); } catch { return null; } })() : globalThis.DalmaruTerrain;
   const BRIDGE2 = Object.freeze({ x0: 164.5, x1: 233, z0: 222.5, z1: 229.5 });
   const fromTerrain = (TERRAIN?.BRIDGES || []).filter((b) => b.taxi).map((b) => b.taxi); const BRIDGES = Object.freeze(fromTerrain.length ? fromTerrain : [BRIDGE, BRIDGE2]);
+  const TAXI_GATES = TERRAIN?.TAXI_GATES || [{ x: 228.23, z: 225.65 }]; const GATE_STOP = 4; const GATE_HOLD = 1200; const GATE_FAR = 15; /* (406 결정 65-1) */
   const bridgeOut = (x, z) => Math.min(...BRIDGES.map((b) => (z < b.z0 - 4 || z > b.z1 + 4 ? Infinity : Math.max(0, b.x0 - x, x - b.x1))));
   const bridgeOf = (x, z, m = 0) => BRIDGES.findIndex((b) => x >= b.x0 - m && x <= b.x1 + m && z >= b.z0 && z <= b.z1); /* (which one-lane bridge a point is on, -1 none) */
   function laneOffs(road) {
@@ -196,9 +197,19 @@
     const key = `${from}|${to}|${runMs || 0}`; if (tables.has(key)) return tables.get(key);
     const road = driveBetween(from, to); /* (392: between any two places; the two terminals as before) */ const ss = segs(road); const total = ss.reduce((n, s) => n + s.len, 0); const offs = laneOffs(road);
     const speedAt = (d) => { let k = 0; let at = 0; while (k < ss.length - 1 && at + ss[k].len < d) { at += ss[k].len; k += 1; } return ss[k].slow ? SLOW : FAST; };
-    let cruise = 0; for (const s of ss) cruise += s.len / (s.slow ? SLOW : FAST); const M = cruise * 1000 + EASE; // (easing in and out costs half a ramp each)
-    const out = [0]; let d = 0; let u = 0;
-    while (d < total && out.length < 100000) { u += STEP; const f = smooth(u / EASE) * smooth((M - u) / EASE + 0.02); d = Math.min(total, d + speedAt(d) * Math.max(0.04, f) * STEP / 1000); out.push(d); }
+    /* (1.10.406 사용자 결정 65-1 A: a wide gate on the way, met on the road -- not one the car starts beside (its leaves open as it is boarded) -- the car
+       eases to a stand GATE_STOP m before it, waits GATE_HOLD ms while it swings fully open, then eases on; in the table, so every screen has it) */
+    const holds = [];
+    for (const g of TAXI_GATES) { let best = null; let at = 0; for (const s of ss) { const dx = s.q[0] - s.p[0]; const dz = s.q[1] - s.p[1]; const t = Math.max(0, Math.min(1, ((g.x - s.p[0]) * dx + (g.z - s.p[1]) * dz) / ((s.len * s.len) || 1e-9))); const e = Math.hypot(g.x - s.p[0] - dx * t, g.z - s.p[1] - dz * t); if (!best || e < best.e) best = { e, along: at + s.len * t }; at += s.len; }
+      if (best && best.e < 3 && best.along > GATE_FAR && best.along < total - 1) holds.push(best.along - GATE_STOP); }
+    holds.sort((a, b) => a - b);
+    const out = [0]; let d = 0; let legFrom = 0; const legs = [...holds, total];
+    for (let li = 0; li < legs.length; li += 1) {
+      const end = legs[li]; let cruise = 0; { let at = 0; for (const s of ss) { const a = Math.max(at, legFrom); const b = Math.min(at + s.len, end); if (b > a) cruise += (b - a) / (s.slow ? SLOW : FAST); at += s.len; } } const M = cruise * 1000 + EASE; // (easing in and out costs half a ramp each)
+      let u = 0; while (d < end && out.length < 100000) { u += STEP; const f = smooth(u / EASE) * smooth((M - u) / EASE + 0.02); d = Math.min(end, d + speedAt(d) * Math.max(0.04, f) * STEP / 1000); out.push(d); }
+      if (li < legs.length - 1) for (let k = 0; k < GATE_HOLD / STEP; k += 1) out.push(d);
+      legFrom = end;
+    }
     const scale = runMs ? runMs / (out.length * STEP) : 1;
     const t = { road, ss, total, offs, ds: out, step: STEP * scale, runMs: out.length * STEP * scale };
     tables.set(key, t); return t;

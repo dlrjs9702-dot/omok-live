@@ -83,6 +83,15 @@ test('택시 종점: 내려 준 뒤 서는 자리로 갈 때 차 앞이 가는 �
   }
 });
 
+// 1.10.406 사용자 결정 65-1 A: coming to 별마루다리's wide gate the car stands 4 m before it while it swings open (1.2 s), then on; leaving from
+// beside it (the terminal 10.5 m inside) no stand -- its leaves opened as it was boarded
+test('택시 넓은 문: 들어오는 차는 문 4 m 앞에서 1.2초 서고, 문 옆에서 떠나는 차는 안 섬', () => {
+  const T = require('../public/plaza/dalmaru-terrain.js'); const G = T.TAXI_GATES[0];
+  const stands = (from, to) => { const t = X.tableOf(from, undefined, to); const out = []; let run = 0; for (let i = 1; i < t.ds.length; i += 1) { if (t.ds[i] === t.ds[i - 1] && t.ds[i] > 0 && t.ds[i] < t.total) run += 1; else { if (run) out.push({ d: t.ds[i - 1], ms: run * t.step }); run = 0; } } return out.map((s) => { let at = 0; let p = null; for (const seg of t.ss) { if (at + seg.len >= s.d) { const k = (s.d - at) / (seg.len || 1); p = { x: seg.p[0] + (seg.q[0] - seg.p[0]) * k, z: seg.p[1] + (seg.q[1] - seg.p[1]) * k }; break; } at += seg.len; } return { ...s, gap: Math.hypot(p.x - G.x, p.z - G.z) }; }); };
+  for (const [from, to] of [['isle', 'head'], ['plaza', 'head'], ['villageMid', 'head']]) { const s = stands(from, to); assert.equal(s.length, 1, `${from} -> ${to}`); assert.ok(s[0].ms >= 1150 && s[0].ms <= 1250, `${s[0].ms} ms`); assert.ok(Math.abs(s[0].gap - 4) < 0.5, `${s[0].gap.toFixed(2)} m before the gate`); }
+  for (const [from, to] of [['head', 'isle'], ['head', 'plaza'], ['plaza', 'isle'], ['isle', 'plaza']]) assert.equal(stands(from, to).length, 0, `${from} -> ${to}: no stand`);
+});
+
 // 1.10.405 L0 (문제 기록 de84f895의 나머지): a car back home empty leaves the road where an arriving one does, goes to the drop spot and round into its
 // place front first -- its heading within 25° of the way it goes, never back through the front place, ending in its place facing the road
 test('택시 종점: 빈 차로 돌아올 때도 내리는 자리를 거쳐 앞으로 들어감 — 앞자리 한가운데로 안 감', () => {

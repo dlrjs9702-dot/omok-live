@@ -6919,7 +6919,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       forestAir.step(dt, { me: { x: p.x, y: p.y, z: p.z }, sunDir: sunDirNow, phase, quality, lessMotion: Boolean(lessMotion?.matches), outdoors, season: globalThis.IslandTerrain.seasonAt?.(p.x, p.z, Date.now() + serverOffset) || 'summer', now, woodNow: island.isle2Wood?.() || 0, sound: !photoMode });
       woodLight();
       tigerView.step(dt, p, outdoors); /* (1.10.376 N2a-2 별마루섬 호랑이: tigers-view.js) */
-      for (const gate of isle2Gates) if (Math.hypot(p.x - gate.at.x, p.z - gate.at.z) < 60) { const people = [p]; for (const o of others.values()) people.push(o.c.root.position); gate.step(dt, people, taxiCars); } /* (1.10.377: the gate's leaf; 389: each gate's) */
+      for (const gate of isle2Gates) if (Math.hypot(p.x - gate.at.x, p.z - gate.at.z) < 60 || (gate.wide && taxiCars.some((c) => Math.hypot(c.x - gate.at.x, c.z - gate.at.z) < 25))) { /* (1.10.406 결정 65-1: a taxi by the wide gate opens it on every screen, near or far) */ const people = [p]; for (const o of others.values()) people.push(o.c.root.position); gate.step(dt, people, taxiCars); } /* (1.10.377: the gate's leaf; 389: each gate's) */
       if (boatObjs.length) stepBoats(dt, p); /* (1.10.390 탐방선: the boats, their captains, the riders on their seats) */
     }
     farCull(camera.position.x, camera.position.z);
