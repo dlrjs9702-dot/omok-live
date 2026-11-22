@@ -68,19 +68,20 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
     const c = document.createElement('canvas'); c.width = 512; c.height = 256; const x = c.getContext('2d'); x.fillStyle = '#fff6e3'; x.fillRect(0, 0, 512, 256); x.strokeStyle = '#8a6b45'; x.lineWidth = 10; x.strokeRect(5, 5, 502, 246);
     x.fillStyle = '#4a3828'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = '800 64px sans-serif'; x.fillText('🚕 택시', 256, 82); let px = 58; do { x.font = `700 ${px}px sans-serif`; px -= 2; } while (x.measureText(text).width > 470 && px > 20); x.fillText(text, 256, 178);
     const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.flipY = false; made.push(tex); return tex; }
-  const roadSigns = Object.keys(X.ROADSTOPS || {}).map((id) => {
-    const at = X.curbOf(id).sign; const g = new THREE.Group(); g.position.set(at.x, groundY(at.x, at.z), at.z); g.rotation.y = at.yaw; group.add(g);
+  /* (1.10.410 사용자 결정 65-3 A: a sign and a mark on both sides of the road at every stop -- a car stands on its own way's side) */
+  const roadSigns = Object.keys(X.ROADSTOPS || {}).flatMap((id) => [1, -1].map((side) => [id, side])).map(([id, side]) => {
+    const at = X.curbOf(id, side).sign; const g = new THREE.Group(); g.position.set(at.x, groundY(at.x, at.z), at.z); g.rotation.y = at.yaw; group.add(g);
     const fb = new THREE.Group(); piece(fb, wood, 0.12, 2.3, 0.12, 0, 1.15, 0); piece(fb, cream, 0.95, 0.5, 0.06, 0, 2.0, 0); g.add(fb);
     const words = plateWords(X.labelOf(id)); const face = new THREE.MeshStandardMaterial({ map: words, roughness: 0.85 }); made.push(face);
     assets.attach('taxi.stop_sign', g, fb, (entry) => { if (!entry) return; g.traverse((o) => { if (o.isMesh && [].concat(o.material).some((m) => m?.name === 'stop_plate')) o.material = face; }); });
-    return { id, g, at };
+    return { id, side, g, at };
   });
   /* (1.10.399 assets 168, 에셋 검사 2회차 「길에서 표지 옆면만 · 종점 벤치~첫 차」: where one stands to get in, every place -- a round taxi mark in the
      ground (read from any side; off the car's way: past the curb); at a terminal a lane of 1 m tiles from the bench's front to the mark, its
      chevrons to the car. Walked over (no solids); a flat stand-in till the models come) */
   const markMat = new THREE.MeshStandardMaterial({ color: 0xf0be43, roughness: 0.8 }); made.push(markMat);
-  const marks = X.PLACE_IDS().map((id) => {
-    const at = X.boardOf(id); const g = new THREE.Group(); g.position.set(at.x, groundY(at.x, at.z), at.z); group.add(g);
+  const marks = X.PLACE_IDS().flatMap((id) => (X.ROADSTOPS?.[id] ? [1, -1].map((s) => X.boardOf(id, s)) : [X.boardOf(id)])).map((at) => {
+    const g = new THREE.Group(); g.position.set(at.x, groundY(at.x, at.z), at.z); group.add(g);
     const fb = new THREE.Group(); piece(fb, markMat, 0.9, 0.03, 0.9, 0, 0.015, 0); g.add(fb); assets.attach('taxi.stop_mark', g, fb); return g;
   });
   /* (399 에셋 검사 2회차 「택시 대기 자리 빛」: a warm pool round each mark at night -- drawn, no real light) */

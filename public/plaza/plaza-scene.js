@@ -1278,7 +1278,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     { const b = TX.placeOf(id, 1); for (const k of [-0.75, 0.75]) solids.push({ x: b.x + Math.sin(b.yaw) * k, z: b.z + Math.cos(b.yaw) * k, r: 0.9, taxi: true, off: () => taxiParked.at !== null && !taxiParked.at(id, 1) }); } /* (1.10.391 N4-a: the second car's place behind) */
   }
   /* (1.10.392 N4-b) the road stops: SPACE by the sign (its name, 「택시 부르기」 or 타기 in app's window); the sign's post walked round (assets 163 [0, 0, 0.18]) */
-  for (const id of Object.keys(TX.ROADSTOPS || {})) { const at = TX.curbOf(id).sign; doors[`taxi:${id}`] = { x: at.x, z: at.z, name: `🚕 택시 · ${TX.labelOf(id)}`, mapName: '🚕 택시' }; solids.push({ x: at.x, z: at.z, r: 0.2, taxi: true }); }
+  for (const id of Object.keys(TX.ROADSTOPS || {})) for (const side of [1, -1]) { const at = TX.curbOf(id, side).sign; doors[`taxi:${id}${side < 0 ? '#2' : ''}`] = { x: at.x, z: at.z, name: `🚕 택시 · ${TX.labelOf(id)}`, mapName: '🚕 택시' }; solids.push({ x: at.x, z: at.z, r: 0.2, taxi: true }); } /* (1.10.410 결정 65-3 A: both sides' signs -- the far one `#2`, the same stop) */
   // (v1.10.285) a car on its way or parked: I am put out of its box (0.85 + 0.35 across, 1.6 + 0.35 along) -- it never stops
   // for me (the same clock on every screen), so it pushes; walking islanders step 2 m to its right while it is within 5 m
   // v1.10.317 A3: a car standing or creeping by (the server's rate under half) eases me aside at 2.5 m/s -- not a shove; one
@@ -7211,6 +7211,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const g = t?.ghost; if (g && Number.isFinite(g.at)) out.ghost = { at: g.at, until: Number.isFinite(g.until) ? g.until : null }; /* (see-through going by) */
     if (typeof t?.car === 'string') out.car = t.car; if (Number.isInteger(t?.seat)) out.seat = t.seat; if (typeof t?.to === 'string') out.to = t.to; if (t?.empty) out.empty = true; /* (392: where to; a car going empty) */ /* (1.10.391 N4-a: which car, which seat; where it goes after -- decided as the rider gets out) */
     if (typeof t?.stay === 'boolean') { out.stay = t.stay; out.park = Number.isInteger(t.park) ? t.park : 0; }
+    if (t?.curb === 1 || t?.curb === -1) out.curb = t.curb; /* (1.10.410 결정 65-3 A: the side of a road stop its car set off from) */
     return out;
   }
   function setTaxiRide(t) {
@@ -7220,7 +7221,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function startTaxi(ride) {
     if (taxiRide || riding || !ride || !(TX.STOPS[ride.from] || TX.ROADSTOPS?.[ride.from]) || !Number.isFinite(ride.startedAt)) return false;
     if (sitting) standUp(); if (gather) endGather(false); if (fishing) fishStop?.(); actLock = 0; if (cycling) { cycling = null; onBike?.(false, null); }
-    taxiRide = { ride: { from: ride.from, startedAt: ride.startedAt, ...(ride.runMs ? { runMs: ride.runMs } : {}), ...roadClockOf(ride) }, from: (() => { const o = TX.STOPS[ride.from] ? TX.stopOf(ride.from).out : TX.boardOf(ride.from); return new THREE.Vector3(o.x, heightAt(o.x, o.z), o.z); })(), out: false }; /* (from enter_L, where TaxiEnter's first frame stands) */
+    taxiRide = { ride: { from: ride.from, startedAt: ride.startedAt, ...(ride.runMs ? { runMs: ride.runMs } : {}), ...roadClockOf(ride) }, from: (() => { const o = TX.STOPS[ride.from] ? TX.stopOf(ride.from).out : TX.boardOf(ride.from, ride.curb); return new THREE.Vector3(o.x, heightAt(o.x, o.z), o.z); })(), out: false }; /* (from enter_L, where TaxiEnter's first frame stands) */
     keys.clear(); taxiRide.clips = taxiClipsIn(me, taxiRide.ride); me.noTuck = true; me.tailTucked = true; me.tuckTail?.(true); assets.hat?.(me, true); /* (v1.10.285) */
     return true;
   }

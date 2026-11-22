@@ -32,7 +32,7 @@ test('탐방선 물길: 두 줄 모두 1 m마다 물 위, 뭍에서 선체 2 m �
 });
 
 /* (1.10.409 결정 75 · dock-maneuver §4 시험: every way -- each crossing from each berth to the unloading one or the waiting spot, the empty boat's shift
-   into each boarding berth, the waiting spot's way in -- every sample's hull deep enough (but the old shallow stretch under the high bridge, as before),
+   into each boarding berth, the waiting spot's way in -- every sample's hull deep enough (under the high bridge too),
    off both floats and arms, sideways a metre at most each time, the bow the way it goes ahead (15°) and astern (180° ± 15°)) */
 test('172 넓은 부두 길: 모든 길 선체 깊은 물 · 뜬 판·팔과 안 겹침 · 옆으로 1 m까지 · 앞으로 15° / 뒤로 180° ± 15°', { skip: !T.dalmaru && '달마루섬 전용' }, () => {
   const hull = (s) => { const out = []; const sn = Math.sin(s.yaw); const c = Math.cos(s.yaw); for (let u = -4; u <= 4; u += 0.5) for (const v of [-1.6, 0, 1.6]) out.push([s.x + sn * u + c * v, s.z + c * u - sn * v]); return out; };
@@ -43,7 +43,7 @@ test('172 넓은 부두 길: 모든 길 선체 깊은 물 · 뜬 판·팔과 안
   for (const [name, p] of ways) {
     let sideRun = 0;
     p.samples.forEach((s, i) => {
-      if (Math.hypot(s.x - 59.35, s.z - 140) > 20) for (const [x, z] of hull(s)) if (T.ground(x, z) >= SEA - 1.0) { bad.push(`${name} shallow ${x.toFixed(1)},${z.toFixed(1)}`); break; }
+      for (const [x, z] of hull(s)) if (T.ground(x, z) >= SEA - 1.0) { bad.push(`${name} shallow ${x.toFixed(1)},${z.toFixed(1)}`); break; } /* (409: under the high bridge too -- the road's bank no longer raises the channel there) */
       for (const [x, z] of hull(s)) if (onFloat(x, z)) { bad.push(`${name} float ${x.toFixed(1)},${z.toFixed(1)}`); break; }
       if (!i) return; const a = p.samples[i - 1]; const ds = Math.hypot(s.x - a.x, s.z - a.z);
       sideRun = s.kind === 'side' ? sideRun + ds : 0; if (sideRun > 1 + 1e-6) bad.push(`${name} sideways ${sideRun.toFixed(2)}`);
