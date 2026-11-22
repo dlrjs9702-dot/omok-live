@@ -4894,6 +4894,22 @@
       "precompressed": true
     },
     {
+      "out": "byeolmaru-v1/fence_stonewall_tall.glb",
+      "src": "walls175:01. High/byeolmaru-v1/fence_stonewall_tall.glb",
+      "sha256": "9dd09122e8e0a2a1701f0d568053d437e0e5782420ce3c7b6b641697219a4a88",
+      "lowSrc": "walls175:02. Low/byeolmaru-v1/fence_stonewall_tall_low.glb",
+      "lowSha256": "7f2c6addfdc906f426091a3c9f8e6bb914ba9436074239923a2e3cc7091ffdc2",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/fence_wicket_stone.glb",
+      "src": "walls175:01. High/byeolmaru-v1/fence_wicket_stone.glb",
+      "sha256": "9404cdaf24ed46f58afd298dd71b72a342fcbe5bd31d58b9936c7c082920b857",
+      "lowSrc": "walls175:02. Low/byeolmaru-v1/fence_wicket_stone_low.glb",
+      "lowSha256": "8ee4b1ee94cb825cd475a69f91797ba3b9d744808caea0630ce4afd41339b827",
+      "precompressed": true
+    },
+    {
       "out": "byeolmaru-v1/fence_palisade_tall.glb",
       "src": "camp174:01. High/byeolmaru-v1/fence_palisade_tall.glb",
       "sha256": "26a857d5df24b5625898fffd31baefd873b3c410690fbbf33ed383f7d75a591c",
@@ -15886,6 +15902,7 @@
     "docks172": "172. Game Island boat docks 2026-11-22",
     "river173": "173. Game Island west river road bridge 2026-11-22",
     "camp174": "174. Game Island camp fences 2026-11-22",
+    "walls175": "175. Game Island lookout walls 2026-11-22",
     "polish164": "164. Game Island polish bundle 2026-11-21",
     "office176": "176. Game Island camp office 2026-11-22",
     "morak177": "177. Game Island camp keeper Morak 2026-11-22"

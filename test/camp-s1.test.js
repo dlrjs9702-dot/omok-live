@@ -40,7 +40,7 @@ test('S1 안전 반지름 한 곳: 서버 · 화면 모두 섬 자료의 safe(�
   for (const f of ['lib/island-tigers.js', 'public/plaza/tigers-view.js']) { const src = fs.readFileSync(path.join(__dirname, '..', f), 'utf8'); assert.match(src, /camp\.safe \?\?/, f); assert.match(src, /peak\.safe \?\?/, f); }
   const g = Tg.createTigers({ T, P, rand: () => 0.5 });
   for (const a of [0, 1, 2, 3, 4, 5]) { const at = (r) => [C.x + Math.cos(a) * r, C.z + Math.sin(a) * r]; assert.equal(g.huntable(...at(22.5)), false, `22.5 m at ${a}`); }
-  assert.equal(D.NEW_ISLE.peak.safe, 14);
+  assert.equal(D.NEW_ISLE.peak.safe, 11.9); /* (1.10.415 S3: the lookout's yard, 14 -> 11.9) */
 });
 
 test('S1 목책 위에 다른 것 없음: 자연물 · 가로등은 비킴(가로등은 안 · 밖 1.6 m, 길 밖)', { skip: !D && '달마루섬 전용' }, () => {
