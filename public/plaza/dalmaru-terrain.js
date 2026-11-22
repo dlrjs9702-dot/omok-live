@@ -229,6 +229,9 @@
   Object.assign(BRIDGES[1], { length: 56, ends: [[31.35, BRIDGE_Z], [87.35, BRIDGE_Z]], high: true, bank: 42, lane: true }); /* (1.10.405 L0 `taxi`: the box the taxi keeps one lane in -- island-taxi reads the bridges from here. 1.10.407 assets 170: two lanes now, none; `lane`: the taxi road over it, its yellow middle line drawn on the deck) */
   // (N1 새 섬: the village's east shore (168.25) to the new island's west shore (224) over 55.8 m of water, 3 m on land each end --
   // the same 윤슬다리 model drawn to 61.75 m, 새 섬다리)
+  /* (1.10.411 assets 173, notes taxi-island-loop §2 ㄹ: the west river's road bridge on L2 -- 14 m, 7.8 m wide, low and arched (0.4), across the river
+     slantwise: its way (dir) from its north-east end to its south-west) */
+  { const RIV = { x: -92.5, z: 55.5, dir: [-0.4138, 0.9104], half: 7 }; BRIDGES.push({ x: RIV.x, z: RIV.z, length: 14, dir: RIV.dir, ends: [-1, 1].map((s) => [RIV.x + RIV.dir[0] * RIV.half * s, RIV.z + RIV.dir[1] * RIV.half * s]), river: true, lane: true }); }
   BRIDGES.push({ x: 196.125, z: NEW_ISLE.bridgeZ, length: 61.75, ends: [[165.25, NEW_ISLE.bridgeZ], [227, NEW_ISLE.bridgeZ]], isle2: true }); /* (L0: its one-lane box on through the wide gate -- 1.10.408 assets 171: two lanes and walks, 7.8 m, as the 윤슬다리; none) */
   // where the pieces stand (assets 55): angles round the island's centre, degrees (north = 270), r = distance from it
   const deg = (r, a) => ({ x: Math.round(r * Math.cos((a * Math.PI) / 180) * 10) / 10, z: Math.round(r * Math.sin((a * Math.PI) / 180) * 10) / 10, yawToCentre: Math.atan2(-Math.cos((a * Math.PI) / 180), -Math.sin((a * Math.PI) / 180)) });
