@@ -12,7 +12,7 @@ test('택시 정류장: 표지 → 택시 부르기 → 빈 차가 와서 섬 �
   await page.evaluate(() => localStorage.removeItem('gc.testClassic')); await page.reload();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
   const X = require('../../public/plaza/island-taxi.js'); const board = X.boardOf('dock');
-  await expect.poll(() => page.evaluate(() => (window.PlazaDebug().taxiRoadSigns?.() || []).length), { timeout: 20000 }).toBe(Object.keys(X.ROADSTOPS).length);
+  await expect.poll(() => page.evaluate(() => (window.PlazaDebug().taxiRoadSigns?.() || []).length), { timeout: 20000 }).toBe(Object.keys(X.ROADSTOPS).length * 2); /* (1.10.410 결정 65-3 A: a sign each side) */
   await expect.poll(async () => { await page.evaluate(([x, z]) => window.PlazaWarp(x, z), [board.x, board.z]); await page.waitForTimeout(400); return page.locator('#plazaHint').textContent(); }, { timeout: 30000 }).toContain('배 타는 곳');
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   const dialog = page.locator('#plazaDialog'); await expect(dialog.locator('#taxiCallBtn')).toBeVisible({ timeout: 15000 });
