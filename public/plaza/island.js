@@ -1037,8 +1037,8 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     const rows = (list, kind, k) => list.filter((a) => a[3] === k).map(([x, z, yaw]) => ({ x, z, yaw, isle2: true }));
     const onGround = (o) => setM(o.x, onMesh(o.x, o.z), o.z, 1, 1, o.yaw || 0);
     P2.FENCE_KINDS.forEach((kind, k) => {
-      if (kind === 'fence_gate' || kind === 'fence_gate_wide' || kind === 'fence_gate_road' || kind === 'fence_wicket') return; /* (1.10.377: the gate on its own in plaza-scene -- its leaf opens as one comes near; 394 the wide one too; 413 the camp's wickets) */
-      const geo = kind === 'fence_gate' ? mergeColored([part(new THREE.BoxGeometry(0.24, 2.42, 0.24), WOOD, -1.08, 1.21, 0), part(new THREE.BoxGeometry(0.24, 2.42, 0.24), WOOD, 1.08, 1.21, 0), part(new THREE.BoxGeometry(2.4, 0.16, 0.2), WOOD, 0, 2.34, 0)]) : box(kind, k === 3 ? STONE : WOOD);
+      if (kind === 'fence_gate' || kind === 'fence_gate_wide' || kind === 'fence_gate_road' || /^fence_wicket/.test(kind)) return; /* (1.10.377: the gate on its own in plaza-scene -- its leaf opens as one comes near; 394 the wide one too; 413 · 415 the camp's and the lookout's wickets) */
+      const geo = kind === 'fence_stonewall_tall' ? mergeColored([part(new THREE.BoxGeometry(2.4, 2.5, 0.66), STONE, 0, 1.25, 0), part(new THREE.BoxGeometry(0.84, 2.9, 0.84), STONE, 1.2, 1.45, 0)]) /* (1.10.415 assets 175: the wall and its pillar at +x -- over their circles) */ : kind === 'fence_gate' ? mergeColored([part(new THREE.BoxGeometry(0.24, 2.42, 0.24), WOOD, -1.08, 1.21, 0), part(new THREE.BoxGeometry(0.24, 2.42, 0.24), WOOD, 1.08, 1.21, 0), part(new THREE.BoxGeometry(2.4, 0.16, 0.2), WOOD, 0, 2.34, 0)]) : box(kind, k === 3 ? STONE : WOOD);
       instanced(geo, natureMat, rows(P2.FENCE, kind, k), onGround, { cell: 60, target: [`byeolmaru.${kind}`] });
     });
     instanced(box('fence_corner', WOOD), natureMat, P2.CORNERS.map(([x, z]) => ({ x, z, isle2: true })), onGround, { cell: 60, target: ['byeolmaru.fence_corner'] });

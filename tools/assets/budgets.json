@@ -2396,6 +2396,24 @@
       "nodes": 7,
       "reason": "1.10.414 S2 assets 176: the camp office -- its 「관리소」 plate a mesh of its own (written on by the game), keeper / sign_face / stand_front empty nodes"
     },
+    "byeolmaru-v1/fence_stonewall_tall.glb": {
+      "nodes": 2,
+      "reason": "1.10.415 S3 assets 175: the lookout's tall stone wall -- its mesh under a named node, as packed"
+    },
+    "byeolmaru-v1/fence_stonewall_tall_low.glb": {
+      "nodes": 2,
+      "reason": "1.10.415 S3 assets 175: the lookout's tall stone wall -- its mesh under a named node, as packed"
+    },
+    "byeolmaru-v1/fence_wicket_stone.glb": {
+      "meshes": 2,
+      "nodes": 7,
+      "reason": "1.10.415 S3 assets 175: the lookout's stone wicket -- its leaf (side) a mesh of its own (turned open by the game), side_way / stand_in / stand_out empty nodes"
+    },
+    "byeolmaru-v1/fence_wicket_stone_low.glb": {
+      "meshes": 2,
+      "nodes": 7,
+      "reason": "1.10.415 S3 assets 175: the lookout's stone wicket -- its leaf (side) a mesh of its own (turned open by the game), side_way / stand_in / stand_out empty nodes"
+    },
     "byeolmaru-v1/fence_palisade_tall.glb": {
       "nodes": 2,
       "reason": "1.10.413 S1 assets 174: the camp's tall palisade -- its mesh under a named node, as packed"

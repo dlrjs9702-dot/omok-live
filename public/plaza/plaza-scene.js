@@ -1433,12 +1433,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   /* (1.10.413 S1 assets 174 fence_wicket: the camp's four people's wickets -- 1.2 m between posts at ±0.8, wings at ±1.0, one leaf `side` opening
      inward (-1.45) only while a person is within 2 m of its middle (side_way), never for a tiger; its stand-ins over its circles (dalmaru-walk)) */
   const isle2Gates = (globalThis.Isle2Props?.FENCE || []).filter((a) => /^fence_(gate|wicket)/.test(globalThis.Isle2Props.FENCE_KINDS[a[3]])).map((f) => {
-    const kind = globalThis.Isle2Props.FENCE_KINDS[f[3]]; const road = kind === 'fence_gate_road'; const wide = road || kind === 'fence_gate_wide'; const wicket = kind === 'fence_wicket';
+    const kind = globalThis.Isle2Props.FENCE_KINDS[f[3]]; const road = kind === 'fence_gate_road'; const wide = road || kind === 'fence_gate_wide'; const wicket = /^fence_wicket/.test(kind);
     const g = new THREE.Group(); g.position.set(f[0], heightAt(f[0], f[1]), f[1]); g.rotation.y = f[2]; scene.add(g);
     const v = new THREE.Group(); g.add(v);
     if (wicket) {
-      for (const x of [-0.8, 0.8]) mesh(new THREE.BoxGeometry(0.36, 3.7, 0.36), mat(0x8a6440), x, 1.85, 0, v); for (const x of [-1.0, 1.0]) mesh(new THREE.BoxGeometry(0.4, 3.4, 0.3), mat(0x8a6440), x, 1.7, 0, v);
-      assets.attach('byeolmaru.fence_wicket', g, v); let open = 0; let leaves = []; let lookedAt = 0;
+      if (kind === 'fence_wicket_stone') { for (const x of [-0.735, 0.735]) mesh(new THREE.BoxGeometry(0.27, 2.5, 0.66), mat(0x8f8a7c), x, 1.25, 0, v); mesh(new THREE.BoxGeometry(0.84, 2.9, 0.84), mat(0x8f8a7c), 1.2, 1.45, 0, v); } /* (1.10.415 assets 175: the stone jambs and its pillar at +x) */
+      else { for (const x of [-0.8, 0.8]) mesh(new THREE.BoxGeometry(0.36, 3.7, 0.36), mat(0x8a6440), x, 1.85, 0, v); for (const x of [-1.0, 1.0]) mesh(new THREE.BoxGeometry(0.4, 3.4, 0.3), mat(0x8a6440), x, 1.7, 0, v); }
+      assets.attach(`byeolmaru.${kind}`, g, v); let open = 0; let leaves = []; let lookedAt = 0;
       return { g, at: { x: f[0], z: f[1] }, wide: false, road: false, wicket: true, open: () => open, sideOpen: () => [], step(dt, people) {
         const now = performance.now(); if (now - lookedAt > 1000) { lookedAt = now; leaves = []; g.traverse((o) => { if (o.name === 'side') leaves.push(o); }); }
         const near = people.some((p) => Math.hypot(p.x - f[0], p.z - f[1]) < 2); open += ((near ? 1 : 0) - open) * (1 - Math.exp(-dt * 6));
