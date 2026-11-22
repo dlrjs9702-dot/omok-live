@@ -6297,6 +6297,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       talkTurned = { o, yaw: o.root.rotation.y, homeYaw: o.npc.home?.yaw };
       o.root.rotation.y = toTalk - o.npc.root.rotation.y; if (o.npc.home) o.npc.home.yaw = o.root.rotation.y;
     }
+    else if (t.id === 'camp:keeper' && campKeeper) { /* (1.10.414 S2: 모락 too -- his face in the talk's picture (resident-looks faceSeen), back to the fire after) */
+      const k = campKeeper; talkTurned = { o: { root: k.root, npc: k }, yaw: k.root.rotation.y, homeYaw: k.home?.yaw }; k.root.rotation.y = toTalk; if (k.home) k.home.yaw = toTalk;
+    }
     return true;
   }
   const TALK_SIDES = [[1, 1], [-1, 1], [1, 0.6], [-1, 0.6]];
