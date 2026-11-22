@@ -700,10 +700,12 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
       if (b.high) h.userData.fit = (v) => { const u = Math.max(-b.half, Math.min(b.half, v.x)); v.y += deckAt({ b, u }) - b.base - b.modelTop(u); };
       /* (its ramps' guarded sides over land (dalmaru-island rampGuards): stand-in walls under the rails, each run one box -- the model's side arches stand there) */
       if (b.model) for (const s of [-1, 1]) { /* (396: the low model bridges' guarded sides too) */
-        const us = (T.structureSolids?.() || []).filter((o) => o.guard && Math.abs(o.x - b.x) <= b.half + 1 && Math.sign(o.z - b.z) === s).map((o) => o.x - b.x).sort((p, q) => p - q);
+        /* (411: in the bridge's own frame -- u along it, v across, the river one slantwise) */
+        const uOf = (o) => (o.x - b.x) * b.ux + (o.z - b.z) * b.uz; const vOf = (o) => -(o.x - b.x) * b.uz + (o.z - b.z) * b.ux; const at = (u, v) => [b.x + b.ux * u - b.uz * v, b.z + b.uz * u + b.ux * v];
+        const us = (T.structureSolids?.() || []).filter((o) => o.guard && Math.abs(uOf(o)) <= b.half + 1 && Math.sign(vOf(o)) === s).map(uOf).sort((p, q) => p - q);
         for (let i = 0; i < us.length;) { let j = i; while (j + 1 < us.length && us[j + 1] - us[j] < 0.6) j += 1;
           const gv = b.guard || 3.25; /* (407: the wide one's guards at 4.35) */
-          const u0 = Math.max(-b.half, us[i] - 0.4); const u1 = Math.min(b.half, us[j] + 0.4); const top = Math.max(deckAt({ b, u: u0 }), deckAt({ b, u: u1 })); const foot = Math.min(ground(b.x + u0, b.z + s * gv), ground(b.x + u1, b.z + s * gv)) - 0.2;
+          const u0 = Math.max(-b.half, us[i] - 0.4); const u1 = Math.min(b.half, us[j] + 0.4); const top = Math.max(deckAt({ b, u: u0 }), deckAt({ b, u: u1 })); const foot = Math.min(ground(...at(u0, s * gv)), ground(...at(u1, s * gv))) - 0.2;
           mesh(keep(new THREE.BoxGeometry(0.5, top - foot, u1 - u0)), post, -s * gv, (top + foot) / 2, (u0 + u1) / 2, visual); i = j + 1; }
       }
       /* (1.10.407 결정 67-3 A, notes bridges-two-way §3: the taxi road's yellow middle line on the deck in code, not in the model -- the road

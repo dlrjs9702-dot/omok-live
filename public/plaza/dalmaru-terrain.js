@@ -253,7 +253,7 @@
     // (거리 악단 자리 2026-10-25 「너무 뜬금없이 있어」: a paved round 6 m across on 물가 거리's land side, west of where the
     // walk goes down to 배 타는 곳 (266.5°, its middle 105.3 from the bay's centre -- the walk's edge 102.6; clear of the
     // photographer's spot west of it); faces the water)
-    mural: { x: -33, z: -105, face: [0, -84] } /* (1.10.325 54A: to the north-west 쉼터, facing the fountain) */, busk: { x: -6.4, z: -10.1, face: [0, 95] }, stones: { x: -103.5, z: 39 }, bookcart: { x: -25, z: -91, face: [-20, -86] }, /* (묶음 5: by the north-west garden, off 알림마루) */
+    mural: { x: -33, z: -105, face: [0, -84] } /* (1.10.325 54A: to the north-west 쉼터, facing the fountain) */, busk: { x: -8.9, z: -14.1, face: [0, 95] } /* (1.10.411 assets 179 ①: off L2's corner -- its four spots were on the new road) */, stones: { x: -103.5, z: 39 }, bookcart: { x: -25, z: -91, face: [-20, -86] }, /* (묶음 5: by the north-west garden, off 알림마루) */
     omokTable: { x: -94, z: -8, face: [-86, -4] }, birthday: { x: 9.9, z: -74.1, face: [0, -84] }, /* (1.10.346 155A C안: across the north walk from the 벼룩시장 board) */
     hallLamps: [[-4.1, -22], [5.0, -30], [-4.1, -38]], // the three lamps the electrician mends, beside the walk to the water (off it; T1 길 넓히기: at the taxi road's walk's outer edge, 4.5 m from its middle at x 0.5)
     stationmaster: { x: 89, z: 146 }, // by 달끝역's way in (1.10.389 N3-a: from (83, 137) -- the high bridge's ramp stands there now; 2.2 m from the station's way in (88.3, 143.9) then -- 4.3 m from 1.10.407's straight one (91.9, 142.9) -- 3.5 m off the bridge's side, 6.7 off the road's middle, by the walk)

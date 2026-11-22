@@ -293,14 +293,15 @@
      the gate's own cut (dalmaru-terrain gateCut: its leaves' room)) */
   const END_FLAT = Object.freeze({ hw: 4.9, inside: 1.5, out: 3, ease: 3 }); let endFlats = null;
   function bridgeEndFlat(x, z, h) {
-    if (!endFlats) { const list = []; endFlats = []; /* (none while the ends' own height is read) */ for (const b of D.BRIDGES) for (const k of b.high ? [1] : b.isle2 ? [0, 1] : []) { const [ex, ez] = b.ends[k]; list.push({ x: ex, z: ez, dir: Math.sign(ex - b.x) || 1, h: b.isle2 ? Math.max(...b.ends.map(([x0, z0]) => D.ground(x0, z0)), SEA) + 0.1 /* (its arched deck's one end height, base + YB.top, less 2 cm) */ : land(ex, ez), gate: b.isle2 && k === 1 ? (D.TAXI_GATES || [])[0] : null, across: Boolean(b.isle2), mid: landBefore(ex, ez) }); } endFlats = list; }
+    if (!endFlats) { const list = []; endFlats = []; /* (none while the ends' own height is read) */ for (const b of D.BRIDGES) for (const k of b.high ? [1] : b.isle2 || b.river ? [0, 1] : []) { const [ex, ez] = b.ends[k]; const l = Math.hypot(ex - b.x, ez - b.z) || 1; /* (411: each end's own outward way -- the river bridge slantwise) */
+      list.push({ x: ex, z: ez, ax: (ex - b.x) / l, az: (ez - b.z) / l, h: b.isle2 || b.river ? Math.max(...b.ends.map(([x0, z0]) => D.ground(x0, z0)), SEA) + 0.1 /* (its arched deck's one end height, base + YB.top, less 2 cm) */ : land(ex, ez), gate: b.isle2 && k === 1 ? (D.TAXI_GATES || [])[0] : null, across: Boolean(b.isle2 || b.river), mid: landBefore(ex, ez) }); } endFlats = list; }
     for (const f of endFlats) {
-      const u = (x - f.x) * f.dir; const v = Math.abs(z - f.z); if (u < -END_FLAT.inside - END_FLAT.ease || u > END_FLAT.out + END_FLAT.ease || v > END_FLAT.hw + END_FLAT.ease) continue;
+      const u = (x - f.x) * f.ax + (z - f.z) * f.az; const v = Math.abs(-(x - f.x) * f.az + (z - f.z) * f.ax); if (u < -END_FLAT.inside - END_FLAT.ease || u > END_FLAT.out + END_FLAT.ease || v > END_FLAT.hw + END_FLAT.ease) continue;
       const du = Math.max(0, -END_FLAT.inside - u, u - END_FLAT.out); const dv = Math.max(0, v - END_FLAT.hw); const dd = Math.hypot(du, dv);
       /* (a station's own pad keeps its level -- 달끝역's walkway by the end: the flat let go over its 2 m rim) */
       let keep = 1; for (const p of PADS) { const pd = Math.hypot(x - p.x, z - p.z); if (pd < p.r + 2) keep = Math.min(keep, smooth(p.r, p.r + 2, pd)); }
       if (f.gate) { const lz = (x - f.gate.x) * Math.sin(f.gate.yaw) + (z - f.gate.z) * Math.cos(f.gate.yaw); keep = Math.min(keep, 1 - smooth(-1.5, 0, lz)); }
-      const want = f.across ?landBefore(x, f.z) + (f.h - f.mid) * (1 - smooth(0, END_FLAT.out, Math.max(0, u))) : f.h;
+      const want = f.across ? landBefore(f.x + f.ax * u, f.z + f.az * u) + (f.h - f.mid) * (1 - smooth(0, END_FLAT.out, Math.max(0, u))) : f.h;
       if (dd < END_FLAT.ease) h = lerp(h, lerp(want, h, smooth(0, END_FLAT.ease, dd)), keep);
       /* (408 검토 docs/gate-sill-171-20261122.md: by the gate the flat lets go -- at the deck's north-east corner the gate's line stood 0.17 m past its end,
          a 13 cm sill there. Over the end's first 0.8 m the ground no higher than a ramp from the planks up to the gate's floor; only ever lowered,
