@@ -4864,6 +4864,14 @@
       "precompressed": true
     },
     {
+      "out": "dalmaru-v1/dock_boat_wide.glb",
+      "src": "docks172:01. High/dalmaru-v1/dock_boat_wide.glb",
+      "sha256": "cea638d2f36b331197ac2f350b4d6ca66193d03dcc09150e5c720f7c2da63d5f",
+      "lowSrc": "docks172:02. Low/dalmaru-v1/dock_boat_wide_low.glb",
+      "lowSha256": "9326f01f0b645dd6b98552a407f67669735f33915b694e8f4e38fb72a9a2ee29",
+      "precompressed": true
+    },
+    {
       "out": "dalmaru-v1/facade_mall.glb",
       "src": "flicker150:01. High/dalmaru-v1/facade_mall.glb",
       "sha256": "4470b7eca64f80edb04bef710fc07c6014acae34b1d942da9b4bf059fb9dbf4c",
@@ -15820,6 +15828,7 @@
     "pets169": "169. Game Island pet poses 2026-11-22",
     "bikepets169b": "169b. Game Island bike pets 2026-11-22",
     "yunseul170": "170. Game Island yunseul bridge 2026-11-22",
-    "byeolmaru171": "171. Game Island byeolmaru bridge and gate 2026-11-22"
+    "byeolmaru171": "171. Game Island byeolmaru bridge and gate 2026-11-22",
+    "docks172": "172. Game Island boat docks 2026-11-22"
   }
 }

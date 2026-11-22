@@ -2344,6 +2344,14 @@
       "triangles": 23200,
       "reason": "1.10.408 assets 171 새 별마루다리: 61.75 m at its own length, 7.8 m walk (two lanes and walks), its arch and 4 lamps, its gate end cut; one bridge on the island. Its Low 3,808"
     },
+    "dalmaru-v1/dock_boat_wide.glb": {
+      "nodes": 10,
+      "reason": "1.10.409 assets 172 넓은 부두: berth_0 / berth_1 / berth_unload, step_0 / step_1 / step_unload, sign_board / sign_unload empty nodes kept (keepNodes)"
+    },
+    "dalmaru-v1/dock_boat_wide_low.glb": {
+      "nodes": 10,
+      "reason": "1.10.409 assets 172 넓은 부두 Low: the same nodes as the High"
+    },
     "byeolmaru-v1/fence_gate_road.glb": {
       "meshes": 5,
       "nodes": 14,
