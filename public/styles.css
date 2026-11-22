@@ -1578,7 +1578,7 @@ body.plazaMode #lobbyView>:not(.topbar):not(#plazaStage){display:none!important}
 .plazaStage canvas.islandMinimap{position:absolute;top:12px;right:12px;width:176px;height:176px;z-index:2;border-radius:50%;box-shadow:0 6px 18px rgba(0,0,0,.28);pointer-events:none}
 .islandPlaceChip{position:absolute;top:4px;right:2px;width:196px;z-index:3;display:flex;justify-content:center;pointer-events:none}.islandPlaceChip[hidden]{display:none}/* (1.10.322 U5 「지금 자리」: over the minimap's top edge) */
 .islandPlaceChip span{max-width:100%;padding:3px 10px;border-radius:999px;background:var(--isle-paper,var(--isle-paper));color:var(--isle-ink,#3b2f22);border:1px solid var(--isle-line,#d8c3a0);box-shadow:0 2px 8px rgba(0,0,0,.18);font-size:.76rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-body.touchIsland .islandPlaceChip{width:132px}body.touchIsland .islandPlaceChip span{font-size:.66rem;padding:2px 8px}
+body.touchIsland .islandPlaceChip{width:132px}body.touchIsland .islandPlaceChip span{font-size:.75rem;padding:2px 8px}
 body.photoMode .islandPlaceChip,body.placing .islandPlaceChip,body.townhallRoom .islandPlaceChip{visibility:hidden}
 /* v1.10.3 첫 접속 캐릭터 선택 */
 .recordsDialog.genderDialog{width:min(92vw,420px);text-align:center}.genderDialog h2{margin:0 0 14px;font-size:1.1rem}
@@ -1602,7 +1602,7 @@ body.photoMode .islandPlaceChip,body.placing .islandPlaceChip,body.townhallRoom 
 .islandChatPanel .chatMessage.system{color:var(--isle-soft)}
 .islandChatHead{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;cursor:move;touch-action:none;user-select:none}.islandChatHead strong{font-size:.86rem}.islandChatHead button,.islandChatHead input{cursor:pointer}
 .islandChatGrip{position:absolute;right:3px;bottom:3px;width:20px;height:20px;cursor:nwse-resize;touch-action:none;border-right:3px solid var(--isle-tag);border-bottom:3px solid var(--isle-tag);border-bottom-right-radius:10px}
-body.touchIsland .islandChatGrip{width:28px;height:28px}.islandChatAlpha{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:.72rem;color:var(--isle-soft)}.islandChatAlpha input{width:84px}
+body.touchIsland .islandChatGrip{width:28px;height:28px}.islandChatAlpha{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:.75rem;color:var(--isle-soft)}.islandChatAlpha input{width:84px}
 .islandChatMessages{flex:1;min-height:0;overflow:auto;background:transparent!important}
 .islandChatForm{position:absolute;left:50%;bottom:64px;z-index:3;width:min(520px,70%);transform:translateX(-50%)}.islandChatForm input{width:100%;padding:11px 14px;border-radius:14px;background:var(--isle-field);color:var(--isle-ink);border:1px solid var(--isle-tag);box-shadow:0 0 0 3px rgba(138,106,74,.25)}.islandChatForm input::placeholder{color:var(--isle-soft)}
 .plazaStage:focus-visible{box-shadow:0 0 0 3px #60a5fa,0 24px 70px rgba(0,0,0,.28)}
@@ -1660,8 +1660,8 @@ body.touchIsland .islandChatGrip{width:28px;height:28px}.islandChatAlpha{display
 .recordsDialog.islandBagDialog{width:min(92vw,440px)}
 .islandBagGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px}
 .islandBagSlot{position:relative;aspect-ratio:1;display:grid;place-items:center;border-radius:12px;background:#0f172a;border:1px solid #273449;font-size:1.6rem}
-.islandBagSlot small{position:absolute;right:6px;bottom:4px;font-size:.72rem;font-weight:900;color:#f8fafc}
-.islandBagSlot span{position:absolute;left:6px;top:4px;font-size:.62rem;font-weight:800;color:#cbd5e1;max-width:calc(100% - 10px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.islandBagSlot small{position:absolute;right:6px;bottom:4px;font-size:.75rem;font-weight:900;color:#f8fafc}
+.islandBagSlot span{position:absolute;left:6px;top:4px;font-size:.75rem;font-weight:800;color:#cbd5e1;max-width:calc(100% - 10px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .islandPlaceList{display:grid;gap:6px;margin:6px 0 10px}
 .islandPlaceRow{display:flex;justify-content:space-between;gap:10px;padding:10px;border-radius:12px;background:#0f172a;border:1px solid #273449;font-size:.8rem}
 .islandPlaceRow strong{color:#fde68a}
@@ -1709,7 +1709,7 @@ body.touchIsland .islandChatGrip{width:28px;height:28px}.islandChatAlpha{display
 .islandDexCell img { width: 56px; height: 56px; object-fit: contain; }
 .islandDexCell.unfound img { filter: brightness(0); opacity: 0.35; }
 .islandDexCell small { opacity: 0.7; min-height: 1em; }
-.islandDexCell small.dexBest { font-size: 0.68rem; opacity: 0.85; } /* v1.10.231 my best size */
+.islandDexCell small.dexBest { font-size:.75rem; opacity: 0.85; } /* v1.10.231 my best size */
 
 /* v1.10.43 기념사진 모드: the island alone -- the page around it hidden, two buttons and the countdown over it */
 body.photoMode .topbar, body.photoMode .islandChatTab, body.photoMode #plazaHint, body.photoMode #questTracker, body.photoMode canvas.islandMinimap, body.photoMode .islandChatPanel, body.photoMode .islandChatForm { visibility: hidden !important; }
@@ -1805,7 +1805,7 @@ body.plazaMode .gameMenuThemes input { accent-color: var(--isle-tag); }
 .controlsCol dd { margin: 0; }
 .controlsHint { position: absolute; left: 50%; top: calc(max(12px, env(safe-area-inset-top)) + 48px); transform: translateX(-50%); z-index: 3; display: flex; align-items: center; gap: 6px; max-width: min(640px, calc(100% - 440px)); padding: 4px 6px 4px 12px; font-size: .84rem; font-weight: 800; }
 .controlsHint span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-body.touchIsland .controlsHint { left: 12px; right: 140px; transform: none; max-width: none; top: calc(max(12px, env(safe-area-inset-top)) + 46px); font-size: .74rem; }
+body.touchIsland .controlsHint { left: 12px; right: 140px; transform: none; max-width: none; top: calc(max(12px, env(safe-area-inset-top)) + 46px); font-size:.75rem; }
 body.touchIsland .controlsHint span { white-space: normal; }
 body.photoMode .controlsHint, body.placing .controlsHint, body:has(dialog[open]) .controlsHint { visibility: hidden; }
 .plazaStage:has(#controlsHint) .questTracker { top: 96px; }
@@ -2840,7 +2840,7 @@ body.herosurvOpen { overflow: hidden; }
 .furnitureList{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;max-height:34vh;overflow:auto}
 .furnitureList .furniturePiece.selected{outline:2px solid #34d399}
 .reformBox .furniturePiece{white-space:nowrap} /* (v1.10.226 총괄 검토: 「소파 (민트) · 놓임」 on one line) */
-body.plazaMode .plazaDialog.editMode .furnitureList .furniturePiece.selected{background:var(--isle-btn);color:#fff;border-color:var(--isle-btn)} /* (207: the island's paper, the one chosen dark brown) */
+body.plazaMode .plazaDialog.editMode .furnitureList .furniturePiece.selected{background:var(--isle-select);color:var(--isle-ink);border-color:var(--isle-tag)} /* (207: the island's paper, the one chosen dark brown) */
 .dressing .skinCard{content-visibility:auto;contain-intrinsic-size:auto 64px} /* (bugs 12: a long list lays out only what is in sight) */
 .dressing .skinCard.noPic{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"name buy" "meta buy";padding:10px 12px}
 .dressing>.skinShopBody .skinFilterBar{position:sticky;top:0;z-index:3;background:#111827;padding:4px 0 8px} /* (bugs 11: the search stays in sight -- its top was cut where the list had scrolled) */
@@ -3029,14 +3029,14 @@ body>.dressRoom{display:none} /* (bugs 10: the 성형외과·염색사 card wait
 .mailStamp{position:absolute;top:8px;right:10px;width:40px;height:46px;display:grid;place-items:center;background:var(--stamp,#c98a1e);color:#fff;font-size:.7rem;font-weight:900;border-radius:2px;outline:2px dashed #fffdf6;outline-offset:-4px;transform:rotate(4deg);box-shadow:0 1px 3px rgba(74,56,40,.3)}
 /* 창 3단계 (gamecenter-notes docs/dialogue-box-redesign-20261025.md): 가방 = 천 주머니, 가게 = 나무 선반 위 가격표, 관공서 창구 = 말풍선 + 도장 칸 종이, 기부함 = 나무 안내판, 섬의 알림 = 위에서 내려오는 쪽지 */
 :root{--isle-btn:#9c5f14;--isle-wood:#9b6a3f;--isle-wood-dark:#6e4728}
-#islandBagDialog{background:repeating-linear-gradient(0deg,rgba(120,90,50,.07) 0 1px,transparent 1px 4px),repeating-linear-gradient(90deg,rgba(120,90,50,.07) 0 1px,transparent 1px 4px) #efe3cc;color:var(--isle-ink);border:2px solid #b49a74;outline:2px dashed #c4a77d;outline-offset:-9px}
+#islandBagDialog{background:repeating-linear-gradient(0deg,rgba(120,90,50,.07) 0 1px,transparent 1px 4px),repeating-linear-gradient(90deg,rgba(120,90,50,.07) 0 1px,transparent 1px 4px) #efe3cc;color:var(--isle-ink);border:2px solid #b49a74;outline:2px dashed var(--isle-line);outline-offset:-9px}
 #islandBagDialog>.recordsDialogHead{background:#8a5f3a;border-bottom:3px double #e9d6b4;border-radius:20px 20px 0 0}
 #islandBagDialog>.recordsDialogHead .ghost{background:var(--isle-paper);color:var(--isle-ink);border:1px solid var(--isle-line)}
-#islandBagDialog>.recordsDialogHead .ghost.selected{outline:2px solid var(--isle-paper);background:#f2b544}
-#islandBagDialog .islandBagSlot{background:#f8eedb;border:2px dashed #c4a77d;border-radius:10px 10px 18px 18px;box-shadow:inset 0 6px 8px -6px rgba(110,71,40,.35)}
+#islandBagDialog>.recordsDialogHead .ghost.selected{outline:2px solid var(--isle-paper);background:var(--isle-select);border-color:var(--isle-tag);color:var(--isle-ink)}
+#islandBagDialog .islandBagSlot{background:#f8eedb;border:2px dashed var(--isle-line);border-radius:10px 10px 18px 18px;box-shadow:inset 0 6px 8px -6px rgba(110,71,40,.35)}
 #islandBagDialog .islandBagSlot small{color:var(--isle-ink)}
 #islandBagDialog .islandBagSlot span{color:#6b5640}
-#islandBagDialog .islandDexCell{background:#f8eedb;border:1px dashed #c4a77d;color:var(--isle-ink)}
+#islandBagDialog .islandDexCell{background:#f8eedb;border:1px dashed var(--isle-line);color:var(--isle-ink)}
 .plazaDialog.shopMode{background:var(--isle-wood) repeating-linear-gradient(180deg,transparent 0 118px,rgba(60,35,15,.55) 118px 121px,#b98a5a 121px 128px,rgba(60,35,15,.35) 128px 132px);border:8px solid var(--isle-wood-dark);color:var(--isle-ink)}
 .plazaDialog.shopMode .recordsDialogHead{background:var(--isle-wood-dark);color:#fff6e3;border:0}
 .plazaDialog.shopMode .recordsDialogHead .ghost{background:#fff6e3;color:var(--isle-ink);border:1px solid #d9c3a0}
@@ -3143,7 +3143,7 @@ body.plazaMode .isle-sheet:not(.adminMode){--btn-ghost-bg:var(--isle-card);--btn
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(button.ghost,button.secondary,.skinTab,.furniturePiece){background:var(--isle-card);color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:none}
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(button.ghost,button.secondary,.skinTab,.furniturePiece):hover{background:var(--isle-hover)}
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(button.primary,button[type="submit"]:not(.ghost):not(.secondary)){background:var(--isle-btn);color:#fff;border:1px solid transparent}
-body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.skinTab[aria-selected="true"],.furniturePiece.selected,button.selected){background:var(--isle-select);border-color:var(--isle-tag);outline:none}
+body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(.skinTab[aria-selected="true"],.furniturePiece.selected,button.selected){background:var(--isle-select);border-color:var(--isle-tag);color:var(--isle-ink);outline:none}
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea){background:var(--isle-field);color:var(--isle-ink);border:1px solid var(--isle-line)}
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(input,textarea)::placeholder{color:var(--isle-soft)}
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(input[type="checkbox"],input[type="radio"]){accent-color:var(--isle-tag)}
@@ -3158,7 +3158,7 @@ body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) .skinCard.equippe
 /* 내 반려동물 (사용자): its face before each, 「함께 다니는 중」 on the one walking */
 .myPetRow .petFace{flex:0 0 auto;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#f8eedb;border:1px solid var(--isle-line);font-size:1.25rem}
 .myPetRow>span:not(.petFace){flex:1;min-width:0}
-.myPetRow .walkingTag{flex:0 0 auto;padding:2px 9px;border-radius:999px;background:#f2b544;color:#4a3015;font-size:.72rem;font-weight:800;transform:rotate(-2deg)}
+.myPetRow .walkingTag{flex:0 0 auto;padding:2px 9px;border-radius:999px;background:#f2b544;color:#4a3015;font-size:.75rem;font-weight:800;transform:rotate(-2deg)}
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) .myPetRow.walking{border-color:var(--isle-tag);background:#fdf0d4}
 /* (문제 기록 1103 11 「통일되지 않았어」) what each window made its own, left dark: paper tabs, rows and cards, the bars brown
    (done green), the reward a deep amber; a game's board itself stays as it is, only round it paper */
@@ -3198,7 +3198,7 @@ body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode){color-scheme:ligh
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) label:has(>input[type="checkbox"]){display:inline-flex;align-items:center;gap:6px}
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) label>input[type="checkbox"]{width:auto;min-width:0;margin:0;flex:0 0 auto}
 /* (총괄 검토) the bag's buttons on one line in a phone's narrow slot */
-#islandBagDialog .islandBagSlot button{white-space:nowrap;font-size:.68rem;padding:3px 6px}
+#islandBagDialog .islandBagSlot button{white-space:nowrap;font-size:.75rem;padding:3px 6px}
 /* (총괄 검토) 내 정보's preview: a paper frame, no words over the picture, all of it in the window */
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) .skinTryOn{background:var(--isle-card);border:1px solid var(--isle-line);box-shadow:none}
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) .dressNote{display:none}
@@ -3247,11 +3247,11 @@ body.plazaMode #myInfoDialog .dressStage .dressCanvas{aspect-ratio:auto;height:m
 #islandBagDialog.bagPouch>.recordsDialogHead h2{color:var(--isle-ink);font-size:1.15rem;margin-right:auto}
 #islandBagDialog.bagPouch>.recordsDialogHead .skinShopBalance{color:var(--isle-soft);font-size:.85rem}
 #islandBagDialog.bagPouch .islandBagGrid:not(.islandDexGrid){grid-template-columns:repeat(8,minmax(44px,1fr));gap:8px;margin:0}
-#islandBagDialog.bagPouch .islandBagSlot{aspect-ratio:1;min-width:44px;display:grid;place-items:center;border-radius:50%;border:2px solid #e6d3b3;background:#f8eedb;box-shadow:inset 0 3px 6px -3px rgba(110,71,40,.3);cursor:pointer;font-size:1.4rem;position:relative;touch-action:manipulation}
+#islandBagDialog.bagPouch .islandBagSlot{aspect-ratio:1;min-width:44px;display:grid;place-items:center;border-radius:50%;border:2px solid var(--isle-line);background:#f8eedb;box-shadow:inset 0 3px 6px -3px rgba(110,71,40,.3);cursor:pointer;font-size:1.4rem;position:relative;touch-action:manipulation}
 #islandBagDialog.bagPouch .islandBagSlot .itemIcon{width:70%;height:70%;object-fit:contain;pointer-events:none}
-#islandBagDialog.bagPouch .islandBagSlot small{position:absolute;right:-2px;bottom:-2px;top:auto;padding:0 5px;border-radius:999px;background:var(--isle-paper);border:1px solid var(--isle-line);font-size:.68rem;font-weight:800;line-height:1.4}
+#islandBagDialog.bagPouch .islandBagSlot small{position:absolute;right:-2px;bottom:-2px;top:auto;padding:0 5px;border-radius:999px;background:var(--isle-paper);border:1px solid var(--isle-line);font-size:.75rem;font-weight:800;line-height:1.4}
 #islandBagDialog.bagPouch .islandBagSlot small:empty{display:none}
-#islandBagDialog.bagPouch .islandBagSlot.empty{cursor:default;border-style:dashed;border-color:#ead9bd;background:radial-gradient(circle,#e6d3b3 0 3px,transparent 4px) #fbf4e4;box-shadow:none}
+#islandBagDialog.bagPouch .islandBagSlot.empty{cursor:default;border-style:dashed;border-color:#ead9bd;background:radial-gradient(circle,var(--isle-line) 0 3px,transparent 4px) #fbf4e4;box-shadow:none}
 #islandBagDialog.bagPouch .islandBagSlot:focus-visible{outline:3px solid var(--isle-tag);outline-offset:2px}
 #islandBagDialog.bagPouch .islandBagSlot.picked{border-color:var(--isle-tag);background:#fdf0d4}
 #islandBagDialog.bagPouch .islandBagSlot.inHand{border:3px solid #7a4a1c}
@@ -3269,7 +3269,7 @@ body.plazaMode #myInfoDialog .dressStage .dressCanvas{aspect-ratio:auto;height:m
 .islandBagFoot .islandBagPoints{margin-left:auto;padding:4px 12px 4px 30px;border-radius:999px;background:url("/assets/items/point.svg") 8px 50%/16px 16px no-repeat #f2e3c4;color:var(--isle-ink);font-weight:800;font-size:.85rem}
 .islandBagFoot .islandBagPoints:empty{display:none}
 #islandBagDialog.bagPouch .islandBagFoot .ghost{background:var(--isle-card);color:var(--isle-ink);border:1px solid var(--isle-line)}
-#islandBagDialog.bagPouch .islandBagFoot .ghost.selected{background:var(--isle-select);border-color:var(--isle-tag);outline:none}
+#islandBagDialog.bagPouch .islandBagFoot .ghost.selected{background:var(--isle-select);border-color:var(--isle-tag);color:var(--isle-ink);outline:none}
 @media (max-width:640px),(pointer:coarse){#islandBagDialog.bagPouch{padding:18px 14px 14px;width:min(420px,calc(100vw - 24px))}#islandBagDialog.bagPouch .islandBagGrid:not(.islandDexGrid){grid-template-columns:repeat(4,minmax(44px,1fr))}}
 @media (prefers-reduced-motion:reduce){#islandBagDialog.bagPouch,#islandBagDialog.bagPouch .bagMenu{animation:none}#islandBagDialog.bagPouch .islandBagSlot.held{transform:none}}
 /* (총괄 검토: a phone 4 a row -- 32 slots are 8 rows: past a phone's height, the slots scroll in the pouch) */
@@ -3458,7 +3458,7 @@ body.plazaMode :is(.plazaDialog .myRecordsCard,#recordsDialog) .recordsBadge{bac
 body.plazaMode #recordsDialog :is(.card,.recordsProfile,.recordsResult,li){background:transparent;color:var(--isle-ink)}
 /* (총괄 검토: the ranking window opened there -- island pills, the chosen one brown) */
 body.plazaMode .rankingDialog.isle-sheet .rankingWeeks button{background:var(--isle-card);color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:none}
-body.plazaMode .rankingDialog.isle-sheet .rankingWeeks button[aria-checked="true"]{background:var(--isle-btn);color:#fff;border-color:var(--isle-btn)}
+body.plazaMode .rankingDialog.isle-sheet .rankingWeeks button[aria-checked="true"]{background:var(--isle-select);color:var(--isle-ink);border-color:var(--isle-tag)}
 body.plazaMode .rankingDialog.isle-sheet .rankingControls select{background:var(--isle-field);color:var(--isle-ink);border:1px solid var(--isle-line)}
 
 /* v1.10.232 배치 도구: the strip of pieces at the bottom of the 3D view (a PC: in the middle; a phone: the whole width), its
@@ -3493,8 +3493,8 @@ body.placing .toast{top:16px;bottom:auto}
 /* v1.10.233 도감: its tabs (바다 · 민물 · 곤충 · 기념) and 「찾은 것만」 under the head, fixed; only the cells scroll, in the window (PC and phone) */
 #islandBagDialog .islandDexTabs{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:4px 0 8px}#islandBagDialog .islandDexTabs.hidden{display:none}
 #islandBagDialog .islandDexTabRow{display:flex;flex-wrap:wrap;gap:6px}
-#islandBagDialog .islandDexTab{padding:5px 11px;border-radius:999px;border:1px solid #c4a77d;background:#fbf3e2;color:var(--isle-ink);font-size:.8rem;font-weight:700}
-#islandBagDialog .islandDexTab.selected{background:var(--isle-btn,#8a5f3a);border-color:var(--isle-btn,#8a5f3a);color:#fff}
+#islandBagDialog .islandDexTab{padding:5px 11px;border-radius:999px;border:1px solid var(--isle-line);background:#fbf3e2;color:var(--isle-ink);font-size:.8rem;font-weight:700}
+#islandBagDialog .islandDexTab.selected{background:var(--isle-select);border-color:var(--isle-tag);color:var(--isle-ink)}
 #islandBagDialog .islandDexFound{display:inline-flex;align-items:center;gap:4px;font-size:.8rem;color:var(--isle-ink);white-space:nowrap}
 #islandBagDialog .islandDexGrid{max-height:min(60dvh,560px);overflow-y:auto;padding:4px 2px}
 /* v1.10.243 게임관 UI 통일 U1 (한판마당 기준, gamecenter-notes docs/gamehall-unify-hanpan-20261104.md): its colours as tokens -- the dark
@@ -3882,7 +3882,7 @@ body.islandMining .quickBar,body.islandMining #toast{visibility:hidden}
 .islandBagTabs.hidden{display:none}
 .bagTab{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:999px;border:2px solid rgba(120,90,50,.35);background:#fffaf0;color:#5a4330;font-weight:800;font-size:13px;cursor:pointer;white-space:nowrap}
 .bagTab i{font-style:normal;min-width:18px;padding:0 5px;border-radius:999px;background:#e9dcc3;color:#5a4330;font-size:11px;line-height:18px;text-align:center}
-.bagTab.on{background:#f2b84b;border-color:#c9862a;color:#3b2a14}
+.bagTab.on{background:var(--isle-select);border-color:var(--isle-tag);color:var(--isle-ink)} /* (1.10.419 U5 결정 43 A 2: the one honey) */
 .bagTab.on i{background:#fff3d6}
 .bagTab.none{opacity:.55}
 .islandBagGrid>.islandBagSlot[hidden]{display:none}
@@ -3971,7 +3971,7 @@ body.plazaMode .dressBar .dressBuy{background:var(--isle-btn);color:#fff}
 body.plazaMode .dressBar button:disabled{opacity:1;background:var(--isle-card);color:var(--isle-soft);border:1px dashed var(--isle-line)}
 /* A2 캐릭터 선택: a paper sheet (index.html isle-sheet), the two faces paper cards, the chosen one brown-lined, 「확정」 the main button inside the sheet */
 body.plazaMode .genderChoice{background:var(--isle-card);border-color:var(--isle-line);color:var(--isle-ink)}
-body.plazaMode .genderChoice[aria-checked="true"]{background:var(--isle-select);border-color:var(--isle-tag);box-shadow:0 0 0 3px rgba(138,106,74,.25)}
+body.plazaMode .genderChoice[aria-checked="true"]{background:var(--isle-select);border-color:var(--isle-tag);box-shadow:0 0 0 3px rgba(138,106,74,.25);color:var(--isle-ink)}
 body.plazaMode .isle-sheet.genderDialog #genderConfirmBtn{display:block;width:calc(100% - 32px);margin:6px 16px 0}
 body.plazaMode .isle-sheet.genderDialog #genderConfirmBtn:disabled{opacity:1;background:var(--isle-card);color:var(--isle-soft);border:1px dashed var(--isle-line)}
 /* A4 출석 「섬 안내」, A5 조작법 띠, A11 「화면이 느려요」: paper buttons (the note's 「최대한 가볍게」 the main one) */
