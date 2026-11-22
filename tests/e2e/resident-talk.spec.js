@@ -49,7 +49,8 @@ test('주민 대화: 걷는 주민 붙잡기·선택지·두 화면 멈춤, 심�
   const choices = page.locator('#plazaDialog .talkChoices button');
   // (v1.10.267 대화 나무 3-0) four at most, straight away -- nothing to ask of them: 「뭐 좋은 거 없어요?」, the day's topic,
   // 「⋯ 더 보기」 (the rest: the old one-liners, a gift, 잘 가요, ← 돌아가기)
-  const topics = () => choices.evaluateAll((bs) => bs.map((b) => b.dataset.topic));
+  /* (1.10.412 CI: 「🎲 내기해요」 joins once they know me -- a gift on some days is enough (CI #563 on 11-23, 3 of 3); its own spec has it, not counted here) */
+  const topics = () => choices.evaluateAll((bs) => bs.map((b) => b.dataset.topic).filter((t) => t !== 'bet'));
   const TOP = ['tree', 'tree', 'more']; const MORE = ['how', 'rumor', 'ask', 'gift', 'bye', 'back'];
   await expect.poll(topics).toEqual(TOP); await expect(choices.first()).toHaveText('뭐 좋은 거 없어요?');
   // the words' bubble and the choices' bubble: on the screen, apart

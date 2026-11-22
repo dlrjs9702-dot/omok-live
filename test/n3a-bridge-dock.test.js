@@ -9,7 +9,7 @@ const X = require('../public/plaza/island-taxi.js');
 const P = require('../public/plaza/isle2-props.js');
 const Tg = require('../lib/island-tigers');
 const D = T.dalmaru; const SEA = D.SEA ?? -0.6;
-const E = T.bridges.find((b) => b.high);
+const E = T.bridges.find((b) => b.high && b.x > 0) /* (412: the west one high too) */;
 
 test('N3-a 높은 윤슬다리: 56 m 제 길이, 가운데 바다 위 7 m 안팎, 배 길 밑 4.5 m 넘음, 양끝은 땅과 이어짐(턱 없음), 끝 내리막도 0.45 넘지 않음', { skip: !T.dalmaru && '달마루섬 전용' }, () => {
   assert.ok(E, 'the east bridge is the high one'); assert.equal(E.model, 'dalmaru.bridge_yunseul_wide'); assert.equal(E.w, 7.8); assert.equal(E.guard, 4.35); /* (1.10.407 assets 170: the wide one in 133's place) */ assert.equal(E.half, 28); assert.equal(E.x, 59.35); assert.equal(E.z, 140);
@@ -18,7 +18,9 @@ test('N3-a 높은 윤슬다리: 56 m 제 길이, 가운데 바다 위 7 m 안팎
   for (const [u, x] of [[-E.half, E.x - E.half], [E.half, E.x + E.half]]) { const off = x + Math.sign(u) * 0.3; assert.ok(Math.abs(T.deckAt({ b: E, u }) - T.heightAt(off, E.z)) < 0.12, `end ${x}: ${T.deckAt({ b: E, u })} vs ${T.heightAt(off, E.z)}`); }
   for (let u = -E.half; u < E.half; u += 0.25) { const a = T.deckAt({ b: E, u }); const b = T.deckAt({ b: E, u: u + 0.25 }); assert.ok(Math.abs(b - a) / 0.25 <= 0.45 + 1e-6, `slope at ${u}: ${(b - a) / 0.25}`); }
   for (let u = -E.half; u <= E.half; u += 1) assert.ok(Math.abs(T.heightAt(E.x + u, E.z) - T.deckAt({ b: E, u })) < 1e-6, `walked on it at ${u}`);
-  const west = T.bridges.find((b) => !b.high && !b.isle2 && b.model && b.x < 0); assert.equal(west.half, 21, 'the west one as it was');
+  /* (1.10.412 L3: the west one the east's twin -- high, wide, 56 m, its own model; its cape end walked onto as the east's) */
+  const west = T.bridges.find((b) => b.high && b.x < 0); assert.ok(west && west.half === 28 && west.w === 7.8 && west.model === 'dalmaru.bridge_yunseul_wide' && west.lane, 'the west one high and wide');
+  for (const [u, x] of [[-west.half, west.x - west.half], [west.half, west.x + west.half]]) { const off = x + Math.sign(u) * 0.3; assert.ok(Math.abs(T.deckAt({ b: west, u }) - T.heightAt(off, west.z)) < 0.12, `west end ${x}: ${T.deckAt({ b: west, u })} vs ${T.heightAt(off, west.z)}`); }
 });
 
 test('N3-a 비탈 옆 막기: 판이 옆 땅보다 0.4 m 넘게 높은 곳은 양옆이 막힘, 판 위 걷는 폭은 그대로, 건널목·찻길 쪽 길은 안 막음', { skip: !T.dalmaru && '달마루섬 전용' }, () => {

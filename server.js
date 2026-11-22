@@ -5234,7 +5234,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.411' });
+    return sendJson(res, 200, { ok: true, version: '1.10.412' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -8761,6 +8761,8 @@ async function requestHandler(req, res) {
     const passDay = kstDate(nowMs()); const passClaim = `taxipass:${account}:${passDay}`; const hasPass = Boolean(await pointStore.settlementOf(passClaim));
     /* (1.10.391 N4-a 「어디로 갈까요?」; 392: every other place on the road, each with its fare) */
     const dests = IslandTaxi.PLACE_IDS().filter((id) => id !== from).map((id) => ({ id, label: IslandTaxi.labelOf(id), fare: IslandTaxi.fareByRoad(from, id, per100, minFare) }));
+    /* (1.10.412 L3 사용자 결정 69 A: last, 「섬 한 바퀴(구경)」 -- back where one got in, its fare by its own length) */
+    if (IslandTaxi.RING) dests.push({ id: from, label: IslandTaxi.LOOP_LABEL, fare: IslandTaxi.fareByRoad(from, from, per100, minFare), loop: true });
     const to = body.to != null ? String(body.to) : IslandTaxi.STOPS[from]?.to || dests[0].id; const dest = dests.find((d) => d.id === to); const fare = dest ? dest.fare : dests[0].fare;
     const stop = IslandTaxi.STOPS[from] ? IslandTaxi.stopOf(from) : { ...IslandTaxi.curbOf(from, IslandTaxi.standingAt(taxiFleet, from)[0]?.curb ?? 1) /* (410: the curb its car stands at, either side) */, label: IslandTaxi.labelOf(from) }; const called = taxiCalls.get(session.token);
     if (req.method === 'GET') return sendJson(res, 200, { ok: true, from, to, fare, dayPass, pass: hasPass, awayS: Math.ceil(taxiAwayMs(from) / 1000), dests, cars: IslandTaxi.standingAt(taxiFleet, from).length, ...(IslandTaxi.ROADSTOPS[from] ? { called: called?.stop === from ? { place: called.queued ? taxiQueuePlace(session.token) : 0 } : null } : {}) });
@@ -8792,7 +8794,7 @@ async function requestHandler(req, res) {
         /* (1.10.403 Codex 391~400 #6: the fare's claim by the page's request, not the moment -- paid, then the server gone before the ride was kept: the
            same request pressed again rides on that payment, not a second fare; a paid request starts one ride, and only within 10 minutes) */
         const rid = typeof body.requestId === 'string' && /^[A-Za-z0-9-]{8,64}$/.test(body.requestId) ? body.requestId : null; const fareClaim = `taxi:${account}:${rid || startedAt}`;
-        const out = await pointStore.charge(pay === 'pass' ? { userId: account, claimId: passClaim, price, title: `섬 택시 자유이용권 · ${passDay.slice(5)}` } : { userId: account, claimId: fareClaim, price, title: `섬 택시 · ${IslandTaxi.labelOf(from)} → ${IslandTaxi.labelOf(to)}` }).catch(() => null);
+        const out = await pointStore.charge(pay === 'pass' ? { userId: account, claimId: passClaim, price, title: `섬 택시 자유이용권 · ${passDay.slice(5)}` } : { userId: account, claimId: fareClaim, price, title: `섬 택시 · ${IslandTaxi.labelOf(from)} → ${to === from ? IslandTaxi.LOOP_LABEL : IslandTaxi.labelOf(to)}` }).catch(() => null);
         if (!out) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
         if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', `포인트가 모자라요(${price.toLocaleString('ko-KR')}P)`);
         if (pay !== 'pass' && !out.applied) { const at = Number.isFinite(Number(out.at)) ? Number(out.at) : Date.parse(String(out.at)); if (!rid || taxiPaidRides.has(fareClaim) || !(nowMs() - at < 600000)) return sendError(res, 409, 'TAXI_PRICE', '이미 쓴 결제예요. 다시 타기를 눌러 주세요.'); }
@@ -11147,7 +11149,7 @@ async function main() {
   bootMark('before-listen');
   /* (1.10.376 별마루섬 호랑이: their ground made after the start in 20 ms slices, as 별마루섬's open table -- the tigers wait till it is) */
   if (process.env.NODE_ENV !== 'test') setTimeout(() => { const step = () => { try { if (!tigerSim.warm(20)) setImmediate(step); } catch (error) { console.error('호랑이 땅 만들기 실패:', error.message); } }; step(); }, 6000).unref?.();
-  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.411 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); tigerPendingResume().catch(() => {}); /* (403 Codex #16: catches whose loss was not saved before the restart) */ if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.412 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); tigerPendingResume().catch(() => {}); /* (403 Codex #16: catches whose loss was not saved before the restart) */ if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

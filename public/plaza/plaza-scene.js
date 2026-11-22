@@ -6798,7 +6798,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (boatNow) { const m = me.root.position; const to = BT.DOCKS[boatNow.to || BT.DOCKS[boatNow.at]?.other]?.label || '';
       eventDoors['boat:ride'] = ['hold', 'back'].includes(boatNow.phase) ? { x: m.x, z: m.z, name: `⛴ 내리기 · 곧 출발 ${Math.max(0, Math.ceil((boatNow.until - taxiNow()) / 1000))}초` } : boatNow.phase === 'sail' ? { x: m.x, z: m.z, name: `⛴ ${to}까지 가는 중`, plain: true } : { x: m.x, z: m.z, name: '⛴ 내리는 중', plain: true };
       best = 'boat:ride'; }
-    else if (taxiRide) { const m = me.root.position; const to = TX.labelOf(TX.toOf(taxiRide.ride)); eventDoors['train:taxi'] = { x: m.x, z: m.z, name: `🚕 ${to}까지 가는 중`, plain: true }; /* (392: any place) */ best = 'train:taxi'; } // (v1.10.271: no 내리기 -- two stops only)
+    else if (taxiRide) { const m = me.root.position; const to = TX.labelOf(TX.toOf(taxiRide.ride)); eventDoors['train:taxi'] = { x: m.x, z: m.z, name: TX.toOf(taxiRide.ride) === taxiRide.ride.from ? '🚕 섬 한 바퀴 도는 중' /* (412) */ : `🚕 ${to}까지 가는 중`, plain: true }; /* (392: any place) */ best = 'train:taxi'; } // (v1.10.271: no 내리기 -- two stops only)
     else if (riding) {
       const st = R.trainAt(riding.id, trainNow()); const m = me.root.position;
       eventDoors['train:ride'] = st.held ? { x: m.x, z: m.z, name: '안전 대기', plain: true } : st.stop && st.wait > .7 && st.wait <= R.DWELL - .7 ? { x: m.x, z: m.z, name: `내리기 · ${R.stationOf(st.stop).name}` } : st.stop ? { x: m.x, z: m.z, name: `정차 중 · ${R.stationOf(st.stop).name}`, plain: true } : { x: m.x, z: m.z, name: `다음 정류장 · ${R.stationOf(st.next).name} ${Math.ceil(st.eta)}초`, plain: true };

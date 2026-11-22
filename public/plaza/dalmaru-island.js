@@ -293,7 +293,7 @@
      the gate's own cut (dalmaru-terrain gateCut: its leaves' room)) */
   const END_FLAT = Object.freeze({ hw: 4.9, inside: 1.5, out: 3, ease: 3 }); let endFlats = null;
   function bridgeEndFlat(x, z, h) {
-    if (!endFlats) { const list = []; endFlats = []; /* (none while the ends' own height is read) */ for (const b of D.BRIDGES) for (const k of b.high ? [1] : b.isle2 || b.river ? [0, 1] : []) { const [ex, ez] = b.ends[k]; const l = Math.hypot(ex - b.x, ez - b.z) || 1; /* (411: each end's own outward way -- the river bridge slantwise) */
+    if (!endFlats) { const list = []; endFlats = []; /* (none while the ends' own height is read) */ for (const b of D.BRIDGES) for (const k of b.high ? b.flat || [1] : b.isle2 || b.river ? [0, 1] : []) { const [ex, ez] = b.ends[k]; const l = Math.hypot(ex - b.x, ez - b.z) || 1; /* (411: each end's own outward way -- the river bridge slantwise) */
       list.push({ x: ex, z: ez, ax: (ex - b.x) / l, az: (ez - b.z) / l, h: b.isle2 || b.river ? Math.max(...b.ends.map(([x0, z0]) => D.ground(x0, z0)), SEA) + 0.1 /* (its arched deck's one end height, base + YB.top, less 2 cm) */ : land(ex, ez), gate: b.isle2 && k === 1 ? (D.TAXI_GATES || [])[0] : null, across: Boolean(b.isle2 || b.river), mid: landBefore(ex, ez) }); } endFlats = list; }
     for (const f of endFlats) {
       const u = (x - f.x) * f.ax + (z - f.z) * f.az; const v = Math.abs(-(x - f.x) * f.az + (z - f.z) * f.ax); if (u < -END_FLAT.inside - END_FLAT.ease || u > END_FLAT.out + END_FLAT.ease || v > END_FLAT.hw + END_FLAT.ease) continue;
@@ -479,6 +479,9 @@
 
   // 물가 거리's railing, lamps and benches (assets 55) along the water before 대청마당, open where the walk comes down to
   // 배 타는 곳; a rail every 4.2 m on the shore side of the walk, a lamp every third, a bench (facing the water) between
+  /* (1.10.412 L3 총괄 「가로등 규칙에서 비키게」: a lamp 0.3 m round keeps 1.65 m off a road stop's sign (1.5 clear) and 1.3 m off its mark (0.95) -- each side's) */
+  const stopPlaces_ = []; const byStopPlace = (x, z) => { if (!stopPlaces_.length && TX?.ROADSTOPS) for (const id of Object.keys(TX.ROADSTOPS)) for (const s of [1, -1]) { const c = TX.curbOf(id, s); const m = TX.boardOf(id, s); stopPlaces_.push([c.sign.x, c.sign.z, 1.8], [m.x, m.z, 1.3]); }
+    return stopPlaces_.some(([px, pz, r]) => Math.hypot(x - px, z - pz) < r); };
   const WATERFRONT = (() => {
     const rails = []; const lamps = []; const benches = [];
     const r = D.R_BAY + 3.4; const step = (4.2 / r) * (180 / Math.PI);
@@ -489,8 +492,8 @@
       // (묶음 5 배치 점검: off the walk (r 99.4-102.6) -- the lamps on its land side, the benches beyond them facing the water)
       // (T1: where the taxi road runs by the water, the lamp on its land-side walk's outer edge and the bench behind it -- out
       // from the bay till clear of the road)
-      const outward = (r0, room) => { let rr = r0; while (rr < r0 + 9 && roadDist(...bayAt(a, rr)) < ROAD.half + room) rr += 0.2; return bayAt(a, rr); };
-      if (k % 3 === 1) { const [lx, lz] = outward(103.1, 0.55); lamps.push({ x: lx, z: lz, r: 0.3 }); }
+      const outward = (r0, room, keep = () => false) => { let rr = r0; while (rr < r0 + 9 && (roadDist(...bayAt(a, rr)) < ROAD.half + room || keep(...bayAt(a, rr)))) rr += 0.2; return bayAt(a, rr); };
+      if (k % 3 === 1) { const [lx, lz] = outward(103.1, 0.55, byStopPlace); lamps.push({ x: lx, z: lz, r: 0.3 }); } /* (412: and clear of a stop's sign and mark, either side) */
       if (k % 6 === 3) { const [bx, bz] = outward(104.6, 1.3); benches.push({ x: bx, z: bz, yaw: Math.atan2(-bx, D.BAY_Z - bz), r: 0.9 }); } // (a bench's +Z, its front, toward the water)
     }
     return { rails, lamps, benches };
@@ -650,6 +653,7 @@
   /* (1.10.407 assets 170: the wide 윤슬다리's guards at 4.35 -- nothing grows within 1 m of them, nor 3 m past its ends) */
   const byWideBridge = (x, z, r) => bridges.some((b) => b.guard && Math.abs(x - b.x) < b.half + 3 + r && Math.abs(z - b.z) < b.guard + 1 + r);
   addNatureBlock(byWideBridge);
+  addNatureBlock((x, z, r) => (TX?.TURN_PADS || []).some((p) => Math.hypot(x - p.x, z - p.z) < p.r + r)); /* (1.10.412 L3: a dead end's round place, painted -- clear) */
   if (Q) addNatureBlock((x, z, r) => Q.inArea(x, z, r + 1)); // (1.10.323 채석장: the quarry's ground clear of trees, bushes and rocks)
   if (Q) { const out = Q.solidsOf().filter((s) => s.quarryProp && !Q.inArea(s.x, s.z, 1)); addNatureBlock((x, z, r) => out.some((s) => Math.hypot(x - s.x, z - s.z) < s.r + r + 1)); } // (1.10.342: and round its props outside it -- the bench faces along the cliff edge)
   /* (385 부팅 무게 2, lib/boot-cache.js: the server's start hands in what this made before from the same code -- taken when the same
@@ -721,7 +725,7 @@
       const spots = atRoad ? [foot.side, -foot.side].map((s) => [foot.x + foot.nx * out * s, foot.z + foot.nz * out * s]) : [[lx0, lz0]];
       const fits = ([lx, lz]) => !(!walkable(lx, lz) || inPlaza(lx, lz, 1) || onBridge(lx, lz) || onStairs(lx, lz) || inTownhall(lx, lz, 1) || (!atRoad && walkDist(lx, lz) < 0.2) || roadDist(lx, lz) < (street ? out - 0.05 : ROAD.half + 0.5))
         && !(structureSolids().some((o) => Math.hypot(o.x - lx, o.z - lz) < o.r + 0.6) || BUILDINGS.some((b) => Math.hypot(b.x - lx, b.z - lz) < (b.kind === 'facade' ? FACADE.w / 2 + 1 : 4)))
-        && ![...keptTrees, ...keptBushes].some((t) => Math.hypot(t.x - lx, t.z - lz) < 1.5) && !atCrossing({ x: lx, z: lz }, 0.4);
+        && ![...keptTrees, ...keptBushes].some((t) => Math.hypot(t.x - lx, t.z - lz) < 1.5) && !atCrossing({ x: lx, z: lz }, 0.4) && !(TX?.TURN_PADS || []).some((p) => Math.hypot(lx - p.x, lz - p.z) < p.r + 0.3) /* (412: off a dead end's round place) */;
       const at = spots.find(fits); if (at) lampSpots.push({ x: at[0], z: at[1], ...(D.newIsleCoast(at[0], at[1]) > -5 ? { isle2: true } : {}) }); /* (N1: 새 섬's shown with it) */
     } }
     // G4a 흩뿌리기 (notes docs/graphics-island-wide-20261108.md G4, assets 112; 사용자 「덤불, 바위들은 뚫고 지나가지 못하게」):
