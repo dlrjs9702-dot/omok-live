@@ -15,7 +15,7 @@ test('탐방선: 배 타는 곳에서 타기 → 곧 출발 → 다리 밑으로
   const shown = () => page.evaluate(() => window.PlazaDebug().boats());
   // the boats drawn at their berths: two at each dock
   await page.evaluate(() => window.PlazaDebug().teleport(0, 1.5)); await page.waitForTimeout(3500); /* (1.10.395 Codex 7: a leap onto the float counts as there after 3 s) */
-  { const s = await shown(); const near = s.shown.filter((b) => b.visible && Math.hypot(b.x, b.z - 4.85) < 6); expect(near.length).toBe(2); }
+  { const s = await shown(); const near = s.shown.filter((b) => b.visible && [-6.5, 2.5].some((bx) => Math.hypot(b.x - bx, b.z - 5.75) < 1)); expect(near.length).toBe(2); } /* (1.10.409 assets 172: the two boarding berths along the wide float) */
   // SPACE on the float: aboard, the hint 「내리기 · 곧 출발」
   await expect.poll(async () => { await page.evaluate(() => window.PlazaDebug().teleport(0, 1.5)); return page.locator('#plazaHint').textContent(); }, { timeout: 15000 }).toContain('타기');
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
@@ -28,9 +28,9 @@ test('탐방선: 배 타는 곳에서 타기 → 곧 출발 → 다리 밑으로
     return s.mine; }, { timeout: 60000, intervals: [100] }).toBeNull();
   expect(sailed, 'seen crossing').toBeGreaterThan(3);
   expect(under, 'under the high bridge').toBe(true); expect(far, 'seated in it').toBeLessThan(2.5);
-  // off on 별마루섬 부두's float
-  await expect.poll(() => page.evaluate(() => { const d = window.PlazaDebug(); return Math.hypot(d.x - 223.6, d.z - 197) < 7; }), { timeout: 15000 }).toBe(true);
-  // quiet: two and two again (the third at 별마루섬 went back empty)
-  await expect.poll(async () => { const s = (await shown()).state; return ['dal', 'byeol'].map((d) => s.boats.filter((b) => b.at === d && b.phase === 'docked').length).join('/'); }, { timeout: 30000 }).toBe('2/2');
+  // off on 별마루섬 부두 -- 409 결정 75: on its arm, by the unloading berth
+  await expect.poll(() => page.evaluate(() => { const d = window.PlazaDebug(); const e = window.IslandBoat.exitOf('byeol', 2); return Math.hypot(d.x - e.x, d.z - e.z) < 3; }), { timeout: 15000 }).toBe(true);
+  // quiet: two and two again (the third at 별마루섬 went back empty, and backed into the outer boarding berth there)
+  await expect.poll(async () => { const s = (await shown()).state; return ['dal', 'byeol'].map((d) => s.boats.filter((b) => b.at === d && b.phase === 'docked').length).join('/'); }, { timeout: 60000 }).toBe('2/2');
   await expectNoScriptError(page); await a.context.close();
 });
