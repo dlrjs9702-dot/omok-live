@@ -2339,6 +2339,20 @@
     "dalmaru-v1/bridge_yunseul_wide.glb": {
       "triangles": 20600,
       "reason": "1.10.407 assets 170 새 윤슬다리(동·서 같은 모델): 56 m at its own length, 7.8 m walk (two lanes and walks), 8 piers, 4 lamps; within the order's cap. Its Low 3,062"
+    },
+    "byeolmaru-v1/bridge_byeolmaru_wide.glb": {
+      "triangles": 23200,
+      "reason": "1.10.408 assets 171 새 별마루다리: 61.75 m at its own length, 7.8 m walk (two lanes and walks), its arch and 4 lamps, its gate end cut; one bridge on the island. Its Low 3,808"
+    },
+    "byeolmaru-v1/fence_gate_road.glb": {
+      "meshes": 5,
+      "nodes": 14,
+      "reason": "1.10.408 assets 171: the taxi road's gate -- the car gate's two leaves and the two people's wickets (leaf_l, leaf_r, side_l, side_r) meshes of their own (turned open by the game), stand_in / stand_out / side_way_l / side_way_r empty nodes"
+    },
+    "byeolmaru-v1/fence_gate_road_low.glb": {
+      "meshes": 5,
+      "nodes": 14,
+      "reason": "1.10.408 assets 171: the taxi road's gate -- the car gate's two leaves and the two people's wickets (leaf_l, leaf_r, side_l, side_r) meshes of their own (turned open by the game), stand_in / stand_out / side_way_l / side_way_r empty nodes"
     }
   },
   "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files.",

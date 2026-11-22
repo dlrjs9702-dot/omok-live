@@ -51,3 +51,14 @@ test('N3-a 별마루섬 부두: 뜬 판에서 건널판·계단을 지나 부두
   const g = Tg.createTigers({ T, P, rand }); g.warm();
   for (const [dx, dz] of [[0, 0], [6, 0], [8, 6], [11, -3]]) assert.equal(g.huntable(gate[0] + dx, gate[1] + dz), false, `${dx},${dz}`);
 });
+
+/* (1.10.408 assets 171, 검토 docs/gate-sill-171-20261122.md: 별마루다리 7.8 m, its ends level across (their ramps kept), and by the road gate no sill --
+   walked from each end's planks 1 m onto the ground, every 0.1 m within 4 cm, all across the walk) */
+test('171 넓은 별마루다리: 7.8 m 제 길이 모델, 양 끝 폭 방향 평평, 문 쪽 끝 턱 없음(0.1 m마다 4 cm 안)', { skip: !T.dalmaru && '달마루섬 전용' }, () => {
+  const B = T.bridges.find((b) => b.isle2); assert.equal(B.model, 'byeolmaru.bridge_byeolmaru_wide'); assert.equal(B.w, 7.8); assert.equal(B.guard, 4.35); assert.ok(B.ownLength && B.lane);
+  const steps = []; let lean = 0;
+  for (const s of [-1, 1]) { const ex = B.x + s * B.half; const hs = [];
+    for (let v = -3.9; v <= 3.9 + 1e-9; v += 0.1) { const z = B.z + v; let prev = T.deckAt({ b: B, u: s * B.half }); for (let d = 0.1; d <= 1 + 1e-9; d += 0.1) { const h = T.heightAt(ex + s * d, z); if (Math.abs(h - prev) > 0.04) steps.push(`${(ex + s * d).toFixed(1)},${z.toFixed(1)}: ${(h - prev).toFixed(3)}`); prev = h; } hs.push(T.heightAt(ex + s * 0.3, z)); }
+    if (s < 0) lean = Math.max(...hs) - Math.min(...hs); }
+  assert.deepEqual(steps, []); assert.ok(lean < 0.02, `west end across ${lean}`);
+});

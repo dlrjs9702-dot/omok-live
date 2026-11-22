@@ -154,8 +154,9 @@
   /* 1.10.394 N4-c (notes n4-plan-20261120 §5-4, 결정 41-1 B; assets 163 ground-cut.json): inside the wide gate on 별마루다리's head the ground
      rose 0.57 m where its leaves swing in -- cut, only inside the gate's line (lz > 0) and never raised: flat at the line's height 0.04 for
      7 m along it and 2.3 m in, then 0.3 a metre up inward and to both sides (round at the corners), at most 0.55 m deep. The gate's
-     place and turn as isle2-props puts it (#182 of the fence) */
-  const GATE_CUT = Object.freeze({ x: 228.23, z: 225.65, c: Math.cos(1.327), s: Math.sin(1.327), y: 0.04, hw: 3.5, d: 2.3, slope: 0.3, max: 0.55 });
+     place and turn as isle2-props puts it (#182 of the fence). 1.10.408 assets 171 (ground-cut171.json): the road gate's longer, wider leaves and
+     its wickets -- flat 9.2 m along and 3 m in, at most 0.65 deep (every leaf 15.8 cm and more over it at every opening) */
+  const GATE_CUT = Object.freeze({ x: 228.23, z: 225.65, c: Math.cos(1.327), s: Math.sin(1.327), y: 0.04, hw: 4.6, d: 3.0, slope: 0.3, max: 0.65 });
   function gateCut(x, z, h) {
     const G = GATE_CUT; const dx = x - G.x; const dz = z - G.z; if (dx * dx + dz * dz > 100) return h;
     const lx = dx * G.c - dz * G.s; const lz = dx * G.s + dz * G.c; if (lz <= 0) return h;
@@ -228,7 +229,7 @@
   Object.assign(BRIDGES[1], { length: 56, ends: [[31.35, BRIDGE_Z], [87.35, BRIDGE_Z]], high: true, bank: 42, lane: true }); /* (1.10.405 L0 `taxi`: the box the taxi keeps one lane in -- island-taxi reads the bridges from here. 1.10.407 assets 170: two lanes now, none; `lane`: the taxi road over it, its yellow middle line drawn on the deck) */
   // (N1 새 섬: the village's east shore (168.25) to the new island's west shore (224) over 55.8 m of water, 3 m on land each end --
   // the same 윤슬다리 model drawn to 61.75 m, 새 섬다리)
-  BRIDGES.push({ x: 196.125, z: NEW_ISLE.bridgeZ, length: 61.75, ends: [[165.25, NEW_ISLE.bridgeZ], [227, NEW_ISLE.bridgeZ]], isle2: true, taxi: Object.freeze({ x0: 164.5, x1: 233, z0: 222.5, z1: 229.5 }) }); /* (L0: its box on through the wide gate) */
+  BRIDGES.push({ x: 196.125, z: NEW_ISLE.bridgeZ, length: 61.75, ends: [[165.25, NEW_ISLE.bridgeZ], [227, NEW_ISLE.bridgeZ]], isle2: true }); /* (L0: its one-lane box on through the wide gate -- 1.10.408 assets 171: two lanes and walks, 7.8 m, as the 윤슬다리; none) */
   // where the pieces stand (assets 55): angles round the island's centre, degrees (north = 270), r = distance from it
   const deg = (r, a) => ({ x: Math.round(r * Math.cos((a * Math.PI) / 180) * 10) / 10, z: Math.round(r * Math.sin((a * Math.PI) / 180) * 10) / 10, yawToCentre: Math.atan2(-Math.cos((a * Math.PI) / 180), -Math.sin((a * Math.PI) / 180)) });
   const PLACES = {
@@ -276,7 +277,7 @@
   };
   const NAMES = { island: '달마루섬', ridge: '달마루 능선', cliff: '영웅마루', plaza: '대청마당', notice: '알림마루', bay: '윤슬만', isle: '툇마루섬', bridge: '윤슬다리', village: '이웃골', west: '푸른숲골', lake: '거울호수', falls: '마루폭포', east: '잔치마루', eastRiver: '은하내', lighthouse: '초승등대', pier: '달끝나루', newIsle: '별마루섬', newBridge: '별마루다리', camp: '캠핑장', peak: '전망대 봉우리', creek: '별마루섬 개울' }; /* (N1: 사용자 2026-11-18 「A」 -- 별마루섬, 별마루다리) */
 
-  return { TAXI_GATES: Object.freeze([Object.freeze({ x: GATE_CUT.x, z: GATE_CUT.z })]) /* (1.10.406 결정 65-1: the gates the taxi stops for -- 별마루다리's wide gate) */, VILLAGE, NECK, villageDist, neckDist, CAPES, BRUSHES, brushAt, PLACES, BRIDGE_Z, R_OUT, R_BAY, BAY_Z, R_ISLE, TIP_X, TIP_Z, ISLE, RIDGE, PLAZA, SEA, LAKE, RIVERS, POOLS, ISLE_POND, BRIDGES, TRAIN, NAMES, FALLS, HEAD_PONDS, inHeadPond,
+  return { TAXI_GATES: Object.freeze([Object.freeze({ x: GATE_CUT.x, z: GATE_CUT.z, yaw: Math.atan2(GATE_CUT.s, GATE_CUT.c), y: GATE_CUT.y })]) /* (408: its turn too -- the bridge end's flat stops short of its line) */ /* (1.10.406 결정 65-1: the gates the taxi stops for -- 별마루다리's wide gate) */, VILLAGE, NECK, villageDist, neckDist, CAPES, BRUSHES, brushAt, PLACES, BRIDGE_Z, R_OUT, R_BAY, BAY_Z, R_ISLE, TIP_X, TIP_Z, ISLE, RIDGE, PLAZA, SEA, LAKE, RIVERS, POOLS, ISLE_POND, BRIDGES, TRAIN, NAMES, FALLS, HEAD_PONDS, inHeadPond,
     coastDist, inBay, ridgeAt, landHeight, ground, heightAt, isWater, slopeAt, walkable, seasonZoneAt, riverDist, lakeDist, smooth, lerp, wrap,
     NEW_ISLE, CREEK, newIsleCoast, creekDist, inCreek };
 }));

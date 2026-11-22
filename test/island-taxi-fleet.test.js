@@ -38,7 +38,7 @@ test('택시 N4-a 차선: 길 가운데에서 오른쪽 1.15 m, 양끝 8 m와 �
 
 // 1.10.397 N4-c (notes n4-plan §5-3): the third terminal 별마루섬 입구 at EXT's end -- every two places a drive with no gap, at the drive's end the
 // place it is to; the road between them along the trunk (마을's spur added); on both one-lane bridges and through the wide gate the lane's middle
-test('택시 N4-c: 세 번째 종점·정류장 ⑥⑦ — 모든 두 자리 사이 길(끊김 없음, 끝은 그 자리), 거리·요금, 한 줄 다리(별마루다리)는 가운데 · 넓은 윤슬다리는 제 차로', () => {
+test('택시 N4-c: 세 번째 종점·정류장 ⑥⑦ — 모든 두 자리 사이 길(끊김 없음, 끝은 그 자리), 거리·요금, 넓은 두 다리(윤슬 · 별마루)와 찻길 문은 제 차로', () => {
   const ids = X.PLACE_IDS(); assert.deepEqual(ids.slice(-3), ['villageMid', 'villageEast', 'head']); assert.ok(ids.includes('isle'));
   assert.equal(Math.round(X.distanceOf('plaza', 'isle') * 10) / 10, Math.round(X.ROAD_LEN * 10) / 10, 'the two old ends as before');
   assert.ok(Math.abs(X.distanceOf('plaza', 'head') - X.TRUNK_LEN) < 1e-9); assert.ok(Math.abs(X.distanceOf('isle', 'head') - (X.TRUNK_LEN - X.sOf('isle') + X.SPUR)) < 1e-9);
@@ -49,9 +49,10 @@ test('택시 N4-c: 세 번째 종점·정류장 ⑥⑦ — 모든 두 자리 사
     const t = X.tableOf(a, 0, b); assert.ok(t.total > 0 && Number.isFinite(t.runMs)); }
   const t = X.tableOf('plaza', 0, 'head');
   const offAt = (x, z) => { let best = null; t.road.forEach(([px, pz], i) => { const e = Math.hypot(px - x, pz - z); if (!best || e < best.e) best = { e, o: t.offs[i] }; }); return best.o; };
-  assert.equal(offAt(196, 226), 0, '별마루다리: the middle'); assert.equal(offAt(228.2, 225.9), 0, 'through the wide gate: the middle'); assert.ok(offAt(59, 140) > 1, '윤슬다리: its own lane (1.10.407 assets 170: two lanes, no one-lane box)');
+  /* (1.10.407 / 408 assets 170 · 171: both bridges two lanes now, and the road gate's car gate 5.4 m -- each car in its own lane over them and through it) */
+  assert.ok(offAt(196, 226) > 1, '별마루다리: its own lane'); assert.ok(offAt(228.2, 225.9) > 1, 'through the road gate: its own lane'); assert.ok(offAt(59, 140) > 1, '윤슬다리: its own lane');
   assert.ok(offAt(30, 236) > 1, 'the village street: its own lane');
-  assert.equal(X.bridgeOf(196, 226), 0); assert.equal(X.bridgeOf(59, 140), -1); assert.equal(X.bridgeOf(30, 236), -1);
+  assert.equal(X.BRIDGES.length, 0, 'no one-lane bridge'); assert.equal(X.bridgeOf(196, 226), -1); assert.equal(X.bridgeOf(59, 140), -1); assert.equal(X.bridgeOf(30, 236), -1);
 });
 
 // 1.10.403 문제 기록 6d2679c4·de84f895 (notes issues-taxi-resident-20261122 ⑤): the car behind pulled up while the front one still stood for its

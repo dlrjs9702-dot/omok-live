@@ -9284,6 +9284,22 @@
       "precompressed": true
     },
     {
+      "out": "byeolmaru-v1/fence_gate_road.glb",
+      "src": "byeolmaru171:01. High/byeolmaru-v1/fence_gate_road.glb",
+      "sha256": "08c09046f683445645ada0e03eb022960185a8182eb06a33e9769af86f975476",
+      "lowSrc": "byeolmaru171:02. Low/byeolmaru-v1/fence_gate_road_low.glb",
+      "lowSha256": "5d6be9d16ce0f179e9c72cf210db363860e90323f71ee1af09b4e2bf91b45344",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/bridge_byeolmaru_wide.glb",
+      "src": "byeolmaru171:01. High/byeolmaru-v1/bridge_byeolmaru_wide.glb",
+      "sha256": "21288ccd290cd84f11c28e8e9d097d636ae8f8827f68270ce5e7cb308d72045e",
+      "lowSrc": "byeolmaru171:02. Low/byeolmaru-v1/bridge_byeolmaru_wide_low.glb",
+      "lowSha256": "3a9a65e88c21e010205dec74d80b2ef92f15b46359edd7dd6050d77b2da29742",
+      "precompressed": true
+    },
+    {
       "out": "characters/motions/TaxiSit.glb",
       "src": "taxi99:01. High/motions/TaxiSit.glb",
       "sha256": "d0ab47c697a0b482641455ae7b81ae56d96239d474d4d5db1750d45ccdeafa93"
@@ -15803,6 +15819,7 @@
     "review168": "168. Game Island review fixes 2026-11-21",
     "pets169": "169. Game Island pet poses 2026-11-22",
     "bikepets169b": "169b. Game Island bike pets 2026-11-22",
-    "yunseul170": "170. Game Island yunseul bridge 2026-11-22"
+    "yunseul170": "170. Game Island yunseul bridge 2026-11-22",
+    "byeolmaru171": "171. Game Island byeolmaru bridge and gate 2026-11-22"
   }
 }

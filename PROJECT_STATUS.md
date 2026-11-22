@@ -13,6 +13,12 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.408 넓은 별마루다리 + 찻길 문(에셋 171, 사용자 결정 67-1 · 67-2 A, notes bridges-two-way §3 · §5 · §6)
+
+- 다리: `byeolmaru.bridge_byeolmaru_wide` 제 길이(61.75 m, 늘이기 없음), 걷는 폭 7.8 m, 옆막이 ±4.35, 가운데 노란 선(코드 띠). 한 줄 상자 없음 — 두 다리 모두 두 차로, 다리 위 길 선 z 226.
+- 찻길 문 `fence_gate_road`: 차 문 5.4 m(택시 20 m · 사람 3.5 m에 열림), 쪽문 1.2 m 둘(사람이 그 쪽문 2 m 안일 때만, 택시 · 호랑이로는 안 열림), 호랑이 16 m. 울타리 문 양옆 두 칸씩 뺌(종류 6), 경고판 날개 밖으로.
+- 땅: 문 안 깎기 hw 4.6 · d 3.0 · 최대 0.65, 다리 양 끝 폭 방향만 평평(오르막 그대로), 문 쪽 끝 모서리 턱 없앰(검토 gate-sill-171), 길 둑은 넓은 다리 3.9 + 4 m 밖에서만.
+
 ## v1.10.407 넓은 동쪽 윤슬다리(에셋 170, 사용자 결정 66 · 67 A, notes bridges-two-way §3 · §6 · §7)
 
 - 모델 `dalmaru.bridge_yunseul_wide`(High · Low), 걷는 폭 7.8 m, 오르막 옆막이 ±4.35, 133 모델은 등록만 남김.
@@ -26,10 +32,3 @@
 - 시간표 안 멈춤: 길에서 만나는 넓은 문(dalmaru-terrain TAXI_GATES)이 운행 15 m 넘게 앞에 있으면 문 4 m 앞까지 감속 → 1.2 s 섬 → 다시 가속. 별마루섬 입구로 들어오는 운행만(종점이 문 안 10.5 m라 떠나는 운행은 탈 때 이미 열림). 들어오는 운행 약 +2.9 s.
 - 화면: 택시가 넓은 문 25 m 안이면 내가 60 m 밖이어도 문을 움직임.
 - 사람이 문 앞에 서 있을 때 서는 자리는 지금 비켜 가기 규칙 그대로(171 새 문 때 다시).
-
-## v1.10.405 L0 길 계산 틀(notes taxi-island-loop-20261122 §4, 결정 69)
-
-- 길 그림: ROADS를 만나는 점에서 조각으로(지금 3조각), 조각 끝점 사이 가장 짧은 길(Floyd). driveBetween·distanceOf가 이걸 씀 — 장소 90쌍 모두 옛 줄기와 같은 점·거리. 거리는 쌍마다 기억.
-- 택시 한 줄 다리 상자는 dalmaru-terrain BRIDGES의 `taxi`에서. 길 둑은 island-taxi BANKED(지금 ROUTE만 — EXT까지 하면 별마루다리 서쪽 바닷가에 8 m 둑).
-- 빈 차로 돌아오는 차: 돌아오는 길 끝에서 종점에서 11 m 떨어진 곳에서 길을 떠나(차로 그대로) 내리는 자리 → 쉼터 뒤 반원 → 앞으로 자리(HOME_V 6 m/s, 모서리 둥글게). 어긋남 25° 안·앞자리에서 4.4 m 밖 시험.
-- 종점 도는 길(PARK_PATHS) 2.35 m 안에는 자연물·돌 없음 — 대청마당 종점 뒤 나무 하나(16.3, −47.1) 빠짐, 땅 덮개 지도 다시.
