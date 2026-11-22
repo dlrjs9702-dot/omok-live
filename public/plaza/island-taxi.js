@@ -198,6 +198,32 @@
     pts.push(...stretch(B, best.nb === B.a ? 0 : B.len, fb.along).slice(1));
     return { len: best.len, pts };
   }
+  /* 1.10.412 L3 「섬 한 바퀴」 (사용자 결정 69 A, notes taxi-island-loop §6): a ride whose end is where it began -- once round the ring (the pieces on
+     the island's one loop), 윤슬만 on the car's right (its lane the waterside one); from a place off the ring out along its spur to the ring's
+     nearest corner, round, and back the same way */
+  const RING = (() => {
+    const P = GRAPH.pieces;
+    const joined = (a, b, skip) => { const seen = new Set([a]); const q = [a]; while (q.length) { const u = q.pop(); if (u === b) return true; P.forEach((p, k) => { if (k === skip) return; const v = p.a === u ? p.b : p.b === u ? p.a : -1; if (v >= 0 && !seen.has(v)) { seen.add(v); q.push(v); } }); } return false; };
+    const C = P.map((_, k) => k).filter((k) => P[k].a !== P[k].b && joined(P[k].a, P[k].b, k)); if (C.length < 2) return null;
+    let pts = []; let u = P[C[0]].a; let k = C[0]; const used = new Set();
+    for (;;) { used.add(k); const p = P[k]; const fwd = p.a === u; const seg = fwd ? p.pts : [...p.pts].reverse(); pts.push(...(pts.length ? seg.slice(1) : seg)); u = fwd ? p.b : p.a; const next = C.find((j) => !used.has(j) && (P[j].a === u || P[j].b === u)); if (next === undefined) break; k = next; }
+    let area = 0; for (let i = 1; i < pts.length; i += 1) area += pts[i - 1][0] * pts[i][1] - pts[i][0] * pts[i - 1][1]; if (area > 0) pts = pts.reverse(); /* (x, z: the inside on the right going round -- the right (dz, -dx)) */
+    const cum = [0]; for (let i = 1; i < pts.length; i += 1) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+    const corners = []; for (const j of C) for (const n of [P[j].a, P[j].b]) if (!corners.some((c) => c.id === n)) { const q = P[j].a === n ? P[j].pts[0] : P[j].pts[P[j].pts.length - 1]; corners.push({ id: n, x: q[0], z: q[1] }); }
+    return { pts, cum, len: cum[cum.length - 1], pieces: new Set(C), corners };
+  })();
+  const loops = new Map();
+  function loopWay(id) {
+    if (!RING) return { len: 0, pts: [] }; if (loops.has(id)) return loops.get(id);
+    const f = footOf(id); let out = []; let at = [f.x, f.z];
+    if (!RING.pieces.has(f.piece)) { let best = null; for (const c of RING.corners) { const w = wayBetween(f, footOn(c.x, c.z)); if (!best || w.len < best.len - 1e-9) best = w; } out = best.pts; at = out[out.length - 1]; }
+    const d = dOn(RING.pts, at); const round = [...stretch(RING, d, RING.len), ...stretch(RING, 0, d).slice(1)];
+    const pts = [...out, ...(out.length ? round.slice(1) : round), ...[...out].reverse().slice(1)].filter((p, i, a) => i === 0 || Math.hypot(p[0] - a[i - 1][0], p[1] - a[i - 1][1]) > 1e-6);
+    let len = 0; for (let i = 1; i < pts.length; i += 1) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+    const w = { len, pts }; loops.set(id, w); return w;
+  }
+  const wayOf = (from, to) => (from === to ? loopWay(from) : wayBetween(footOf(from), footOf(to)));
+  const loopLenOf = (id) => loopWay(id).len;
   // where one gets in at a place: by the car's door as it stands there (a terminal's front place, a stop's curb)
   const boardOf = (id, side) => { if (STOPS[id]) return stopOf(id).out; const c = curbOf(id, side); return beside(c.x, c.z, c.yaw, BOARD); }; /* (410: by the car on the side it stands) */
   /* (L0: between two places by the graph -- its start (a terminal's front place, a stop's curb), the way's points past m0 of the start and m1 of the
@@ -208,16 +234,16 @@
      the road first: 5 m on the way it faces, round, back past its stop) */
   const sideAlong = (id, dx, dz) => { const p = atStop(id); return dx * Math.sin(p.yaw) + dz * Math.cos(p.yaw) >= 0 ? 1 : -1; };
   const dirOf = (pts, last) => { const n = pts.length; for (let i = last ? n - 1 : 1; last ? i > 0 : i < n; i += last ? -1 : 1) { const dx = pts[i][0] - pts[i - 1][0]; const dz = pts[i][1] - pts[i - 1][1]; if (Math.hypot(dx, dz) > 0.01) return [dx, dz]; } return [0, 1]; };
-  const arriveSide = (from, to) => (ROADSTOPS[to] && from !== to ? sideAlong(to, ...dirOf(wayBetween(footOf(from), footOf(to)).pts, true)) : null);
-  const leaveSide = (from, to) => (ROADSTOPS[from] && from !== to ? sideAlong(from, ...dirOf(wayBetween(footOf(from), footOf(to)).pts, false)) : null);
+  const arriveSide = (from, to) => (ROADSTOPS[to] && (from !== to || RING) ? sideAlong(to, ...dirOf(wayOf(from, to).pts, true)) : null); /* (412: back where it began -- 「섬 한 바퀴」) */
+  const leaveSide = (from, to) => (ROADSTOPS[from] && (from !== to || RING) ? sideAlong(from, ...dirOf(wayOf(from, to).pts, false)) : null);
   /* (411: a road stop's side its own foot on the road -- the far side may stand a little along it (FAR)) */
   const footAt = (id, side) => { if (!ROADSTOPS[id] || !side) return footOf(id); const q = atStop(id, farDs(id, side)); return footOn(q.x, q.z); };
   function driveByGraph(from, to, curb) {
     const kOut = ROADSTOPS[from] ? (curb === 1 || curb === -1 ? curb : leaveSide(from, to)) : null; const kIn = ROADSTOPS[to] ? arriveSide(from, to) : null;
-    const w = wayBetween(footAt(from, kOut), footAt(to, kIn)).pts; const m0 = from === 'isle' ? -0.01 : isTerminal(from) ? 10 : 6; const m1 = to === 'isle' ? -0.01 : isTerminal(to) ? 10 : 6;
+    const w = from === to ? loopWay(from).pts : wayBetween(footAt(from, kOut), footAt(to, kIn)).pts; /* (412 「섬 한 바퀴」) */ const m0 = from === 'isle' ? -0.01 : isTerminal(from) ? 10 : 6; const m1 = to === 'isle' ? -0.01 : isTerminal(to) ? 10 : 6;
     const cum = [0]; for (let i = 1; i < w.length; i += 1) cum.push(cum[i - 1] + Math.hypot(w[i][0] - w[i - 1][0], w[i][1] - w[i - 1][1])); const total = cum[cum.length - 1];
     const st = to === 'isle' ? stopOf('isle') : null;
-    const mids = w.filter((p, i) => i > 0 && i < w.length - 1 && cum[i] > m0 && total - cum[i] > m1 && !(st && Math.hypot(p[0] - st.x, p[1] - st.z) <= 10));
+    const mids = w.filter((p, i) => i > 0 && i < w.length - 1 && cum[i] > m0 && total - cum[i] > m1 && !(st && total - cum[i] < 30 && Math.hypot(p[0] - st.x, p[1] - st.z) <= 10)); /* (412: by the end only -- a ride round from 툇마루섬 sets off by it) */
     const out = leaveSide(from, to); const k = ROADSTOPS[from] ? (curb === 1 || curb === -1 ? curb : out) : null;
     /* (1.10.411 총괄 「옆으로 미끄러짐 · 제자리 돌기」: one standing on the other side turns round slowly -- 3 m on, then a half circle (1.75 m) from its curb
        into the far lane, at a walk, the bow along it, a moment's stop; its lane from there, no easing out of the middle) */
@@ -438,7 +464,7 @@
   // the clock moved on: a ride just over decides where its car goes (stays where that stop has fewer than PLACES, else back home) and
   // which place it takes; each car whose glide or way back is over stands in it -> whether anything changed
   // (392 N4-b) after a ride to a stop, or to a full terminal from a stop: empty to the nearest terminal with room (by the road; none: the nearer)
-  const nearestRoom = (fleet, from, except) => Object.keys(STOPS).sort((a, b) => distanceOf(a, from) - distanceOf(b, from)).find((t) => fleet.cars.filter((c) => c !== except && headingTo(c) === t).length < PLACES) || Object.keys(STOPS).sort((a, b) => distanceOf(a, from) - distanceOf(b, from))[0];
+  const nearestRoom = (fleet, from, except) => Object.keys(STOPS).filter((t) => t !== from) /* (412: never to where it is -- that would be once round the island) */.sort((a, b) => distanceOf(a, from) - distanceOf(b, from)).find((t) => fleet.cars.filter((c) => c !== except && headingTo(c) === t).length < PLACES) || Object.keys(STOPS).filter((t) => t !== from).sort((a, b) => distanceOf(a, from) - distanceOf(b, from))[0];
   function goEmpty(fleet, c, from, now) { const to = nearestRoom(fleet, from, c); const runMs = c.ride?.runMs || fleet.runMs;
     const curb = ROADSTOPS[from] ? (c.ride ? arriveSide(c.ride.from, toOf(c.ride)) : c.curb) : null; /* (410: off from the side it came in on, or stands on) */
     c.ride = { from, to, startedAt: now, empty: true, car: c.id, seat: 0, ...(runMs ? { runMs } : {}), stay: true, park: 0, ...(curb === 1 || curb === -1 ? { curb } : {}) }; c.ride.park = freePlace(fleet, to, c); c.at = null; c.waitUntil = 0; }
@@ -483,7 +509,8 @@
   // reading, a sleep): a clock answer moving it tens of ms at once made a moving car jump that far
   const easeClock = (view, server, step = 2, jump = 1000) => (view == null || Math.abs(server - view) > jump ? server : view + Math.max(-step, Math.min(step, server - view)));
   // (392 N4-b, 결정 40 A · n4-plan §5-5) a fare by the road's length: per100 a 100 m (the nearest 100 m), at least min
-  const fareByRoad = (from, to, per100 = 250, min = 500) => Math.max(Math.round(Number(min) || 0), Math.round(Number(per100) || 0) * Math.round(distanceOf(from, to) / 100));
+  const fareByRoad = (from, to, per100 = 250, min = 500) => Math.max(Math.round(Number(min) || 0), Math.round(Number(per100) || 0) * Math.round((from === to ? loopLenOf(from) : distanceOf(from, to)) / 100)); /* (412: 「섬 한 바퀴」 by its own length) */
+  const LOOP_LABEL = '섬 한 바퀴(구경)';
   const PLACE_IDS = () => ['plaza', 'isle', 'head', ...Object.keys(ROADSTOPS)].sort((a, b) => sOf(a) - sOf(b)); /* (397: by the trunk -- 마을 at its corner, 별마루섬 입구 last) */
   /* (1.10.405 L0: the terminals' ways off the road -- round the shelter into each place, and home from the road to the drop spot -- as lines, for what keeps
      clear of them (dalmaru-island taxiClear: nothing growing there)) */
@@ -491,7 +518,7 @@
   const PARK_PATHS = () => parkPaths || (parkPaths = Object.keys(STOPS).flatMap((id) => [
     ...[0, 1].map((k) => Array.from({ length: 41 }, (_, i) => { const p = parkPose(id, k, i / 40); return [p.x, p.z]; })),
     homeTail({ from: id, to: STOPS[id].to, startedAt: 0 }, tableOf(id, undefined, STOPS[id].to)).pts]));
-  return { GRAPH, footOn, BANKED, PARK_PATHS, boardOf, arriveSide, leaveSide, FAR, /* (410 결정 65-3 A; 411 the far sides' table, for the checks) */ ROADSTOPS, ROAD_LEN, sOf, atS, curbOf, driveBetween, distanceOf, fareByRoad, PLACE_IDS, isTerminal, labelOf, toOf, sendCar, WAIT, nearestRoom, /* (392 N4-b) */
+  return { GRAPH, RING, loopWay, loopLenOf, LOOP_LABEL, /* (412 「섬 한 바퀴」) */ footOn, BANKED, PARK_PATHS, boardOf, arriveSide, leaveSide, FAR, /* (410 결정 65-3 A; 411 the far sides' table, for the checks) */ ROADSTOPS, ROAD_LEN, sOf, atS, curbOf, driveBetween, distanceOf, fareByRoad, PLACE_IDS, isTerminal, labelOf, toOf, sendCar, WAIT, nearestRoom, /* (392 N4-b) */
     LANE, PLACES, BACK, placeOf, laneOffs, createFleet, takeCar, settle, etaAt, fleetView, countAt, standingAt, onBridgeBox: (x, z, m = 0) => bridgeOf(x, z, m) >= 0, bridgeOf, BRIDGES, /* (391 N4-a; 397 both one-lane bridges) */ TRUNK, TRUNK_LEN, SPUR,
     CROSSINGS, CROSS_HALF, CROSS_CLEAR, ROAD, LEAD, RAMP, sideAt, ghostAt, shifted, roadNow, rateOf, warpTo, realAt, rideOver, timeless, PULL_AFTER, PARK, parkPose, TURN, backOf, carAt, easeClock, ROUTE, EXT, ROADS, STREET, ROAD_ENDS: Object.freeze([ROUTE[0], ROUTE[ROUTE.length - 1], EXT[EXT.length - 1]]) /* (395: the stops at the roads' ends -- kept clear round, as the two were) */, STOPS, BRIDGE, ENTER, EXIT, EASE, FAST, SLOW, FARE, DAY_PASS, EXTRA, BOARD, ALIGHT, SEAT, roadOf, stopOf, dropOf, driveOf, tableOf, durationOf, poseAt, arrivalOf, doorOf, fareOf };
 }));

@@ -6184,7 +6184,8 @@
     const row = document.createElement('div'); row.className = 'taxiActions';
     const button = (id, text, cls) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.id = id; b.textContent = text; return b; };
     /* (1.10.398 에셋 검사 2회차: 타기 says where -- 「○○행 타기」) */
-    const rideText = (d) => (q.pass ? `${d.label}행 타기` : `${d.label}행 타기 · ${won(d.fare)}`);
+    const rideText = (d) => { const w = d.loop ? '섬 한 바퀴 타기' : `${d.label}행 타기`; return q.pass ? w : `${w} · ${won(d.fare)}`; }; /* (412 「섬 한 바퀴」: back here) */
+    const askText = (d) => `${d.loop ? '섬 한 바퀴 돌고 여기로 돌아올까요?' : `${d.label}까지 갈까요?`}${q.pass ? ' · 오늘 자유이용권 ✓' : ''}`;
     const ride = button('taxiRideBtn', rideText({ label: to, fare: q.fare }), 'primary'); const pass = q.pass ? null : button('taxiPassBtn', `오늘 자유이용권 · ${won(q.dayPass)}`, 'secondary');
     const close = button('taxiCloseBtn', '닫기', 'secondary'); close.addEventListener('click', () => plazaDialog.close());
     const short = (price) => !q.pass && price > 0 && Number.isFinite(balance) && balance < price;
@@ -6196,7 +6197,7 @@
     /* (1.10.403 Codex 391~400 #13: the fare picked decides 타기 and the 「모자라요」 line, each time one is picked -- a near place I can pay for is open) */
     const fit = () => { if (q.awayS > 0) return; ride.disabled = short(pick.fare); if (short(pick.fare)) status.textContent = `포인트가 모자라요(${won(pick.fare)})`; else if (/^포인트가 모자라요/.test(status.textContent)) status.textContent = ''; };
     let going = false;
-    const choose = (d) => { if (going) return; pick = d; for (const b of list.children) b.setAttribute('aria-checked', String(b.dataset.to === d.id)); line.textContent = `${d.label}까지 갈까요?${q.pass ? ' · 오늘 자유이용권 ✓' : ''}`; ride.textContent = rideText(d); fit(); };
+    const choose = (d) => { if (going) return; pick = d; for (const b of list.children) b.setAttribute('aria-checked', String(b.dataset.to === d.id)); line.textContent = askText(d); ride.textContent = rideText(d); fit(); };
     for (const d of dests) { const b = button(`taxiDest-${d.id}`, `${d.label} · ${won(d.fare)}`, 'ghost taxiDest'); b.dataset.to = d.id; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(d === pick)); b.addEventListener('click', () => choose(d)); list.append(b); }
     fit();
     const go = async (pay) => {
@@ -6209,7 +6210,7 @@
         const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
         const r = await api('/api/island/taxi', { method: 'POST', body: JSON.stringify({ from, to: chose.id, pay, requestId, fare: q.pass ? 0 : pay === 'pass' ? q.dayPass : chose.fare, ...(q.pass ? { held: true } : {}) }) }).catch((error) => { if (error?.status) taxiPending.delete(key); throw error; });
         taxiPending.delete(key);
-        plaza.controller?.onTaxiEnd?.(() => showToast(`🚕 ${chose.label}에 도착했어요`)); plaza.controller?.startTaxi?.(r.taxi);
+        plaza.controller?.onTaxiEnd?.(() => showToast(chose.loop ? '🚕 섬 한 바퀴를 돌고 왔어요' : `🚕 ${chose.label}에 도착했어요`)); plaza.controller?.startTaxi?.(r.taxi);
         plazaDialog.close(); if (r.fare) loadPoints(); if (r.fare && r.pass) showToast('🎫 오늘 자유이용권 ✓ · 오늘은 몇 번이든 타요', 3000); plazaStage.focus({ preventScroll: true });
       } catch (error) { status.textContent = error.message; going = false; for (const b of list.children) b.disabled = false; ride.disabled = short(pick.fare); if (pass) pass.disabled = short(q.dayPass); if (error?.data?.error === 'TAXI_PRICE') { plazaDialog.close(); openTaxi(from); } }
     };

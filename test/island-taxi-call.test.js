@@ -23,8 +23,9 @@ test('택시 부르기: 정류장에서 부르면 가까운 차가 빈 차로 �
   const dock = X.curbOf('dock'); const board = X.boardOf('dock');
   // no car at the stop: the window says so; far from its sign, no call
   await stand(a, board.x, board.z); const q = (await req('/api/island/taxi?from=dock', a)).data;
-  assert.equal(q.cars, 0); assert.deepEqual(q.dests.map((d) => d.id), X.PLACE_IDS().filter((id) => id !== 'dock'));
-  assert.deepEqual(q.dests.map((d) => d.fare), q.dests.map((d) => Math.max(500, 250 * Math.round(X.distanceOf('dock', d.id) / 100))), 'fares by the road');
+  assert.equal(q.cars, 0); assert.deepEqual(q.dests.map((d) => d.id), [...X.PLACE_IDS().filter((id) => id !== 'dock'), 'dock'] /* (412: 「섬 한 바퀴」 last -- back here) */);
+  assert.deepEqual(q.dests.map((d) => d.fare), q.dests.map((d) => Math.max(500, 250 * Math.round((d.loop ? X.loopLenOf('dock') : X.distanceOf('dock', d.id)) / 100))), 'fares by the road');
+  assert.equal(q.dests.at(-1).label, X.LOOP_LABEL); assert.equal(q.dests.at(-1).fare, 1500);
   assert.equal((await req('/api/island/taxi', a, { from: 'dock', to: 'museum' })).data.error, 'TAXI_AWAY', 'no car standing: none to get in');
   await stand(b, dock.sign.x + 12, dock.sign.z); assert.equal((await req('/api/island/taxi/call', b, { stop: 'dock' })).data.error, 'TOO_FAR');
   // the call: the nearest terminal's front car comes (대청마당 -- 52 m), its seconds said

@@ -29,7 +29,7 @@ test('섬 택시 서버: 요금(누구나 1,000P, 하루 자유이용권 5,000P)
   await stand(a, P.x + 12, P.z); assert.equal((await req('/api/island/taxi', a, { from: 'plaza' })).data.error, 'TOO_FAR');
   // by the stop: 1,000P, once
   await stand(a, P.out.x, P.out.z);
-  const asked = { ok: true, from: 'plaza', to: 'isle', fare: 1000, dayPass: 8000, pass: false, awayS: 0, dests: X.PLACE_IDS().filter((id) => id !== 'plaza').map((id) => ({ id, label: X.labelOf(id), fare: X.fareByRoad('plaza', id) })), cars: 2 }; /* (391 N4-a: where to, and two cars standing; 392 N4-b: every place on the road, its fare by the road's length, the pass 8,000P) */
+  const asked = { ok: true, from: 'plaza', to: 'isle', fare: 1000, dayPass: 8000, pass: false, awayS: 0, dests: X.PLACE_IDS().filter((id) => id !== 'plaza').map((id) => ({ id, label: X.labelOf(id), fare: X.fareByRoad('plaza', id) })).concat([{ id: 'plaza', label: X.LOOP_LABEL, fare: 1750, loop: true }]) /* (412 「섬 한 바퀴」) */, cars: 2 }; /* (391 N4-a: where to, and two cars standing; 392 N4-b: every place on the road, its fare by the road's length, the pass 8,000P) */
   assert.deepEqual((await req('/api/island/taxi?from=plaza', a)).data, asked);
   const before = await balance(a); const rode = await req('/api/island/taxi', a, { from: 'plaza' });
   assert.equal(rode.status, 200, JSON.stringify(rode.data)); assert.equal(rode.data.fare, 1000); assert.equal(rode.data.taxi.runMs, 3000);
