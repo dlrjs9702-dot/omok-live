@@ -122,7 +122,9 @@
        not painted -- half of it lay on the paving, a lane and a walk cut off at the tiles; the road coming down ends square at the edge, the
        terminal on the paving. Still a road for the cars -- only its paint) */
     const alongPlaza = (p, q) => P && Math.abs(plazaDist(p[0], p[1])) < 2 && Math.abs(plazaDist(q[0], q[1])) < 2;
-    (X.ROADS || [X.ROUTE]).forEach((route, r) => { let total = 0; for (let i = 1; i < route.length; i += 1) { const p = route[i - 1]; const q = route[i]; const len = Math.hypot(q[0] - p[0], q[1] - p[1]); if (!alongPlaza(p, q)) segs.push({ p, q, len, at: total, r }); total += len; } });
+    /* (1.10.412: a road ending at a round place (X.TURN_PADS) ends square there -- no rounded cap of lines beside the place) */
+    const padEnd = (pt) => (X.TURN_PADS || []).some((pad) => Math.hypot(pt[0] - pad.x, pt[1] - pad.z) < pad.r + 0.5);
+    (X.ROADS || [X.ROUTE]).forEach((route, r) => { let total = 0; for (let i = 1; i < route.length; i += 1) { const p = route[i - 1]; const q = route[i]; const len = Math.hypot(q[0] - p[0], q[1] - p[1]); if (!alongPlaza(p, q)) segs.push({ p, q, len, at: total, r, ...(i === route.length - 1 && padEnd(q) ? { square: true } : {}) }); total += len; } });
     const footOf = (x, z) => { let b = null; for (const s of segs) { const dx = s.q[0] - s.p[0]; const dz = s.q[1] - s.p[1]; const t = Math.max(0, Math.min(1, ((x - s.p[0]) * dx + (z - s.p[1]) * dz) / (s.len * s.len || 1e-9))); const d = Math.hypot(x - s.p[0] - dx * t, z - s.p[1] - dz * t); if (!b || d < b.d) b = { d, along: s.at + s.len * t, r: s.r }; } return b; };
     for (const c of X.CROSSINGS || []) { const f = footOf(c.x, c.z); crossAlong.push({ r: f.r, along: f.along }); }
     const reach = ROAD_RANGE;
@@ -132,7 +134,7 @@
       const j0 = Math.max(0, Math.floor((Math.min(s.p[1], s.q[1]) - reach - z0) / cell)); const j1 = Math.min(res - 1, Math.ceil((Math.max(s.p[1], s.q[1]) + reach - z0) / cell));
       for (let j = j0; j <= j1; j += 1) for (let i = i0; i <= i1; i += 1) {
         const x = x0 + (i + 0.5) * cell; const z = z0 + (j + 0.5) * cell; const k = j * res + i;
-        const t = Math.max(0, Math.min(1, ((x - s.p[0]) * dx + (z - s.p[1]) * dz) / (s.len * s.len)));
+        const tr = ((x - s.p[0]) * dx + (z - s.p[1]) * dz) / (s.len * s.len); if (s.square && tr > 1) continue; const t = Math.max(0, Math.min(1, tr));
         const d = Math.hypot(x - s.p[0] - dx * t, z - s.p[1] - dz * t); if (d >= best[k] || d >= reach) continue;
         best[k] = d;
         const side = Math.sign((x - s.p[0]) * dz - (z - s.p[1]) * dx) || 1; /* (+: the road's right, heading p -> q) */
