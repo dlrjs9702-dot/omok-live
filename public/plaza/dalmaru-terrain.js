@@ -229,6 +229,9 @@
   Object.assign(BRIDGES[1], { length: 56, ends: [[31.35, BRIDGE_Z], [87.35, BRIDGE_Z]], high: true, bank: 42, lane: true }); /* (1.10.405 L0 `taxi`: the box the taxi keeps one lane in -- island-taxi reads the bridges from here. 1.10.407 assets 170: two lanes now, none; `lane`: the taxi road over it, its yellow middle line drawn on the deck) */
   // (N1 새 섬: the village's east shore (168.25) to the new island's west shore (224) over 55.8 m of water, 3 m on land each end --
   // the same 윤슬다리 model drawn to 61.75 m, 새 섬다리)
+  /* (1.10.411 assets 173, notes taxi-island-loop §2 ㄹ: the west river's road bridge on L2 -- 14 m, 7.8 m wide, low and arched (0.4), across the river
+     slantwise: its way (dir) from its north-east end to its south-west) */
+  { const RIV = { x: -92.5, z: 55.5, dir: [-0.4138, 0.9104], half: 7 }; BRIDGES.push({ x: RIV.x, z: RIV.z, length: 14, dir: RIV.dir, ends: [-1, 1].map((s) => [RIV.x + RIV.dir[0] * RIV.half * s, RIV.z + RIV.dir[1] * RIV.half * s]), river: true, lane: true }); }
   BRIDGES.push({ x: 196.125, z: NEW_ISLE.bridgeZ, length: 61.75, ends: [[165.25, NEW_ISLE.bridgeZ], [227, NEW_ISLE.bridgeZ]], isle2: true }); /* (L0: its one-lane box on through the wide gate -- 1.10.408 assets 171: two lanes and walks, 7.8 m, as the 윤슬다리; none) */
   // where the pieces stand (assets 55): angles round the island's centre, degrees (north = 270), r = distance from it
   const deg = (r, a) => ({ x: Math.round(r * Math.cos((a * Math.PI) / 180) * 10) / 10, z: Math.round(r * Math.sin((a * Math.PI) / 180) * 10) / 10, yawToCentre: Math.atan2(-Math.cos((a * Math.PI) / 180), -Math.sin((a * Math.PI) / 180)) });
@@ -250,7 +253,7 @@
     // (거리 악단 자리 2026-10-25 「너무 뜬금없이 있어」: a paved round 6 m across on 물가 거리's land side, west of where the
     // walk goes down to 배 타는 곳 (266.5°, its middle 105.3 from the bay's centre -- the walk's edge 102.6; clear of the
     // photographer's spot west of it); faces the water)
-    mural: { x: -33, z: -105, face: [0, -84] } /* (1.10.325 54A: to the north-west 쉼터, facing the fountain) */, busk: { x: -6.4, z: -10.1, face: [0, 95] }, stones: { x: -103.5, z: 39 }, bookcart: { x: -25, z: -91, face: [-20, -86] }, /* (묶음 5: by the north-west garden, off 알림마루) */
+    mural: { x: -33, z: -105, face: [0, -84] } /* (1.10.325 54A: to the north-west 쉼터, facing the fountain) */, busk: { x: -8, z: -15.5, face: [0, 95] } /* (1.10.411 assets 179 ①: off L2's corner -- its four spots were on the new road; 179's (-8.9, -14.1) put a bench by the photographer's spot (-12, -12): the one place near it clear of her, the electrician's toolbox and both roads (work: busk411)) */, stones: { x: -103.5, z: 39 }, bookcart: { x: -25, z: -91, face: [-20, -86] }, /* (묶음 5: by the north-west garden, off 알림마루) */
     omokTable: { x: -94, z: -8, face: [-86, -4] }, birthday: { x: 9.9, z: -74.1, face: [0, -84] }, /* (1.10.346 155A C안: across the north walk from the 벼룩시장 board) */
     hallLamps: [[-4.1, -22], [5.0, -30], [-4.1, -38]], // the three lamps the electrician mends, beside the walk to the water (off it; T1 길 넓히기: at the taxi road's walk's outer edge, 4.5 m from its middle at x 0.5)
     stationmaster: { x: 89, z: 146 }, // by 달끝역's way in (1.10.389 N3-a: from (83, 137) -- the high bridge's ramp stands there now; 2.2 m from the station's way in (88.3, 143.9) then -- 4.3 m from 1.10.407's straight one (91.9, 142.9) -- 3.5 m off the bridge's side, 6.7 off the road's middle, by the walk)

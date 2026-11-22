@@ -293,14 +293,15 @@
      the gate's own cut (dalmaru-terrain gateCut: its leaves' room)) */
   const END_FLAT = Object.freeze({ hw: 4.9, inside: 1.5, out: 3, ease: 3 }); let endFlats = null;
   function bridgeEndFlat(x, z, h) {
-    if (!endFlats) { const list = []; endFlats = []; /* (none while the ends' own height is read) */ for (const b of D.BRIDGES) for (const k of b.high ? [1] : b.isle2 ? [0, 1] : []) { const [ex, ez] = b.ends[k]; list.push({ x: ex, z: ez, dir: Math.sign(ex - b.x) || 1, h: b.isle2 ? Math.max(...b.ends.map(([x0, z0]) => D.ground(x0, z0)), SEA) + 0.1 /* (its arched deck's one end height, base + YB.top, less 2 cm) */ : land(ex, ez), gate: b.isle2 && k === 1 ? (D.TAXI_GATES || [])[0] : null, across: Boolean(b.isle2), mid: landBefore(ex, ez) }); } endFlats = list; }
+    if (!endFlats) { const list = []; endFlats = []; /* (none while the ends' own height is read) */ for (const b of D.BRIDGES) for (const k of b.high ? [1] : b.isle2 || b.river ? [0, 1] : []) { const [ex, ez] = b.ends[k]; const l = Math.hypot(ex - b.x, ez - b.z) || 1; /* (411: each end's own outward way -- the river bridge slantwise) */
+      list.push({ x: ex, z: ez, ax: (ex - b.x) / l, az: (ez - b.z) / l, h: b.isle2 || b.river ? Math.max(...b.ends.map(([x0, z0]) => D.ground(x0, z0)), SEA) + 0.1 /* (its arched deck's one end height, base + YB.top, less 2 cm) */ : land(ex, ez), gate: b.isle2 && k === 1 ? (D.TAXI_GATES || [])[0] : null, across: Boolean(b.isle2 || b.river), mid: landBefore(ex, ez) }); } endFlats = list; }
     for (const f of endFlats) {
-      const u = (x - f.x) * f.dir; const v = Math.abs(z - f.z); if (u < -END_FLAT.inside - END_FLAT.ease || u > END_FLAT.out + END_FLAT.ease || v > END_FLAT.hw + END_FLAT.ease) continue;
+      const u = (x - f.x) * f.ax + (z - f.z) * f.az; const v = Math.abs(-(x - f.x) * f.az + (z - f.z) * f.ax); if (u < -END_FLAT.inside - END_FLAT.ease || u > END_FLAT.out + END_FLAT.ease || v > END_FLAT.hw + END_FLAT.ease) continue;
       const du = Math.max(0, -END_FLAT.inside - u, u - END_FLAT.out); const dv = Math.max(0, v - END_FLAT.hw); const dd = Math.hypot(du, dv);
       /* (a station's own pad keeps its level -- 달끝역's walkway by the end: the flat let go over its 2 m rim) */
       let keep = 1; for (const p of PADS) { const pd = Math.hypot(x - p.x, z - p.z); if (pd < p.r + 2) keep = Math.min(keep, smooth(p.r, p.r + 2, pd)); }
       if (f.gate) { const lz = (x - f.gate.x) * Math.sin(f.gate.yaw) + (z - f.gate.z) * Math.cos(f.gate.yaw); keep = Math.min(keep, 1 - smooth(-1.5, 0, lz)); }
-      const want = f.across ?landBefore(x, f.z) + (f.h - f.mid) * (1 - smooth(0, END_FLAT.out, Math.max(0, u))) : f.h;
+      const want = f.across ? landBefore(f.x + f.ax * u, f.z + f.az * u) + (f.h - f.mid) * (1 - smooth(0, END_FLAT.out, Math.max(0, u))) : f.h;
       if (dd < END_FLAT.ease) h = lerp(h, lerp(want, h, smooth(0, END_FLAT.ease, dd)), keep);
       /* (408 검토 docs/gate-sill-171-20261122.md: by the gate the flat lets go -- at the deck's north-east corner the gate's line stood 0.17 m past its end,
          a 13 cm sill there. Over the end's first 0.8 m the ground no higher than a ramp from the planks up to the gate's floor; only ever lowered,
@@ -324,7 +325,8 @@
         for (let cx = Math.floor((Math.min(ax, bx) - BANK_REACH) / 8); cx <= Math.floor((Math.max(ax, bx) + BANK_REACH) / 8); cx += 1) for (let cz = Math.floor((Math.min(az, bz) - BANK_REACH) / 8); cz <= Math.floor((Math.max(az, bz) + BANK_REACH) / 8); cz += 1) { const k = `${cx},${cz}`; if (!bankGrid.has(k)) bankGrid.set(k, []); bankGrid.get(k).push(seg); } }
     }
     const segs = bankGrid.get(`${Math.floor(x / 8)},${Math.floor(z / 8)}`); if (!segs) return h;
-    for (const b of D.BRIDGES) if (Math.abs(x - b.x) < (b.bank || b.length) / 2 + 4 && Math.abs(z - b.z) < (b.high || b.isle2 ? BANK_REACH + 0.5 : 2.8 + 4)) return h; /* (408 bridges-two-way §5: the wide ones' wider; 409 총괄: over the water the road is on the bridge -- the bank's reach (10.6 m) under it had raised two ridges across the boats' channel to -0.9, the keel 0.4 under the sea grazing them) */
+    for (const b of D.BRIDGES) { const [ux, uz] = b.dir || [1, 0]; const u = (x - b.x) * ux + (z - b.z) * uz; const v = -(x - b.x) * uz + (z - b.z) * ux; /* (411: along each bridge's own way -- the river one slantwise; its bank only between its abutments, u ±4.3: they stand on the road's bank, 173 §4) */
+      if (Math.abs(u) < (b.river ? 4.3 : (b.bank || b.length) / 2 + 4) && Math.abs(v) < (b.high || b.isle2 || b.river ? BANK_REACH + 0.5 : 2.8 + 4)) return h; } /* (408 bridges-two-way §5: the wide ones' wider; 409 총괄: over the water the road is on the bridge -- the bank's reach (10.6 m) under it had raised two ridges across the boats' channel to -0.9, the keel 0.4 under the sea grazing them) */
     let d = Infinity;
     for (const [ax, az, bx, bz] of segs) { const dx = bx - ax; const dz = bz - az; const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1e-9))); const e = Math.hypot(x - ax - dx * t, z - az - dz * t); if (e < d) d = e; }
     if (d >= BANK_REACH) return h;
@@ -365,6 +367,9 @@
     if (b.high) return { x: b.x, z: b.z, ux: 1, uz: 0, half: b.length / 2, w: 7.8, guard: 4.35, high: true, base: Math.max(...ends, SEA) - HB.top + 0.12, e0: ends[0] + 0.02, e1: ends[1] + 0.02, get deck() { return this.base + HB.top; }, modelTop: (u) => HB.top + hbProfile(u, b.length / 2), model: 'dalmaru.bridge_yunseul_wide', ...(b.lane ? { lane: true } : {}) };
     /* (1.10.408 사용자 결정 67-2 A, assets 171: 별마루다리 low and wide -- its own model at its own length (no stretch), the same YB deck line, 7.8 m,
        its ramps' guards at 4.35 as the wide 윤슬다리's; the taxi road over it, its yellow middle line in code) */
+    /* (1.10.411 assets 173: the west river's road bridge -- the same section, low (its arch 0.4: planks at its ends 0.43 over its base, 0.83 in the middle),
+       along its own way across the river (dir)) */
+    if (b.river) return { x: b.x, z: b.z, ux: b.dir[0], uz: b.dir[1], half: b.length / 2, w: 7.8, guard: 4.35, arch: 0.4, base: Math.max(...ends, SEA) - YB.top + 0.12, get deck() { return this.base + YB.top; }, model: 'dalmaru.bridge_river_wide', ownLength: true, river: true, lane: true };
     if (b.isle2) return { x: b.x, z: b.z, ux: 1, uz: 0, half: b.length / 2, w: 7.8, guard: 4.35, arch: YB.rise, base: Math.max(...ends, SEA) - YB.top + 0.12, get deck() { return this.base + YB.top; }, model: 'byeolmaru.bridge_byeolmaru_wide', ownLength: true, isle2: true, lane: true };
     return { x: b.x, z: b.z, ux: 1, uz: 0, half: b.length / 2, w: 5.6, arch: YB.rise, base: Math.max(...ends, SEA) - YB.top + 0.12, get deck() { return this.base + YB.top; }, model: 'dalmaru.bridge_yunseul' };
   });
@@ -563,7 +568,7 @@
     for (let u = 1.1; u <= SL - 2; u += 0.5) for (const v of [-0.05, 3.45]) out.push( /* (the rails' run: the foot and the top meet level ground, nothing drawn there to stop one) */{ x: STAIRS.x + STAIRS.ux * u + STAIRS.nx * v, z: STAIRS.z + STAIRS.uz * u + STAIRS.nz * v, r: 0.28, rail: true });
     for (const n of PL.niches) for (let lx = -0.4 * n.m; lx <= 0.4 * n.m + 1e-6; lx += 0.8) out.push({ x: n.x + Math.cos(n.yawToCentre) * lx + Math.sin(n.yawToCentre) * 0.6, z: n.z - Math.sin(n.yawToCentre) * lx + Math.cos(n.yawToCentre) * 0.6, r: 0.6 });
     /* (316 ④ `batch`: drawn instanced -- the map check counts them as seen) */
-    for (const r of WATERFRONT.rails) for (const d of [-1.6, -0.55, 0.55, 1.6]) out.push({ x: r.x + Math.cos(r.yaw) * d, z: r.z - Math.sin(r.yaw) * d, r: 0.3, batch: true });
+    for (const r of WATERFRONT.rails) for (const d of [-1.6, -0.55, 0.55, 1.6]) out.push({ x: r.x + Math.cos(r.yaw) * d, z: r.z - Math.sin(r.yaw) * d, r: 0.3, batch: true, rail: true }); /* (411: `rail` -- the bay's railing along the walk's edge: a crossing comes up to it, not through it) */
     for (const l of WATERFRONT.lamps) out.push({ x: l.x, z: l.z, r: l.r, batch: true });
     for (const b of WATERFRONT.benches) out.push({ x: b.x, z: b.z, r: b.r, batch: true });
     for (const p of farmFence()) out.push({ ...p, r: 0.22, fence: true }); // (3회차 15: the farm's fence, its shed and scarecrow)

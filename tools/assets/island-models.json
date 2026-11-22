@@ -4864,6 +4864,14 @@
       "precompressed": true
     },
     {
+      "out": "dalmaru-v1/bridge_river_wide.glb",
+      "src": "river173:01. High/dalmaru-v1/bridge_river_wide.glb",
+      "sha256": "b60ee7e94866334058e66693ba54df60919a46be04335de9d70b4b683a528ef0",
+      "lowSrc": "river173:02. Low/dalmaru-v1/bridge_river_wide_low.glb",
+      "lowSha256": "b264783b5beba52b2350473e777c08207819f72e1309bec75d1843568e29120d",
+      "precompressed": true
+    },
+    {
       "out": "dalmaru-v1/dock_boat_wide.glb",
       "src": "docks172:01. High/dalmaru-v1/dock_boat_wide.glb",
       "sha256": "cea638d2f36b331197ac2f350b4d6ca66193d03dcc09150e5c720f7c2da63d5f",
@@ -15829,6 +15837,7 @@
     "bikepets169b": "169b. Game Island bike pets 2026-11-22",
     "yunseul170": "170. Game Island yunseul bridge 2026-11-22",
     "byeolmaru171": "171. Game Island byeolmaru bridge and gate 2026-11-22",
-    "docks172": "172. Game Island boat docks 2026-11-22"
+    "docks172": "172. Game Island boat docks 2026-11-22",
+    "river173": "173. Game Island west river road bridge 2026-11-22"
   }
 }
