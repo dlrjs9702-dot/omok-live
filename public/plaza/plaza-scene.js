@@ -1467,6 +1467,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   /* 1.10.414 S2 캠핑장 안 (사용자 결정 72 · 73, 검토 safe-zones-visible §2-2; assets 164 · 176 · 177): the office (176, 「관리소」 written on its `office_plate`,
      snow, its lamp at night), 164's hearth set (embers at night), three tents (land-v1) -- each on its own with its stand-ins over its circles
      (Isle2Props.CAMP2: what blocks is in its solids); 모락 (177) standing at the office's `keeper` (1.4, 0, -3.3), facing the fire, 「말 걸기」 */
+  /* 1.10.416 S4 망루 (assets 178): on the ground at its middle, its stand-in the whole 6.8 m square over its guard rails; its stairs and deck walked by the
+     island's own heights (IslandTerrain.onTower) */
+  (() => { const W = globalThis.IslandTerrain.TOWER; const P2 = globalThis.Isle2Props; if (!W || !P2?.TOWER) return;
+    const g = new THREE.Group(); g.position.set(W.x, W.base, W.z); g.rotation.y = W.yaw; scene.add(g); const v = new THREE.Group(); g.add(v); const B = P2.BOXES.lookout_tower;
+    mesh(new THREE.BoxGeometry(B[0], B[1], B[2]), mat(0x8a6440), 0, B[1] / 2, 0, v); assets.attach('byeolmaru.lookout_tower', g, v); })();
   let campKeeper = null;
   (() => {
     const P2 = globalThis.Isle2Props; if (!P2?.CAMP2) return;
@@ -6374,9 +6379,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const p = me.root.position;
     // The wide sea lobes must still show the island from the carriage.
     /* (검토 369 #4: on the lowest tier by 별마루섬 its fog ends where its drawn wood does, over 15 m -- island.isle2FogFar) */
+    /* (1.10.416 S4 결정 166A: on the lookout tower's deck (or its top landing) the far view of one riding -- fog 600, drawn to 650 -- and the main island's
+       woods in one far shape (island.setMainFar); its things past 230 m still not drawn (farCull)) */
+    const T0 = globalThis.IslandTerrain; const onTop = Boolean(T0.TOWER && T0.onTower?.(p.x, p.z)?.top && p.y > T0.TOWER.base + 5); const wide = riding || onTop;
+    if (island.mainFarShown?.() !== onTop) island.setMainFar?.(onTop);
     { const w = forestAir.tint(); /* (1.10.371 §3: the wood's fog nearer, eased with how deep in it I am) */
-      scene.fog.far = overview ? 2000 : riding ? 600 : Math.min(175, island.isle2FogFar?.() ?? 175, w.fogFar); scene.fog.near = Math.min(overview || riding ? 70 : w.fogNear, 70, scene.fog.far - 15); }
-    const far = overview ? 1100 : riding ? 650 : VIEW_FAR;
+      scene.fog.far = overview ? 2000 : wide ? 600 : Math.min(175, island.isle2FogFar?.() ?? 175, w.fogFar); scene.fog.near = Math.min(overview || wide ? 70 : w.fogNear, 70, scene.fog.far - 15); }
+    const far = overview ? 1100 : wide ? 650 : VIEW_FAR;
     if (camera.far !== far) { camera.far = far; camera.updateProjectionMatrix(); }
     if (photoCam) { const c = photoCam; camera.position.set(c.cam[0], c.cam[1], c.cam[2]); camera.lookAt(c.at[0], c.at[1], c.at[2]); if (camera.fov !== c.fov || camera.near !== 0.1) { camera.fov = c.fov; camera.near = 0.1; camera.updateProjectionMatrix(); } return; } /* (1.10.340 debug photoCam: a far sign through a narrow lens -- flicker-signs' check) */
     if (scope) { const L = globalThis.IslandProjects.LOOKOUT; const y = heightAt(L.x, L.z); const fx = -Math.sin(L.yaw); const fz = -Math.cos(L.yaw); camera.position.set(L.x + fx * 1.6, y + 4.2, L.z + fz * 1.6); camera.lookAt(L.aim.x - fz * scope.pan * 60, L.aim.y, L.aim.z + fx * scope.pan * 60); /* (from its eyepiece, at its front) */ if (camera.fov !== 22) { camera.fov = 22; camera.updateProjectionMatrix(); } return; } // (v1.10.224: through the telescope)

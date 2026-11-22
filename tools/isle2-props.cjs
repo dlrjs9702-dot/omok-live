@@ -169,7 +169,15 @@ Object.assign(CIRCLES, {
 });
 Object.assign(BOXES, { camp_office: [4.5, 2.7, 5.5, 0], camp_hearth_set: null /* (three boxes -- plaza-scene) */, tent_peaked: [2.9, 3.2, 4.6, 0], tent_round: [4.2, 2.0, 3.8, 0], tent_ridge: [2.7, 3.0, 5.1, 0] });
 
-const data = { FENCE: [...FENCE, ...CAMP_FENCE, ...LOOKOUT_FENCE], CAMP2, CORNERS, SIGN, SIGN_RESERVE, SIGN_TRAIL, CAVE, CAMP, ROCK, SWAMPS, SWAMP_OUTLINES, REEDS, DECO };
+/* ---- 1.10.416 S4 the lookout tower (assets 178 walk-surfaces.json guards): r 0.15 every 0.3 m along its outer edges and under its deck's three inner
+   sides -- one never steps from the ground or a low flight onto a higher face (the way on: its foot and where the faces meet) ---- */
+const TOWER = I.peak.tower ? [I.peak.tower.x, I.peak.tower.z, I.peak.tower.yaw] : null;
+CIRCLES.lookout_tower = [[[-3.4, 3.4], [2.2, 3.4]], [[-3.4, 3.4], [-3.4, -3.4]], [[-3.4, -3.4], [3.4, -3.4]], [[3.4, -3.4], [3.4, 2.2]], [[-1.85, 1.85], [3.25, 1.85]], [[-1.85, 1.85], [-1.85, -1.85]], [[-1.85, -1.85], [2, -1.85]]]
+  .flatMap(([a, b]) => { const L = Math.hypot(b[0] - a[0], b[1] - a[1]); const n = Math.round(L / 0.3); return Array.from({ length: n + 1 }, (_, k) => [r3(a[0] + ((b[0] - a[0]) * k) / n), r3(a[1] + ((b[1] - a[1]) * k) / n), 0.15]); })
+  .filter((c, i, all) => all.findIndex((d) => Math.hypot(d[0] - c[0], d[1] - c[1]) < 0.05) === i);
+BOXES.lookout_tower = [6.8, 6.2, 6.8, 0];
+
+const data = { FENCE: [...FENCE, ...CAMP_FENCE, ...LOOKOUT_FENCE], CAMP2, TOWER, CORNERS, SIGN, SIGN_RESERVE, SIGN_TRAIL, CAVE, CAMP, ROCK, SWAMPS, SWAMP_OUTLINES, REEDS, DECO };
 const text = `// 1.10.375 N2a-1 별마루섬's still pieces -- MADE by tools/isle2-props.cjs (do not edit: run it again). The fence round the island (${FENCE.length} pieces of
 // 2.4 m, [x, z, yaw, kind of FENCE_KINDS]; the gate where the walk from 별마루다리 crosses it), its corner posts, 157's spring cave, the camp's
 // fire / benches / stools, 우레's rock, the swamps (their outlines in the world: a bike inside is slowed) with reeds and 152c's pieces. CIRCLES
@@ -193,6 +201,7 @@ const text = `// 1.10.375 N2a-1 별마루섬's still pieces -- MADE by tools/isl
     for (const [x, z] of DATA.CORNERS) all.push(...circlesAt('fence_corner', x, z, 0));
     for (const [x, z, yaw, k] of DATA.CAMP) all.push(...circlesAt(CAMP_KINDS[k], x, z, yaw));
     for (const [x, z, yaw, k] of DATA.CAMP2 || []) all.push(...circlesAt(CAMP2_KINDS[k], x, z, yaw));
+    if (DATA.TOWER) all.push(...circlesAt('lookout_tower', DATA.TOWER[0], DATA.TOWER[1], DATA.TOWER[2]).map((c) => ({ ...c, tower: true }))); /* (1.10.416 S4: its guard rails) */
     if (DATA.ROCK) all.push(...circlesAt('tiger_rock', DATA.ROCK[0], DATA.ROCK[1], DATA.ROCK[2]));
     if (DATA.SIGN) all.push(...circlesAt('sign_tiger', DATA.SIGN[0], DATA.SIGN[1], DATA.SIGN[2]));
     if (DATA.SIGN_RESERVE) all.push(...circlesAt('sign_reserve', DATA.SIGN_RESERVE[0], DATA.SIGN_RESERVE[1], DATA.SIGN_RESERVE[2]));

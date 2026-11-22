@@ -4894,6 +4894,14 @@
       "precompressed": true
     },
     {
+      "out": "byeolmaru-v1/lookout_tower.glb",
+      "src": "tower178:01. High/byeolmaru-v1/lookout_tower.glb",
+      "sha256": "58af6bfc3aef61b5a2552bf01f893bf0bcd2d80e3fd0d81ddc5e3d2542664dd8",
+      "lowSrc": "tower178:02. Low/byeolmaru-v1/lookout_tower_low.glb",
+      "lowSha256": "3ca972620e86108c3f587149813b72e00a3da680968e16c6643167b584ef7bd0",
+      "precompressed": true
+    },
+    {
       "out": "byeolmaru-v1/fence_stonewall_tall.glb",
       "src": "walls175:01. High/byeolmaru-v1/fence_stonewall_tall.glb",
       "sha256": "9dd09122e8e0a2a1701f0d568053d437e0e5782420ce3c7b6b641697219a4a88",
@@ -15903,6 +15911,7 @@
     "river173": "173. Game Island west river road bridge 2026-11-22",
     "camp174": "174. Game Island camp fences 2026-11-22",
     "walls175": "175. Game Island lookout walls 2026-11-22",
+    "tower178": "178. Game Island lookout tower 2026-11-22",
     "polish164": "164. Game Island polish bundle 2026-11-21",
     "office176": "176. Game Island camp office 2026-11-22",
     "morak177": "177. Game Island camp keeper Morak 2026-11-22"

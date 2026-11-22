@@ -724,6 +724,7 @@
     /* (1.10.414 S2: 164's hearth set -- embers lit at night; 176's office -- 「관리소」 written on its plate, snow on its roof, its lamp and windows at night) */
     REGISTRY['newisle.camp_hearth_set'] = { ...two(N1, 'camp_hearth_set'), near: 40, nightGlow: true };
     REGISTRY['byeolmaru.camp_office'] = { ...two(B1, 'camp_office'), near: 60, keepNodes: true, snow: true, nightGlow: true };
+    REGISTRY['byeolmaru.lookout_tower'] = { ...two(B1, 'lookout_tower'), near: 90, snow: true }; /* (1.10.416 S4 assets 178: the lookout's tower -- its hipped roof snowed) */
     const S = (low) => Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `/assets/island/spring157/${s}/spring_cave${low}.glb`]));
     REGISTRY['spring.cave'] = { seasons: S(''), low: { seasons: S('_low') }, near: 40, swap: true /* (1.10.377: its water, falling water and foam the creek's -- island.js setSwapMaterials) */ };
     /* (1.10.376 N2a-2 별마루섬 호랑이, assets 152e: 우레 and 안개 -- their own rig and ten clips (tigers-view.js, assets.creature), 1.6x (사용자 2A; 안개's
