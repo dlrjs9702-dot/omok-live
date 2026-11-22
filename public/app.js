@@ -3038,7 +3038,8 @@
     const kinds = new Set(bag.items.map((e) => BAG_DATA?.tabOf(e.itemId) || 'etc')); const tabs = document.createElement('div'); tabs.className = 'placeTabs';
     for (const [k, label] of (BAG_DATA?.TABS || [['all', '전체']]).filter(([k]) => k === 'all' || kinds.has(k))) { const b = document.createElement('button'); b.type = 'button'; b.className = `bagTab${k === placeTab ? ' on' : ''}`; b.textContent = label; b.addEventListener('click', () => { placeTab = k; drawPlaceSides(); }); tabs.append(b); }
     const left = document.createElement('div'); left.className = 'placeItems';
-    for (const item of bag.items) {
+    /* (1.10.421 U7 ui-review D6: what the place takes first, what it does not below -- each group in the bag's order) */
+    for (const item of [...bag.items].sort((a, b) => Number(!placeTakesItem(a)) - Number(!placeTakesItem(b)))) {
       if (placeTab !== 'all' && (BAG_DATA?.tabOf(item.itemId) || 'etc') !== placeTab) continue; const takes = placeTakesItem(item); const rest = item.qty - (placePick.get(item.entryId) || 0); if (takes && rest <= 0) continue;
       const b = document.createElement('button'); b.type = 'button'; b.className = `placeItem${takes ? '' : ' no'}`; b.dataset.item = item.itemId; b.disabled = !takes; b.draggable = takes;
       b.append(itemIcon(item), Object.assign(document.createElement('span'), { textContent: `${item.name}${rest > 1 ? ` ×${rest}` : ''}` }));
