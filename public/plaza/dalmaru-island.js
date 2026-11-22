@@ -280,7 +280,23 @@
     const dx = x - TOP.x; const dz = z - TOP.z; const along = dx * STAIRS.ux + dz * STAIRS.uz; const out = -(dx * STAIRS.nx + dz * STAIRS.nz);
     // (문제 기록 4회차: 2.4 m deep it fell between the 2.5 m mesh's points -- drawn 7 m under where one stood at the top; 5 m deep)
     const edge = Math.max(-along - 0.4, along - 5, -out - 1.5, out - 9); if (edge < 2.5) h = Math.max(h, lerp(TOP.h, h, smooth(0, 2.5, edge))); // (from the stairs' end on: over their last steps it stood flat at the top -- a 1.9 m step up)
-    return roadBank(x, z, h);
+    return bridgeEndFlat(x, z, roadBank(x, z, h)); /* (404: last -- the road's bank had raised the south half) */
+  }
+  /* (1.10.404 문제 기록 dddccb8f, notes issues-taxi-resident §9 · bridges-two-way §0 ①: the high 윤슬다리's east end -- the ground there leans 0.51 m
+     across, and the deck, lying on its middle line, dug into the south half. Flat at the end's own height 9.8 m across (the wide bridge's 7.8 and 1 m
+     each side, made so once: the wider bridge needs no second cut) from 1.5 m under the deck's end to 3 m out, eased into the ground as it was
+     over 3 m) */
+  const END_FLAT = Object.freeze({ hw: 4.9, inside: 1.5, out: 3, ease: 3 }); let endFlats = null;
+  function bridgeEndFlat(x, z, h) {
+    if (!endFlats) { const list = []; endFlats = []; /* (none while the ends' own height is read) */ for (const b of D.BRIDGES) if (b.high) { const [ex, ez] = b.ends[1]; list.push({ x: ex, z: ez, dir: Math.sign(ex - b.x) || 1, h: land(ex, ez) }); } endFlats = list; }
+    for (const f of endFlats) {
+      const u = (x - f.x) * f.dir; const v = Math.abs(z - f.z); if (u < -END_FLAT.inside - END_FLAT.ease || u > END_FLAT.out + END_FLAT.ease || v > END_FLAT.hw + END_FLAT.ease) continue;
+      const du = Math.max(0, -END_FLAT.inside - u, u - END_FLAT.out); const dv = Math.max(0, v - END_FLAT.hw); const dd = Math.hypot(du, dv);
+      /* (a station's own pad keeps its level -- 달끝역's walkway by the end: the flat let go over its 2 m rim) */
+      let keep = 1; for (const p of PADS) { const pd = Math.hypot(x - p.x, z - p.z); if (pd < p.r + 2) keep = Math.min(keep, smooth(p.r, p.r + 2, pd)); }
+      if (dd < END_FLAT.ease) h = lerp(h, lerp(f.h, h, smooth(0, END_FLAT.ease, dd)), keep);
+    }
+    return h;
   }
   // T1 고침 (문제 기록 11-18 「인도까지 바닷물이 올라와 … 모래사장 구간, 인도 구간 명확히」): where the taxi road runs by the sea its
   // lanes and walks lay at the sea's height and under it -- the road now on a low bank: the ground under them and half a metre past

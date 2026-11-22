@@ -394,9 +394,11 @@ if (rc > 0.0) {
 vec3 col;
 if (ao < 2.3) {
 col = vec3(0.40, 0.41, 0.43) * (0.94 + 0.12 * SAND(vGroundXZ / 1.1).r);
-float zebra = rd.b * (1.0 - smoothstep(2.0, 2.06, ao)) * smoothstep(0.42, 0.47, abs(fract(off / 0.9) - 0.5) * 2.0 - 0.0);
-col = mix(col, vec3(0.94, 0.93, 0.89), max(zebra, (1.0 - rd.b) * (1.0 - smoothstep(0.05, 0.08, abs(ao - 2.1)))));
-col = mix(col, vec3(0.96, 0.78, 0.26), (1.0 - rd.b) * (1.0 - smoothstep(0.06, 0.09, ao)));
+// (1.10.404 issue 9748abea: crosswalk stripe ends sharp -- its 0.4 m fade was under one 0.58 m map cell, blurred; thresholded)
+float zb = smoothstep(0.46, 0.54, rd.b);
+float zebra = zb * (1.0 - smoothstep(2.0, 2.06, ao)) * smoothstep(0.42, 0.47, abs(fract(off / 0.9) - 0.5) * 2.0 - 0.0);
+col = mix(col, vec3(0.94, 0.93, 0.89), max(zebra, (1.0 - zb) * (1.0 - smoothstep(0.05, 0.08, abs(ao - 2.1)))));
+col = mix(col, vec3(0.96, 0.78, 0.26), (1.0 - zb) * (1.0 - smoothstep(0.06, 0.09, ao)));
 } else if (ao < 2.45) { col = vec3(0.80, 0.78, 0.74); }
 else {
 vec2 q = vGroundXZ / 0.5; vec2 f = fract(q); float h = fract(sin(dot(floor(q), vec2(12.9898, 78.233))) * 43758.5453);

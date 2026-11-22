@@ -1493,7 +1493,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   function setMyBoat(bs) {
     const next = bs && Number.isInteger(bs.seat) ? { id: bs.id, seat: bs.seat, n: boatsState?.boats?.find((b) => b.id === bs.id)?.n ?? 0 } : null; if (Boolean(next) === Boolean(myBoat) && (!next || (next.id === myBoat.id && next.seat === myBoat.seat))) return;
     if (next && !myBoat) { keys.clear(); if (sitting) standUp?.(); me.anim?.play?.('sitDown'); me.anim?.loop?.('sitIdle'); me.tailTucked = true; me.tuckTail?.(true); trainChangedAt = Date.now(); }
-    if (!next && myBoat) { me.anim?.loop?.('idle'); me.tailTucked = false; me.tuckTail?.(false); trainChangedAt = Date.now(); }
+    if (!next && myBoat) { me.anim?.release?.(); /* (1.10.404 문제 기록 a720f494·78b5ccc5: let go, not held at idle -- off the boat one walked in the standing pose) */ me.tailTucked = false; me.tuckTail?.(false); trainChangedAt = Date.now(); }
     myBoat = next;
   }
   // (1.10.352 무게 ⑥ §9-2: a board taken down for good -- its texture, material and plane let go, and out of `textures`)
@@ -1751,7 +1751,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       { /* (1.10.390 탐방선: their seat in a boat -- placed there each frame by stepBoats, sitting) */
         const bs = p.boat && Number.isInteger(p.boat.seat) ? { id: p.boat.id, seat: p.boat.seat } : null;
         if (bs && !o.boatSeat) { o.c.anim?.loop?.('sitIdle'); o.c.tailTucked = true; o.c.tuckTail?.(true); }
-        if (!bs && o.boatSeat) { o.c.anim?.loop?.('idle'); o.c.tailTucked = false; o.c.tuckTail?.(false); }
+        if (!bs && o.boatSeat) { o.c.anim?.release?.(); /* (404: the same on others' screens) */ o.c.tailTucked = false; o.c.tuckTail?.(false); }
         o.boatSeat = bs; }
       o.pet = p.pet || null; // B 47 반려동물
       o.run = Boolean(p.run); /* (1.10.387 펫 태우기: running, as they sent it) */
