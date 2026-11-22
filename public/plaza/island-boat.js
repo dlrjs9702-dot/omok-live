@@ -52,22 +52,32 @@
   function pathOf(from, bFrom, to, bTo) {
     const key = `${from}:${bFrom}>${to}:${bTo}`; if (paths.has(key)) return paths.get(key);
     const A = DOCKS[from]; const B = DOCKS[to]; const start = bFrom >= 0 ? A.berths[bFrom] : A.offshore; const end = bTo >= 0 ? B.berths[bTo] : B.offshore;
-    const pts = [[start.x, start.z], ...laneSide(from === 'dal' ? 1 : -1), [end.x, end.z]];
+    let pts = [[start.x, start.z], ...laneSide(from === 'dal' ? 1 : -1), [end.x, end.z]];
+    /* (404 문제 기록 7e6f3839: the corners rounded -- two passes cutting each a quarter in, the berth and the far end kept -- a boat turns, it does not
+       snap from one heading to the next) */
+    for (let pass = 0; pass < 2; pass += 1) { const r = [pts[0]]; for (let i = 0; i < pts.length - 1; i += 1) { const [ax, az] = pts[i]; const [bx, bz] = pts[i + 1]; if (i > 0) r.push([ax * 0.75 + bx * 0.25, az * 0.75 + bz * 0.25]); if (i < pts.length - 2) r.push([ax * 0.25 + bx * 0.75, az * 0.25 + bz * 0.75]); } r.push(pts[pts.length - 1]); pts = r; }
     const samples = [{ x: pts[0][0], z: pts[0][1], t: 0, d: 0 }]; let d = 0; let t = 0;
     for (let i = 1; i < pts.length; i += 1) {
       const [ax, az] = pts[i - 1]; const [bx, bz] = pts[i]; const L = Math.hypot(bx - ax, bz - az); const n = Math.max(1, Math.ceil(L));
-      for (let k = 1; k <= n; k += 1) { const x = ax + ((bx - ax) * k) / n; const z = az + ((bz - az) * k) / n; const step = L / n; const v = Math.hypot(x - BRIDGE.x, z - BRIDGE.z) < BRIDGE.r ? SLOW : FAST; d += step; t += (step / v) * 1000; samples.push({ x, z, t, d }); }
+      for (let k = 1; k <= n; k += 1) { const x = ax + ((bx - ax) * k) / n; const z = az + ((bz - az) * k) / n; const step = L / n; d += step; samples.push({ x, z, t: 0, d, slow: Math.hypot(x - BRIDGE.x, z - BRIDGE.z) < BRIDGE.r }); }
     }
+    /* (1.10.404 문제 기록 7e6f3839, notes issues-taxi-resident §15: it left at full speed at once, sliding sideways off the float while its bow turned
+       over 6 s. Now from standing, ACCEL m/s² up to its pace and down again into its berth (never under CREEP m/s) -- the bow turned while it is
+       still slow, TURN_MS at each end, the way it goes after) */
+    for (let i = 1; i < samples.length; i += 1) { const a = samples[i - 1]; const b = samples[i]; const m = (a.d + b.d) / 2; const v = Math.max(CREEP, Math.min(b.slow ? SLOW : FAST, Math.sqrt(2 * ACCEL * m), Math.sqrt(2 * ACCEL * Math.max(0, d - m)))); b.t = a.t + ((b.d - a.d) / v) * 1000; }
+    t = samples[samples.length - 1].t;
     const out = { key, samples, ms: t, length: d, endYaw: end.yaw }; paths.set(key, out); return out;
   }
   function alongPath(p, ms) {
     const S = p.samples; if (ms <= 0) { const a = S[0]; const b = S[1]; return { x: a.x, z: a.z, yaw: Math.atan2(b.x - a.x, b.z - a.z) }; }
     if (ms >= p.ms) { const a = S[S.length - 2]; const b = S[S.length - 1]; return { x: b.x, z: b.z, yaw: Math.atan2(b.x - a.x, b.z - a.z) }; }
     let lo = 0; let hi = S.length - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (S[m].t <= ms) lo = m; else hi = m; }
-    const a = S[lo]; const b = S[hi]; const k = (ms - a.t) / (b.t - a.t || 1); return { x: a.x + (b.x - a.x) * k, z: a.z + (b.z - a.z) * k, yaw: Math.atan2(b.x - a.x, b.z - a.z) };
+    const a = S[lo]; const b = S[hi]; const k = (ms - a.t) / (b.t - a.t || 1);
+    const ya = S[Math.max(0, lo - 3)]; const yb = S[Math.min(S.length - 1, hi + 3)]; /* (404: the bow by the way 3 m either side -- round the lane's corners, not snapping at them) */
+    return { x: a.x + (b.x - a.x) * k, z: a.z + (b.z - a.z) * k, yaw: Math.atan2(yb.x - ya.x, yb.z - ya.z) };
   }
-  // the first and last 6 s of a crossing turn the bow from the berth's line to the lane's, and back
-  const TURN_MS = 6000;
+  // the first and last TURN_MS of a crossing turn the bow from the berth's line to the lane's, and back (404: while still slow -- 6 s, at full speed, before)
+  const TURN_MS = 2500; const ACCEL = 1.5; const CREEP = 0.8;
   function poseAt(boat, now, scale = 1) {
     const d = DOCKS[boat.at || boat.to]; const berthPose = (dock, k) => { const b = k >= 0 ? DOCKS[dock].berths[k] : DOCKS[dock].offshore; return { x: b.x, z: b.z, yaw: b.yaw, moving: false }; };
     if (boat.phase === 'sail') {

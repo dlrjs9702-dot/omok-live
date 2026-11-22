@@ -14,7 +14,9 @@ test('탐방선 물길: 두 줄 모두 1 m마다 물 위, 뭍에서 선체 2 m �
   const E = T.bridges.find((b) => b.high); const piers = [-16, -9, 9, 16].flatMap((u) => [-2.4, 2.4].map((v) => ({ x: E.x + u, z: E.z + v, r: 0.75 })));
   const pillars = (R.PILLARS || []).map((p) => ({ x: p.x ?? p[0], z: p.z ?? p[1] }));
   for (const [from, to] of [['dal', 'byeol'], ['byeol', 'dal']]) {
-    const p = B.pathOf(from, 0, to, 0); assert.ok(p.ms > 24000 && p.ms < 33000, `${from}: ${p.ms}`);
+    const p = B.pathOf(from, 0, to, 0); assert.ok(p.ms > 24000 && p.ms < 38000, `${from}: ${p.ms}`);
+    /* (404: the bow the way it goes -- within 22° whenever it moves faster than 4 m/s, every berth to every berth) */
+    for (const [bf, bt] of [[0, 0], [1, 1], [2, 2], [0, 1]]) { const boat = { phase: 'sail', from, to, berthFrom: bf, berthTo: bt, t0: 0, at: null }; const q = B.pathOf(from, bf, to, bt); for (let ms = 10; ms < q.ms - 10; ms += 20) { const a = B.poseAt(boat, ms - 5); const b = B.poseAt(boat, ms + 5); const mx = b.x - a.x; const mz = b.z - a.z; if (Math.hypot(mx, mz) / 0.01 <= 4) continue; const y = B.poseAt(boat, ms).yaw; const off = Math.abs(Math.atan2(Math.sin(Math.atan2(mx, mz) - y), Math.cos(Math.atan2(mx, mz) - y))) * 180 / Math.PI; assert.ok(off < 22, `${from} ${bf}->${bt}: ${off.toFixed(0)}° at ${ms} ms`); } } /* (1.10.404 문제 기록 7e6f3839: from standing and slowly into the berth, bow first -- about 4 s more than at full speed from the first moment) */
     const bad = [];
     for (const s of p.samples) {
       if (Math.hypot(s.x - B.DOCKS[from].berths[0].x, s.z - B.DOCKS[from].berths[0].z) < 6 || Math.hypot(s.x - B.DOCKS[to].berths[0].x, s.z - B.DOCKS[to].berths[0].z) < 6) continue; /* (at the berths: below) */
