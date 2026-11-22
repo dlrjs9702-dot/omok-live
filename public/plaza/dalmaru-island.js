@@ -479,6 +479,9 @@
 
   // 물가 거리's railing, lamps and benches (assets 55) along the water before 대청마당, open where the walk comes down to
   // 배 타는 곳; a rail every 4.2 m on the shore side of the walk, a lamp every third, a bench (facing the water) between
+  /* (1.10.412 L3 총괄 「가로등 규칙에서 비키게」: a lamp 0.3 m round keeps 1.65 m off a road stop's sign (1.5 clear) and 1.3 m off its mark (0.95) -- each side's) */
+  const stopPlaces_ = []; const byStopPlace = (x, z) => { if (!stopPlaces_.length && TX?.ROADSTOPS) for (const id of Object.keys(TX.ROADSTOPS)) for (const s of [1, -1]) { const c = TX.curbOf(id, s); const m = TX.boardOf(id, s); stopPlaces_.push([c.sign.x, c.sign.z, 1.8], [m.x, m.z, 1.3]); }
+    return stopPlaces_.some(([px, pz, r]) => Math.hypot(x - px, z - pz) < r); };
   const WATERFRONT = (() => {
     const rails = []; const lamps = []; const benches = [];
     const r = D.R_BAY + 3.4; const step = (4.2 / r) * (180 / Math.PI);
@@ -489,8 +492,8 @@
       // (묶음 5 배치 점검: off the walk (r 99.4-102.6) -- the lamps on its land side, the benches beyond them facing the water)
       // (T1: where the taxi road runs by the water, the lamp on its land-side walk's outer edge and the bench behind it -- out
       // from the bay till clear of the road)
-      const outward = (r0, room) => { let rr = r0; while (rr < r0 + 9 && roadDist(...bayAt(a, rr)) < ROAD.half + room) rr += 0.2; return bayAt(a, rr); };
-      if (k % 3 === 1) { const [lx, lz] = outward(103.1, 0.55); lamps.push({ x: lx, z: lz, r: 0.3 }); }
+      const outward = (r0, room, keep = () => false) => { let rr = r0; while (rr < r0 + 9 && (roadDist(...bayAt(a, rr)) < ROAD.half + room || keep(...bayAt(a, rr)))) rr += 0.2; return bayAt(a, rr); };
+      if (k % 3 === 1) { const [lx, lz] = outward(103.1, 0.55, byStopPlace); lamps.push({ x: lx, z: lz, r: 0.3 }); } /* (412: and clear of a stop's sign and mark, either side) */
       if (k % 6 === 3) { const [bx, bz] = outward(104.6, 1.3); benches.push({ x: bx, z: bz, yaw: Math.atan2(-bx, D.BAY_Z - bz), r: 0.9 }); } // (a bench's +Z, its front, toward the water)
     }
     return { rails, lamps, benches };

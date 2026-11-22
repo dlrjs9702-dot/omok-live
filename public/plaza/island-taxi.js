@@ -152,15 +152,42 @@
      a car stands on its own way's side, never across the middle line) */
   /* (`far`: the far side's own -- along the road by ds, its sign signOut from the curb -- where its first place met the gangway, the bay's railing or a
      lamp: test/island-taxi's stop checks) */
-  const FAR = Object.freeze({ dock: { ds: -0.5 }, waterfront: { ds: 2, signOut: 0.8 }, dalkkeut: { ds: -1 }, isleFork: { ds: 1 }, westWaterfront: { ds: -5, signOut: 1.0 } /* (411: the land side's on its walk too, its lamps and benches every few metres; 412 총괄: nearer -- 5 m back, between the bench pair and the lamp before it (ds -10 ~ -4.5 clear; 411's 18.5 m on)) */ });
+  const FAR = Object.freeze({ dock: { ds: -0.5 }, waterfront: { ds: 2, signOut: 0.8 }, dalkkeut: { ds: -1 }, isleFork: { ds: 1 }, westWaterfront: { signOut: 1.0 } /* (411: the land side's on its walk too, 18.5 m on past its lamps and benches; 412 총괄: across from the stop -- the bay's lamp there steps out of its mark's way (dalmaru-island byStopPlace), 6 m and more off both crossings) */ });
   const farDs = (id, side) => (side !== ROADSTOPS[id].side ? FAR[id]?.ds || 0 : 0); /* (a side's place along its road, from the stop's) */
   function curbOf(id, side = ROADSTOPS[id].side) { const base = ROADSTOPS[id]; const s0 = side < 0 ? -1 : 1; const far = s0 !== base.side ? FAR[id] || {} : {};
     const r = { ...base, side: s0, signOut: far.signOut ?? base.signOut }; const p = atStop(id, far.ds || 0); const c = (LANE + 1.2) * r.side; const so = (r.signOut ?? 2.2) * r.side; return { x: p.x + Math.cos(p.yaw) * c, z: p.z - Math.sin(p.yaw) * c, yaw: r.side < 0 ? Math.atan2(-Math.sin(p.yaw), -Math.cos(p.yaw)) : p.yaw /* (410: the far side's car faces the other way) */, side: r.side, sign: { x: p.x + Math.cos(p.yaw) * (c + so), z: p.z - Math.sin(p.yaw) * (c + so), yaw: p.yaw - (Math.PI / 4) * r.side } }; } /* (1.10.398 에셋 검사 2회차 「길에서 옆면만」: its plate turned 45° -- read coming along the road and from across it, both faces) */ /* (397 ⑥⑦: on the village street the sign on its walk -- signOut 1.0, the yards' fences behind) */
   // the road between two places: its start (a terminal's front place, or a stop's curb), the road's points past 10 m of a terminal end and
   // 6 m of a stop, its end (a terminal's drop spot by its shelter, or a stop's curb). Between the two terminals: the drive as before
   function driveBetween(from, to, curb) {
-    if (STOPS[from] && STOPS[from].to === to) return driveOf(from);
-    return driveByGraph(from, to, curb); /* (1.10.405 L0: by the roads' graph -- the trunk's own way while the roads are a tree) */
+    if (STOPS[from] && STOPS[from].to === to) return roundWay(driveOf(from));
+    return roundWay(driveByGraph(from, to, curb)); /* (1.10.405 L0: by the roads' graph -- the trunk's own way while the roads are a tree) */
+  }
+  /* (1.10.412 L3 총괄 · 결정 78 「모퉁이 둥글게」: a drive's sharp corners rounded -- the car went round a 90° corner on its point, its heading eased over 4 m
+     but its place turning on the spot. First a doubling back (over 120°: up one arm of the fork under 대청마당 and down the other) cut across where its
+     two arms are still within 9 m; then each corner over 20° a curve from `t` back to `t` on (control at the corner), no further than 1 m inside it
+     (t = 2 / sin(half the turn), at most 6 m, never into the next corner's or the drive's ends). Its first and last points, and a stop's turning round, as
+     they were) */
+  const turnOf = (p, i) => { const a = Math.atan2(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]); const b = Math.atan2(p[i + 1][0] - p[i][0], p[i + 1][1] - p[i][1]); return Math.abs(wrap(b - a)); };
+  const gap = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  const SHARP = Math.PI / 9; const BACK_ON = (Math.PI * 2) / 3; const CORNER_IN = 1; const CORNER_T = 6;
+  function roundWay(road) {
+    const i0 = Math.max(1, road.turn || 0); const head = road.slice(0, i0 - 1); /* (the turning round's points as they are; p[0] its last) */
+    let p = road.slice(i0 - 1).filter((q, i, a) => i === 0 || gap(q, a[i - 1]) > 1e-6);
+    for (let h = 1; h < p.length - 1; h += 1) { if (turnOf(p, h) <= BACK_ON) continue; let k = 1; while (h - k - 1 >= 0 && h + k + 1 < p.length - 1 && gap(p[h - k - 1], p[h + k + 1]) < 9) k += 1; p = [...p.slice(0, h - k + 1), ...p.slice(h + k)]; h = Math.max(1, h - k) - 1; }
+    const cum = [0]; for (let i = 1; i < p.length; i += 1) cum.push(cum[i - 1] + gap(p[i], p[i - 1])); const total = cum[cum.length - 1];
+    const at = (s) => { let i = 1; while (i < p.length - 1 && cum[i] < s) i += 1; const f = (s - cum[i - 1]) / ((cum[i] - cum[i - 1]) || 1); return [p[i - 1][0] + (p[i][0] - p[i - 1][0]) * f, p[i - 1][1] + (p[i][1] - p[i - 1][1]) * f]; };
+    const out = [p[0]]; const outS = [0]; let done = 0; /* (how far along the last curve reaches; outS: each kept point's place along) */
+    for (let h = 1; h < p.length - 1; h += 1) {
+      if (cum[h] <= done + 1e-6) continue; const th = turnOf(p, h); if (th <= SHARP) { out.push(p[h]); outS.push(cum[h]); continue; }
+      let next = Infinity; for (let j = h + 1; j < p.length - 1; j += 1) if (turnOf(p, j) > SHARP) { next = cum[j] - cum[h]; break; }
+      const inside = TAXI_GATES.some((g) => gap([g.x, g.z], p[h]) < 4) ? 0.3 : CORNER_IN; /* (through a gate's posts: only a little in) */
+      const t = Math.min(CORNER_T, (2 * inside) / Math.sin(th / 2), cum[h] - done, total - cum[h] - 0.5, next / 2); if (!(t > 0.3)) { out.push(p[h]); outS.push(cum[h]); continue; }
+      const A = at(cum[h] - t); const B = at(cum[h] + t); const V = p[h]; const n = Math.max(4, Math.ceil(th / (Math.PI / 22)));
+      while (out.length > 1 && outS[outS.length - 1] >= cum[h] - t - 1e-6) { out.pop(); outS.pop(); } /* (the plain points the curve starts before) */
+      out.push(A); for (let k = 1; k < n; k += 1) { const u = k / n; out.push([(1 - u) * (1 - u) * A[0] + 2 * u * (1 - u) * V[0] + u * u * B[0], (1 - u) * (1 - u) * A[1] + 2 * u * (1 - u) * V[1] + u * u * B[1]]); } out.push(B);
+      while (outS.length < out.length) outS.push(-Infinity); /* (a curve's points stay) */ done = cum[h] + t;
+    }
+    out.push(p[p.length - 1]); const res = [...head, ...out.filter((q, i, a) => i === 0 || gap(q, a[i - 1]) > 1e-6)]; if (road.turn) res.turn = road.turn; return res;
   }
   /* 1.10.405 L0 길 계산 틀 (notes taxi-island-loop-20261122 §4, 사용자 결정 69): the roads as a graph -- each road cut into pieces where another
      begins or ends on it; a place stands on a piece (its foot: its point on the road); between two places the shortest way along the pieces.

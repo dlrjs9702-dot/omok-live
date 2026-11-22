@@ -55,7 +55,7 @@ test('정류장 반대 방향 출발: 반원을 걷는 빠르기로 돌고, 제�
     const ride = { from: id, to, startedAt: 0, curb }; let prev = null;
     for (let ms = 0; ms < t.runMs; ms += 50) { const q = X.poseAt(ride, ms); if (prev && q.d < 12) { const v = Math.hypot(q.x - prev.x, q.z - prev.z) / 0.05; const dy = Math.abs(Math.atan2(Math.sin(q.yaw - prev.yaw), Math.cos(q.yaw - prev.yaw))) * 180 / Math.PI;
       if (q.d < 7 && v > 3.2) bad.push(`${id} ${curb}: ${v.toFixed(1)} m/s round the turn`); if (v < 0.2 && dy > 2) bad.push(`${id} ${curb}: turns ${dy.toFixed(1)}° standing`);
-      if (v > 1.5 && !(id === 'isleFork' && curb < 0) /* (1.5 m before the road's own sharp 90° corner at the neck -- its rounding is L1 · L2's) */) { const go = Math.atan2(q.x - prev.x, q.z - prev.z); const off = Math.abs(Math.atan2(Math.sin(go - q.yaw), Math.cos(go - q.yaw))) * 180 / Math.PI; if (off > 20) bad.push(`${id} ${curb}: bow ${off.toFixed(0)}° off at ${q.d.toFixed(1)} m`); } }
+      if (v > 1.5 /* (412: the neck's sharp corner rounded -- isleFork -1 no longer let off) */) { const go = Math.atan2(q.x - prev.x, q.z - prev.z); const off = Math.abs(Math.atan2(Math.sin(go - q.yaw), Math.cos(go - q.yaw))) * 180 / Math.PI; if (off > 20) bad.push(`${id} ${curb}: bow ${off.toFixed(0)}° off at ${q.d.toFixed(1)} m`); } }
       prev = q; }
   }
   assert.deepEqual(bad.slice(0, 10), []);

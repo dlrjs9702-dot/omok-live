@@ -25,6 +25,17 @@ test('섬 한 바퀴: 고리 610 m, 윤슬만이 차 오른쪽, 탄 곳으로 �
   for (const t of ['plaza', 'isle', 'head']) assert.notEqual(X.nearestRoom(X.createFleet(0), t), t, `${t}: not round again`);
 });
 
+/* (1.10.412 총괄 · 결정 78 「모퉁이 둥글게」: no drive turns more than 35° at a point (its turning round at a stop aside) -- the fork under 대청마당 crossed,
+   each corner a curve; and the car's heading through a corner never more than 20° off where it goes at speed) */
+test('모퉁이: 어느 길에서도 한 점에서 35° 넘게 꺾지 않고(정류장 돌기 빼고), 빠를 때 뱃머리가 가는 쪽에서 20° 안', () => {
+  const ids = X.PLACE_IDS(); const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a)); const bad = [];
+  for (const a of ids) for (const b of ids) { const road = X.driveBetween(a, b);
+    for (let i = Math.max(1, road.turn || 0); i < road.length - 1; i += 1) { const [p, q, r] = [road[i - 1], road[i], road[i + 1]]; const th = Math.abs(wrap(Math.atan2(r[0] - q[0], r[1] - q[1]) - Math.atan2(q[0] - p[0], q[1] - p[1]))) * 180 / Math.PI; if (th > 35) bad.push(`${a}->${b} ${th.toFixed(0)}° at ${q[0].toFixed(1)},${q[1].toFixed(1)}`); } }
+  for (const [a, b] of [['plaza', 'westWaterfront'], ['dock', 'isle'], ['plaza', 'head'], ['westWaterfront', 'westWaterfront']]) { const ride = { from: a, to: b, startedAt: 0, empty: true }; const t = X.tableOf(a, undefined, b); let prev = null;
+    for (let ms = 0; ms < t.runMs; ms += 50) { const q = X.poseAt(ride, ms); if (prev) { const v = Math.hypot(q.x - prev.x, q.z - prev.z) / 0.05; const go = Math.atan2(q.x - prev.x, q.z - prev.z); const off = Math.abs(wrap(go - q.yaw)) * 180 / Math.PI; if (v > 4 && off > 20) bad.push(`${a}->${b} bow ${off.toFixed(0)}° off at ${q.x.toFixed(1)},${q.z.toFixed(1)}`); } prev = q; } }
+  assert.deepEqual(bad.slice(0, 10), []);
+});
+
 /* (1.10.412 총괄 · assets 179 ⑤: L1's dead end a painted round place -- asphalt, no yellow middle in it, its walk to r; nothing solid or growing in it) */
 test('L1 끝 도는 자리: 칠해짐(가운데 노란 선 없음, 바깥은 인도), 안에 막는 것 없음', () => {
   const T = require('../public/plaza/island-terrain.js'); const Pth = require('../public/plaza/island-paths.js'); const [pad] = X.TURN_PADS; assert.ok(pad);
