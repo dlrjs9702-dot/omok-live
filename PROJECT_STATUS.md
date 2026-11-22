@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.405 L0 길 계산 틀(notes taxi-island-loop-20261122 §4, 결정 69)
+
+- 길 그림: ROADS를 만나는 점에서 조각으로(지금 3조각), 조각 끝점 사이 가장 짧은 길(Floyd). driveBetween·distanceOf가 이걸 씀 — 장소 90쌍 모두 옛 줄기와 같은 점·거리. 거리는 쌍마다 기억.
+- 택시 한 줄 다리 상자는 dalmaru-terrain BRIDGES의 `taxi`에서. 길 둑은 island-taxi BANKED(지금 ROUTE만 — EXT까지 하면 별마루다리 서쪽 바닷가에 8 m 둑).
+- 빈 차로 돌아오는 차: 돌아오는 길 끝에서 종점에서 11 m 떨어진 곳에서 길을 떠나(차로 그대로) 내리는 자리 → 쉼터 뒤 반원 → 앞으로 자리(HOME_V 6 m/s, 모서리 둥글게). 어긋남 25° 안·앞자리에서 4.4 m 밖 시험.
+- 종점 도는 길(PARK_PATHS) 2.35 m 안에는 자연물·돌 없음 — 대청마당 종점 뒤 나무 하나(16.3, −47.1) 빠짐, 땅 덮개 지도 다시.
+
 ## v1.10.404 문제 기록 고침(notes issues-taxi-resident-20261122)
 
 - c086f60d 높은 윤슬다리 깜빡임: 다리 맞추기(fit)를 LOD 단계마다 따로(asset-loader) — 두 단계가 한 묶음으로 같이 그려지던 것(389부터).
@@ -29,10 +36,3 @@
 - 택시: #2 결제 실패 되돌리기는 내 차·내가 당긴 차만 · #5 자정 지난 보유권 「타기」 TAXI_PRICE · #6 요금 claim = 화면 요청 id(응답 없던 같은 요청은 그 결제로, 한 결제 한 운행·10분) · #7·#13 누를 때 행선지·요금 고정, 고를 때마다 버튼·모자람 · #9 한 정류장 두 호출이면 차 두 대 · #10 돌아갈 종점이 차면 빈자리 종점 · #11 한 줄 다리 bridgeHold · #12 급이동 3초 부르기·타기 안 됨 · #18 종점 빈 자리 충돌 원은 차 있을 때만 · 게임 방 이유를 거리보다 먼저.
 - 택시 셋: 뒤 차 당기기 pulledAt = 탄 뒤 inOf+1.1 s(겹침 0.94→4.5 m) · 화면 시계 프레임 시각(viewNow) · 반투명 택시 깊이 먼저(renderOrder 10).
 - #3·#4 수조 tankPuts + 응답 없던 넣기 같은 요청 · #8 축제 날짜별 횟수 유지 · #14 창고 완료 기록 하루 · #15 꺼낼 때 seq · #16 호랑이 미처리 world 'tigerPending' + 재시작 재개 · #17 재료 심부름 미지급 금액 고정 · #19 사라진 창고 가림 기록 · #20 부팅 캐시 격자 실패면 다시 저장. #1은 401 핫픽스.
-
-## v1.10.402 펫 — 에셋 169·169b 연결 + 결정 61(자전거 머리 위 없앰) · 60-1(아이언맨 겹침)
-
-- 작은 8종(PET_SMALL)은 자전거 때 basket, 169 BasketSit, 방석 보임(169b 표 PET_SEAT 0.064~0.087). 새는 birdFly: 파일 안 Fly, 옆 0.9 m·뒤 0.1 m·높이 1.05 m, d×8 따라잡기. tf 고양이 BasketSitPaw(PET_KIND_CLIP), 상자 펫 PET_SEAT 169 값.
-- 배트맨 활공 때 cape_spread 0→1(0.25 s, High·Low 메시). 슈퍼맨 Fly(55°, 주먹 머리 옆), 아이언맨 재질 부드럽게 + 60-1 헬멧 아래 면 잘라 겹침 177→10 cm²(예산 △ 갱신).
-- 걷어 냄(400 머리 위 몫): HEAD_SINK·이름표 어깨 옆(tagBeside)·폰 세로 headPetK·1인칭 머리 펫 숨김. 펫 이름표는 자세 그대로 잰 높이+6 cm(역할 바뀌면 다시).
-- 파일 39개 SHA 일치(HeadSit·HeadSitWide는 안 씀).
