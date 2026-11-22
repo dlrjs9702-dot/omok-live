@@ -19,7 +19,14 @@ test('섬 창 종이: ☰ 창·반려동물·이름 짓기·접속 종료가 종
     const d = document.querySelector(sel); const bg = getComputedStyle(d).backgroundColor;
     const words = [...d.querySelectorAll('h2,h3,p,label,span,strong,small')].filter((e) => e.offsetParent && e.textContent.trim() && !e.closest('button,.skinTryOn') && getComputedStyle(e).backgroundColor === 'rgba(0, 0, 0, 0)');
     const close = d.querySelector('.recordsDialogHead>button:last-child');
-    return { bg, worst: Math.min(...words.map((e) => ratio(getComputedStyle(e).color, bg))), close: close ? { name: close.textContent.trim(), mark: getComputedStyle(close, '::after').content } : null };
+    /* (1.10.417 U3 토큰화, 검토 ui-review §3-3: the parts too -- each button's and field's words on its own face (else the sheet's), and no dark navy face
+       anywhere in it) */
+    const opaque = (c) => !/rgba\(.*,\s*0\)$/.test(c) && c !== 'transparent';
+    const parts = [...d.querySelectorAll('button,input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),select,textarea')].filter((e) => e.offsetParent && !e.disabled && (e.value || e.textContent).trim());
+    const partsWorst = Math.min(99, ...parts.map((e) => { const s = getComputedStyle(e); return ratio(s.color, opaque(s.backgroundColor) ? s.backgroundColor : bg); }));
+    const NAVY = ['rgb(15, 23, 42)', 'rgb(17, 24, 39)', 'rgb(30, 41, 59)', 'rgb(51, 65, 85)'];
+    const navy = [...d.querySelectorAll('*:not(input[type="checkbox"]):not(input[type="radio"])')].filter((e) => e.offsetParent && NAVY.includes(getComputedStyle(e).backgroundColor)).map((e) => e.id || e.className || e.tagName); /* (a checkbox the browser draws -- its accent colour, not its background) */
+    return { bg, worst: Math.min(...words.map((e) => ratio(getComputedStyle(e).color, bg))), partsWorst, navy, close: close ? { name: close.textContent.trim(), mark: getComputedStyle(close, '::after').content } : null };
   }, sel);
   const paper = 'rgb(255, 246, 227)';
   const closeAll = () => page.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
@@ -33,6 +40,7 @@ test('섬 창 종이: ☰ 창·반려동물·이름 짓기·접속 종료가 종
     await expect(page.locator(sel)).toBeVisible();
     const l = await look(sel);
     expect(l.bg, sel).toBe(paper); expect(l.worst, sel).toBeGreaterThanOrEqual(4.5);
+    expect(l.partsWorst, `${sel} buttons · fields`).toBeGreaterThanOrEqual(4.5); expect(l.navy, `${sel} navy`).toEqual([]); /* (1.10.417 U3) */
     if (sel !== '#logoutDialog') expect(l.close, sel).toEqual({ name: '닫기', mark: '"✕"' });
   }
   await closeAll();
@@ -45,7 +53,7 @@ test('섬 창 종이: ☰ 창·반려동물·이름 짓기·접속 종료가 종
   await closeAll(); await page.locator('#islandBagTab').click(); await page.locator('#myPetsBtn').click();
   await expect(page.locator('#myPets .myPetRow .petFace').first()).toHaveText('🐶');
   await expect(page.locator('#myPets .myPetRow.walking .walkingTag')).toHaveText('함께 다니는 중');
-  const l = await look('#plazaDialog'); expect(l.bg).toBe(paper); expect(l.worst).toBeGreaterThanOrEqual(4.5);
+  const l = await look('#plazaDialog'); expect(l.bg).toBe(paper); expect(l.worst).toBeGreaterThanOrEqual(4.5); expect(l.partsWorst).toBeGreaterThanOrEqual(4.5); expect(l.navy).toEqual([]);
   // a name asked and let go: nothing changes
   await page.locator('#myPets .myPetRow.walking button', { hasText: '이름 바꾸기' }).click();
   await page.locator('#nameAskCancel').click(); await expect(page.locator('#nameAskDialog')).toBeHidden();
