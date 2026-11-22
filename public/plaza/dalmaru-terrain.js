@@ -273,7 +273,7 @@
   };
   const NAMES = { island: '달마루섬', ridge: '달마루 능선', cliff: '영웅마루', plaza: '대청마당', notice: '알림마루', bay: '윤슬만', isle: '툇마루섬', bridge: '윤슬다리', village: '이웃골', west: '푸른숲골', lake: '거울호수', falls: '마루폭포', east: '잔치마루', eastRiver: '은하내', lighthouse: '초승등대', pier: '달끝나루', newIsle: '별마루섬', newBridge: '별마루다리', camp: '캠핑장', peak: '전망대 봉우리', creek: '별마루섬 개울' }; /* (N1: 사용자 2026-11-18 「A」 -- 별마루섬, 별마루다리) */
 
-  return { VILLAGE, NECK, villageDist, neckDist, CAPES, BRUSHES, brushAt, PLACES, BRIDGE_Z, R_OUT, R_BAY, BAY_Z, R_ISLE, TIP_X, TIP_Z, ISLE, RIDGE, PLAZA, SEA, LAKE, RIVERS, POOLS, ISLE_POND, BRIDGES, TRAIN, NAMES, FALLS, HEAD_PONDS, inHeadPond,
+  return { TAXI_GATES: Object.freeze([Object.freeze({ x: GATE_CUT.x, z: GATE_CUT.z })]) /* (1.10.406 결정 65-1: the gates the taxi stops for -- 별마루다리's wide gate) */, VILLAGE, NECK, villageDist, neckDist, CAPES, BRUSHES, brushAt, PLACES, BRIDGE_Z, R_OUT, R_BAY, BAY_Z, R_ISLE, TIP_X, TIP_Z, ISLE, RIDGE, PLAZA, SEA, LAKE, RIVERS, POOLS, ISLE_POND, BRIDGES, TRAIN, NAMES, FALLS, HEAD_PONDS, inHeadPond,
     coastDist, inBay, ridgeAt, landHeight, ground, heightAt, isWater, slopeAt, walkable, seasonZoneAt, riverDist, lakeDist, smooth, lerp, wrap,
     NEW_ISLE, CREEK, newIsleCoast, creekDist, inCreek };
 }));
