@@ -302,6 +302,10 @@
       if (f.gate) { const lz = (x - f.gate.x) * Math.sin(f.gate.yaw) + (z - f.gate.z) * Math.cos(f.gate.yaw); keep = Math.min(keep, 1 - smooth(-1.5, 0, lz)); }
       const want = f.across ?landBefore(x, f.z) + (f.h - f.mid) * (1 - smooth(0, END_FLAT.out, Math.max(0, u))) : f.h;
       if (dd < END_FLAT.ease) h = lerp(h, lerp(want, h, smooth(0, END_FLAT.ease, dd)), keep);
+      /* (408 검토 docs/gate-sill-171-20261122.md: by the gate the flat lets go -- at the deck's north-east corner the gate's line stood 0.17 m past its end,
+         a 13 cm sill there. Over the end's first 0.8 m the ground no higher than a ramp from the planks up to the gate's floor; only ever lowered,
+         let go over v 4.3 ~ 4.9 at the band's side) */
+      if (f.gate && u >= 0 && u <= 0.8 && v <= END_FLAT.hw) { const ramp = f.h + 0.02 + ((f.gate.y ?? 0.04) - f.h - 0.02) * smooth(0, 0.8, u); h = lerp(h, Math.min(h, ramp), 1 - smooth(4.3, 4.9, v)); }
     }
     return h;
   }
