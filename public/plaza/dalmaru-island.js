@@ -349,7 +349,9 @@
   const hbProfile = (u, half) => { const g = HB.rise / (half - HB.flat); const d = Math.abs(u) - HB.flat; return d <= -HB.b ? HB.rise : d < HB.b ? HB.rise - g * (d + HB.b) ** 2 / (4 * HB.b) : Math.max(0, HB.rise - g * d); };
   const bridges = D.BRIDGES.map((b) => {
     const ends = b.ends.map(([x, z]) => (b.high ? ground(x, z) : D.ground(x, z))); /* (389: the high one meets the ground as walked -- the road's bank cut its east bank 0.4 m under the raw one) */
-    if (b.high) return { x: b.x, z: b.z, ux: 1, uz: 0, half: b.length / 2, w: 5.6, high: true, base: Math.max(...ends, SEA) - HB.top + 0.12, e0: ends[0] + 0.02, e1: ends[1] + 0.02, get deck() { return this.base + HB.top; }, modelTop: (u) => HB.top + hbProfile(u, b.length / 2), model: 'dalmaru.bridge_yunseul_high' };
+    /* (1.10.407 사용자 결정 66·67 A, assets 170, notes bridges-two-way §3: the wide 윤슬다리 -- the road's own section, two lanes of 2.3 and a walk of 1.6
+       each side, 7.8 m on one level; the same deck line (HB); its rails' inner face at 3.9, its ramps' guards at 4.35 (`guard`)) */
+    if (b.high) return { x: b.x, z: b.z, ux: 1, uz: 0, half: b.length / 2, w: 7.8, guard: 4.35, high: true, base: Math.max(...ends, SEA) - HB.top + 0.12, e0: ends[0] + 0.02, e1: ends[1] + 0.02, get deck() { return this.base + HB.top; }, modelTop: (u) => HB.top + hbProfile(u, b.length / 2), model: 'dalmaru.bridge_yunseul_wide', ...(b.lane ? { lane: true } : {}) };
     return { x: b.x, z: b.z, ux: 1, uz: 0, half: b.length / 2, w: 5.6, arch: YB.rise, base: Math.max(...ends, SEA) - YB.top + 0.12, get deck() { return this.base + YB.top; }, model: 'dalmaru.bridge_yunseul', ...(b.isle2 ? { isle2: true } : {}) };
   });
   /* (the ease at least 2 m, longer where the bank stands lower -- no steeper than the ramp's 0.27 + 0.18: the east bank, cut by the
@@ -533,7 +535,7 @@
     /* (1.10.396 문제 기록 937dce24 「다리 끝에서 자전거가 묻힘」, 검토 isle2-fence-bridge-whale: the two low model bridges too -- their sides
        over walkable sand stood up to 0.78 m over one's feet; their side kept from 0.15 m over the ground (the high one's ramps 0.4)) */
     for (const b of bridges) { if (!b.model) continue; const rise = b.high ? 0.4 : 0.15;
-      for (let u = -b.half; u <= b.half + 1e-6; u += 0.5) for (const v of [-3.25, 3.25]) { const x = b.x + b.ux * u - b.uz * v; const z = b.z + b.uz * u + b.ux * v; if (deckAt({ b, u }) - ground(x, z) > rise && walkable(x, z)) out.push({ x, z, r: 0.4, guard: true }); } }
+      for (let u = -b.half; u <= b.half + 1e-6; u += 0.5) for (const v of [-(b.guard || 3.25), b.guard || 3.25]) { /* (407: the wide one's at 4.35) */ const x = b.x + b.ux * u - b.uz * v; const z = b.z + b.uz * u + b.ux * v; if (deckAt({ b, u }) - ground(x, z) > rise && walkable(x, z)) out.push({ x, z, r: 0.4, guard: true }); } }
     return (guards_ = out);
   }
   /* (1.10.399 assets 168 dock_dest_board, 에셋 검사 2회차 「부두에서 행선지가 안 보임」: where each dock's boat goes, facing who walks up -- 배 타는 곳
@@ -626,6 +628,9 @@
   const addNatureBlock = (fn) => { natureBlocks.push(fn); natureCache = null; };
   addNatureBlock((x, z, r) => inFarmYard(x, z, r)); // (3회차 15: the farm yard clear)
   addNatureBlock((x, z, r) => { const X = (typeof require === 'function' ? require('./island-taxi.js') : globalThis.IslandTaxi); return (X?.PARK_PATHS?.() || []).some((pl) => lineDist(x, z, pl) < 2.35 + r); }); /* (1.10.405 L0: the terminals' ways round into their places -- 대청마당's tree at (16.3, -47.1) stood on it) */
+  /* (1.10.407 assets 170: the wide 윤슬다리's guards at 4.35 -- nothing grows within 1 m of them, nor 3 m past its ends) */
+  const byWideBridge = (x, z, r) => bridges.some((b) => b.guard && Math.abs(x - b.x) < b.half + 3 + r && Math.abs(z - b.z) < b.guard + 1 + r);
+  addNatureBlock(byWideBridge);
   if (Q) addNatureBlock((x, z, r) => Q.inArea(x, z, r + 1)); // (1.10.323 채석장: the quarry's ground clear of trees, bushes and rocks)
   if (Q) { const out = Q.solidsOf().filter((s) => s.quarryProp && !Q.inArea(s.x, s.z, 1)); addNatureBlock((x, z, r) => out.some((s) => Math.hypot(x - s.x, z - s.z) < s.r + r + 1)); } // (1.10.342: and round its props outside it -- the bench faces along the cliff edge)
   /* (385 부팅 무게 2, lib/boot-cache.js: the server's start hands in what this made before from the same code -- taken when the same
@@ -816,7 +821,7 @@
         for (let k = 0; k < 80; k += 1) { const tx = x + 0.5 + rnd() * 9; /* (a square at the shore: most of it within the 4 m) */ const tz = z + 0.5 + rnd() * 9; const s = 0.8 + rnd() * 0.6; if (lane(tx, tz, 'deep', 0.75 * s) && room(tx, tz, 1.2, 0.6) && isle2Free(tx, tz, 0.8)) { I2.trees.push({ x: tx, z: tz, s, isle2: true }); taken.push([tx, tz, 1.2]); break; } }
       } }
     g4.grass.push(...I2.grass); g4.logs.push(...I2.logs);
-    natureCache = { ...g4, forest, trees: [...keptTrees, ...I2.trees], flowers: [...flowers.filter((p) => !blocked(p, 0.3) && roadClear(p, 0.2)), ...I2.flowers], bushes: [...keptBushes, ...I2.bushes], tufts: tufts.filter((t) => !onBank(t, 0.5) && roadClear(t, 0.2)), rocks: [...rocks.filter((r) => slopeAt(r.x, r.z) < 1 && walkDist(r.x, r.z) > 1.5 && roadClear(r, r.s)), ...I2.rocks] /* (묶음 1: none on a cliff face -- set at the ground under its middle, it hung in the air there; 6회차 1: none on a walk) */, posts: [], lampSpots };
+    natureCache = { ...g4, forest, trees: [...keptTrees, ...I2.trees], flowers: [...flowers.filter((p) => !blocked(p, 0.3) && roadClear(p, 0.2)), ...I2.flowers], bushes: [...keptBushes, ...I2.bushes], tufts: tufts.filter((t) => !onBank(t, 0.5) && roadClear(t, 0.2)), rocks: [...rocks.filter((r) => slopeAt(r.x, r.z) < 1 && walkDist(r.x, r.z) > 1.5 && roadClear(r, r.s) && !byWideBridge(r.x, r.z, 0.8 * r.s)), ...I2.rocks] /* (묶음 1: none on a cliff face -- set at the ground under its middle, it hung in the air there; 6회차 1: none on a walk) */, posts: [], lampSpots };
     return natureCache;
   }
   // the trees fruit is picked from (island-terrain's rule): 20 spaced ones and every fruit-kind tree, each with a free

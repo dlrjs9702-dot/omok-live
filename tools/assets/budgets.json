@@ -2335,6 +2335,10 @@
       "meshes": 1,
       "nodes": 2,
       "reason": "1.10.399 assets 168: as delivered"
+    },
+    "dalmaru-v1/bridge_yunseul_wide.glb": {
+      "triangles": 20600,
+      "reason": "1.10.407 assets 170 새 윤슬다리(동·서 같은 모델): 56 m at its own length, 7.8 m walk (two lanes and walks), 8 piers, 4 lamps; within the order's cap. Its Low 3,062"
     }
   },
   "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files.",
