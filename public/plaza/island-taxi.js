@@ -59,8 +59,8 @@
     /* (1.10.395 N4-c: on the new road -- the neck before the corner (the west street's walk to its east side) and the village street where
        each yard's walk comes to it, -14 (at -12: off the corner's bend) · 14 · 42 · 70 · 98) */
     [-20,224],[-12,236],[14,236],[42,236],[70,236],[98,236],
-    /* (1.10.411 L1: the west half's yard gates, as the east's -- assets 179 ①) */
-    [-42,236],[-70,236],[-98,236],[-126,236],
+    /* (1.10.411 L1: the west half's yard gates, as the east's -- assets 179 ①; 412: the last 4.5 m in from the road's end -- its stripes clear of the round place) */
+    [-42,236],[-70,236],[-98,236],[-121.5,236],
     /* (1.10.411 L2: where the islanders' rounds cross it, as T1 did the east -- the west waterfront (3), the west shore, by its end at the cape) */
     [-25.2,-5],[-34.2,-1.9],[-48.3,4],[-102.4,71.5], /* (the third slid 6.5 m on: a waterfront lamp 4.6 m off at -42.6) */
     /* (1.10.412 L3: the west 윤슬다리's two, the east's mirrored (92.8, 135.6) · (25.5, 140.6) -- onto the line, clear (work: slide411)) */
