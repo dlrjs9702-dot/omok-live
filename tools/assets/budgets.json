@@ -2361,6 +2361,16 @@
       "meshes": 5,
       "nodes": 14,
       "reason": "1.10.408 assets 171: the taxi road's gate -- the car gate's two leaves and the two people's wickets (leaf_l, leaf_r, side_l, side_r) meshes of their own (turned open by the game), stand_in / stand_out / side_way_l / side_way_r empty nodes"
+    },
+    "byeolmaru-v1/fence_wicket.glb": {
+      "meshes": 2,
+      "nodes": 7,
+      "reason": "1.10.413 S1 assets 174: the camp's people's wicket -- its leaf (side) a mesh of its own (turned open by the game), side_way / stand_in / stand_out empty nodes"
+    },
+    "byeolmaru-v1/fence_wicket_low.glb": {
+      "meshes": 2,
+      "nodes": 7,
+      "reason": "1.10.413 S1 assets 174: the camp's people's wicket -- its leaf (side) a mesh of its own (turned open by the game), side_way / stand_in / stand_out empty nodes"
     }
   },
   "$overhaul": "The face shop adds a sculpted facade emblem with one fixed material (14 to 15). It remains a flattened static render batch; the exception is limited to this High file. Three repaired pumpkin Low files are simplified below their respective High files.",

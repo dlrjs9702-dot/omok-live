@@ -43,7 +43,7 @@ const DOCK2 = D.PLACES.dock2; const dockGate = DOCK2 ? segs.filter((s) => s.keep
 /* (1.10.408 assets 171 fence_gate_road, 결정 67-1 A: the car gate 5.4 m and a people's wicket 1.2 m each side, 12 m across -- two pieces either side
    of it out (#180 · #181 · #183 · #184), kind 6 on the end of KINDS so the others keep theirs; fence_gate_wide (5) unused, kept for now) */
 const wideOff = new Set([1, 2].flatMap((k) => [segs[(gate.i + segs.length - k) % segs.length], segs[(gate.i + k) % segs.length]]));
-const KINDS = ['fence_segment', 'fence_palisade_b', 'fence_palisade_e', 'fence_stonewall', 'fence_gate', 'fence_gate_wide', 'fence_gate_road'];
+const KINDS = ['fence_segment', 'fence_palisade_b', 'fence_palisade_e', 'fence_stonewall', 'fence_gate', 'fence_gate_wide', 'fence_gate_road', 'fence_palisade_tall', 'fence_wicket' /* (1.10.413 S1: the camp's ring, below) */];
 const FENCE = segs.filter((s) => s.keep && !wideOff.has(s)).map((s) => { const h = hash(s.x, s.z, 3); const kind = s === gate ? 6 : s === dockGate ? 4 : h < 0.07 ? 1 : h < 0.14 ? 2 : h < 0.2 ? 3 : 0; return [r2(s.x), r2(s.z), r3(s.yaw), kind]; });
 const CORNERS = []; for (let i = 0; i < segs.length; i += 1) { const p = segs[(i + segs.length - 1) % segs.length]; const s = segs[i]; if (p.keep !== s.keep) { CORNERS.push([r2(pts[i][0]), r2(pts[i][1])]); continue; } /* (a run's end, by a cliff or the creek: its post) */ if (!p.keep || !s.keep) continue; let turn = Math.abs(s.yaw - p.yaw); turn = Math.min(turn, Math.PI * 2 - turn); if (turn > (10 * Math.PI) / 180) CORNERS.push([r2(pts[i][0]), r2(pts[i][1])]); }
 
@@ -74,6 +74,30 @@ const caveSolids = SRC.caveSolids;
 const C = I.camp; const CAMP = [[C.x, C.z, 0, 0]];
 for (const [ang, kind, d] of [[0.3, 1, 2.6], [Math.PI + 0.3, 1, 2.6], [1.9, 2, 2.3], [4.2, 2, 2.3], [5.3, 2, 2.4]]) { const x = C.x + Math.cos(ang) * d; const z = C.z + Math.sin(ang) * d; const yaw = Math.atan2(-(C.x - x), -(C.z - z)); CAMP.push([r2(x), r2(z), r3(yaw), kind]); } /* (each one's -Z, the way a seat faces, toward the fire) */
 const CAMP_KINDS = ['campfire', 'log_bench', 'log_stool'];
+/* ---- 1.10.413 S1 the camp's tall palisade (assets 174, 사용자 결정 72 · 검토 safe-zones-visible §2-1): a ring round the camp, the pieces' middles
+   camp.ring.r out, +Z (their inside) to the camp; a people's wicket (1.2 m, tigers 1.5 ~ 1.8 m across) on each walk that crosses it -- the middle of
+   its run on the walk, found along the ring every 1/8° -- and between two wickets the palisade evenly, as near 6° (2.4 m) a piece as whole pieces go.
+   On the end of FENCE: kinds 7 · 8 on the end of KINDS (the others keep theirs); fence_wicket is not a fence_gate -- no 12 m round it (§3 물음 2 A) ---- */
+const CAMP_FENCE = (() => {
+  const RR = C.ring.r; const at = (a) => [C.x + Math.cos(a) * RR, C.z + Math.sin(a) * RR]; const N = 2880; const on = []; for (let k = 0; k < N; k += 1) on.push(T.walkDist(...at((k / N) * Math.PI * 2)) < 0.5);
+  const wk = []; let s = -1; for (let k = 0; k < N * 2; k += 1) { const w = on[k % N]; if (w && s < 0) s = k; if (!w && s >= 0) { if (s < N && !(s === 0 && on[N - 1])) wk.push((((s + k - 1) / 2) % N) / N * Math.PI * 2); s = -1; } }
+  wk.sort((p, q) => p - q);
+  /* (each wicket slid along the ring -- both edges of its 1.2 m kept 0.2 m inside the walk (it crosses slanting: tried, not by the run's length) -- so
+     every arc between two takes its whole pieces as near 2.4 m apart as may be: a log's end never on its neighbour's (2.25 m put them 2 cm apart).
+     Tried every 0.1° for the first; the others then as near their arcs' even spacing as they may; the evenest kept, then the least slid) */
+  const step = (Math.PI * 2) / C.ring.n; const ns = wk.map((a, i) => Math.max(1, Math.round(((wk[(i + 1) % wk.length] - a + Math.PI * 2) % (Math.PI * 2) || Math.PI * 2) / step)));
+  { const d = Math.PI / 1800; const fits = (a) => [-0.6, 0, 0.6].every((u) => { const ang = a + u / RR; return T.walkDist(C.x + Math.cos(ang) * RR, C.z + Math.sin(ang) * RR) < -0.2; });
+    const room = wk.map((a) => { let lo = 0; while (lo > -0.1 && fits(a + lo - d)) lo -= d; let hi = 0; while (hi < 0.1 && fits(a + hi + d)) hi += d; return [lo, hi]; });
+    const spanOf = (xs, i) => { const j = (i + 1) % wk.length; return (wk[j] + xs[j] - wk[i] - xs[i] + Math.PI * 4) % (Math.PI * 2) || Math.PI * 2; };
+    let best = null;
+    for (let x0 = room[0][0]; x0 <= room[0][1] + 1e-9; x0 += d) { const xs = [x0];
+      for (let i = 1; i < wk.length; i += 1) xs.push(Math.max(room[i][0], Math.min(room[i][1], ns[i - 1] * step - (wk[i] - wk[i - 1]) + xs[i - 1])));
+      const dev = Math.max(...wk.map((_, i) => Math.abs(spanOf(xs, i) / ns[i] - step))); const m = Math.max(...xs.map(Math.abs));
+      if (!best || dev < best.dev - 1e-6 || (Math.abs(dev - best.dev) <= 1e-6 && m < best.m)) best = { dev, m, xs }; }
+    if (best) best.xs.forEach((x, i) => { wk[i] += x; }); }
+  const out = []; const piece = (a, kind) => out.push([r2(C.x + Math.cos(a) * RR), r2(C.z + Math.sin(a) * RR), r3(Math.atan2(-Math.cos(a), -Math.sin(a))), kind]);
+  wk.forEach((a, i) => { piece(a, 8); const span = (wk[(i + 1) % wk.length] - a + Math.PI * 2) % (Math.PI * 2) || Math.PI * 2; for (let j = 1; j < ns[i]; j += 1) piece(a + (span * j) / ns[i], 7); });
+  return out; })();
 
 // ---- 우레's rock (152b): below the lookout, seen from the walk -- 4~9 m off it, flat, nothing on it ----
 /* (from the walks and the ground alone -- nature() keeps its trees off these pieces (isle2Props.near), so nothing here may read it back) */
@@ -115,17 +139,18 @@ const CIRCLES = {
   fence_gate: [[-1.05, 0, 0.2], [1.05, 0, 0.2]], /* (the people's way between: a body 0.45 round -- 0.8 m to go through, the leaf's 1 m opening) */
   fence_gate_wide: [[-2.4, 0, 0.2], [2.4, 0, 0.2], [-2.75, 0, 0.22], [-3.1, 0, 0.22], [-3.45, 0, 0.22], [2.75, 0, 0.22], [3.1, 0, 0.22], [3.45, 0, 0.22]], /* (assets 163 solids.json: its posts and wings -- the leaves block nothing) */
   fence_gate_road: [[-4.5, 0, 0.2], [-2.9, 0, 0.2], [2.9, 0, 0.2], [4.5, 0, 0.2], [-5.9, 0, 0.22], [-5.55, 0, 0.22], [-5.2, 0, 0.22], [-4.85, 0, 0.22], [4.85, 0, 0.22], [5.2, 0, 0.22], [5.55, 0, 0.22], [5.9, 0, 0.22]], /* (assets 171 gate-solids.json: posts and wings -- leaves and wickets block nothing) */
+  fence_palisade_tall: segCircles(0.22), fence_wicket: [[-0.8, 0, 0.2], [0.8, 0, 0.2], [-1.05, 0, 0.22], [1.05, 0, 0.22]], /* (assets 174: as fence_segment; the wicket's posts and wings -- 1.2 m between, its leaf blocks nothing) */
   fence_corner: [[0, 0, 0.2]], sign_tiger: [[-0.85, 0, 0.15], [0.85, 0, 0.15]], sign_reserve: [[-0.66, 0.12, 0.17], [0.66, 0.12, 0.17]], sign_trail: [[0, 0.15, 0.18]] /* (136 README's solids) */, tiger_rock: [[-0.5, 0, 0.95], [0.5, 0, 0.95]], swamp_stones: [[0, -0.4, 0.66], [0, 0.4, 0.66]],
   campfire: [[0, 0, 0.6]], log_bench: [[-0.45, 0.05, 0.22], [0.45, 0.05, 0.22]], log_stool: [[0, 0, 0.25]],
   spring_cave: [...caveSolids.rock, ...caveSolids.water],
 };
 const BOXES = {
-  fence_segment: [2.5, 1.6, 0.5, 0], fence_palisade_b: [2.5, 1.6, 0.8, 0], fence_palisade_e: [2.5, 1.5, 0.95, 0.15], fence_stonewall: [2.5, 1.4, 0.6, 0.03], fence_gate: null, fence_gate_wide: null, fence_gate_road: null,
+  fence_segment: [2.5, 1.6, 0.5, 0], fence_palisade_b: [2.5, 1.6, 0.8, 0], fence_palisade_e: [2.5, 1.5, 0.95, 0.15], fence_stonewall: [2.5, 1.4, 0.6, 0.03], fence_gate: null, fence_gate_wide: null, fence_gate_road: null, fence_palisade_tall: [2.5, 3.5, 0.5, 0], fence_wicket: null /* (assets 174: open in the middle -- drawn as the gates') */,
   fence_corner: [0.42, 2.08, 0.42, 0], sign_tiger: [1.9, 2.33, 0.2, 0], tiger_rock: [3.0, 0.98, 2.0, 0], swamp_stones: [1.34, 0.53, 1.77, 0], campfire: [1.22, 0.36, 1.22, 0], log_bench: [1.62, 0.48, 0.46, 0.05], log_stool: [0.52, 0.42, 0.52, 0],
 };
 const CAVE_BOXES = caveSolids.rockBoxes;
 
-const data = { FENCE, CORNERS, SIGN, SIGN_RESERVE, SIGN_TRAIL, CAVE, CAMP, ROCK, SWAMPS, SWAMP_OUTLINES, REEDS, DECO };
+const data = { FENCE: [...FENCE, ...CAMP_FENCE], CORNERS, SIGN, SIGN_RESERVE, SIGN_TRAIL, CAVE, CAMP, ROCK, SWAMPS, SWAMP_OUTLINES, REEDS, DECO };
 const text = `// 1.10.375 N2a-1 별마루섬's still pieces -- MADE by tools/isle2-props.cjs (do not edit: run it again). The fence round the island (${FENCE.length} pieces of
 // 2.4 m, [x, z, yaw, kind of FENCE_KINDS]; the gate where the walk from 별마루다리 crosses it), its corner posts, 157's spring cave, the camp's
 // fire / benches / stools, 우레's rock, the swamps (their outlines in the world: a bike inside is slowed) with reeds and 152c's pieces. CIRCLES

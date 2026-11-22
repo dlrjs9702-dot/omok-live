@@ -30,7 +30,8 @@ test('별마루섬 목책·문·늪·캠핑장: 문은 다리 길 위 하나(지
   // its lane: a body (0.45) at each gate's middle clear of every solid
   const solids = [...T.natureSolids(), ...T.structureSolids()]; for (const [x, z] of gates) assert.ok(solids.every((o) => Math.hypot(o.x - x, o.z - z) >= o.r + 0.45 - 1e-6), '문 가운데로 지나감');
   // nothing that blocks on a walk -- but the gates' posts and the pieces beside them
-  const props = P.solids(); const onWalk = props.filter((o) => T.walkDist(o.x, o.z) < o.r - 0.3 && gates.every(([x, z]) => Math.hypot(o.x - x, o.z - z) > 4)); assert.deepEqual(onWalk.map((o) => [o.x.toFixed(1), o.z.toFixed(1)]), []);
+  const wickets = P.FENCE.filter((a) => P.FENCE_KINDS[a[3]] === 'fence_wicket'); /* (1.10.413 S1: the camp's wickets stand across their walks too) */
+  const props = P.solids(); const onWalk = props.filter((o) => T.walkDist(o.x, o.z) < o.r - 0.3 && [...gates, ...wickets].every(([x, z]) => Math.hypot(o.x - x, o.z - z) > 4)); assert.deepEqual(onWalk.map((o) => [o.x.toFixed(1), o.z.toFixed(1)]), []);
   // the swamps: off the walks, the camp, the peak; inside slows a bike, outside not
   for (const [i, [sx, sz]] of P.SWAMPS.entries()) {
     assert.ok(P.SWAMP_OUTLINES[i].every(([x, z]) => T.walkDist(x, z) >= 4), `늪 ${i} 길 밖`); assert.ok(Math.hypot(sx - I.camp.x, sz - I.camp.z) > I.camp.r + 10 && Math.hypot(sx - I.peak.x, sz - I.peak.z) > 20, `늪 ${i}`);

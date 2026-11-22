@@ -4864,6 +4864,22 @@
       "precompressed": true
     },
     {
+      "out": "byeolmaru-v1/fence_palisade_tall.glb",
+      "src": "camp174:01. High/byeolmaru-v1/fence_palisade_tall.glb",
+      "sha256": "26a857d5df24b5625898fffd31baefd873b3c410690fbbf33ed383f7d75a591c",
+      "lowSrc": "camp174:02. Low/byeolmaru-v1/fence_palisade_tall_low.glb",
+      "lowSha256": "48da36c7cc20717384fe953a23dc62e591dbfe309e1fe332487161ecf390ba8e",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/fence_wicket.glb",
+      "src": "camp174:01. High/byeolmaru-v1/fence_wicket.glb",
+      "sha256": "ff1a71d9f8e5db20184dbba917c46349417002c3ba866bf600a300a45fc6ccd5",
+      "lowSrc": "camp174:02. Low/byeolmaru-v1/fence_wicket_low.glb",
+      "lowSha256": "6e273f949ffe130f8334155bb223aae3688dd068908d4aa2ca5b7593c9706e09",
+      "precompressed": true
+    },
+    {
       "out": "dalmaru-v1/bridge_river_wide.glb",
       "src": "river173:01. High/dalmaru-v1/bridge_river_wide.glb",
       "sha256": "b60ee7e94866334058e66693ba54df60919a46be04335de9d70b4b683a528ef0",
@@ -15838,6 +15854,7 @@
     "yunseul170": "170. Game Island yunseul bridge 2026-11-22",
     "byeolmaru171": "171. Game Island byeolmaru bridge and gate 2026-11-22",
     "docks172": "172. Game Island boat docks 2026-11-22",
-    "river173": "173. Game Island west river road bridge 2026-11-22"
+    "river173": "173. Game Island west river road bridge 2026-11-22",
+    "camp174": "174. Game Island camp fences 2026-11-22"
   }
 }

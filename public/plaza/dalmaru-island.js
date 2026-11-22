@@ -726,7 +726,10 @@
       const fits = ([lx, lz]) => !(!walkable(lx, lz) || inPlaza(lx, lz, 1) || onBridge(lx, lz) || onStairs(lx, lz) || inTownhall(lx, lz, 1) || (!atRoad && walkDist(lx, lz) < 0.2) || roadDist(lx, lz) < (street ? out - 0.05 : ROAD.half + 0.5))
         && !(structureSolids().some((o) => Math.hypot(o.x - lx, o.z - lz) < o.r + 0.6) || BUILDINGS.some((b) => Math.hypot(b.x - lx, b.z - lz) < (b.kind === 'facade' ? FACADE.w / 2 + 1 : 4)))
         && ![...keptTrees, ...keptBushes].some((t) => Math.hypot(t.x - lx, t.z - lz) < 1.5) && !atCrossing({ x: lx, z: lz }, 0.4) && !(TX?.TURN_PADS || []).some((p) => Math.hypot(lx - p.x, lz - p.z) < p.r + 0.3) /* (412: off a dead end's round place) */;
-      const at = spots.find(fits); if (at) lampSpots.push({ x: at[0], z: at[1], ...(D.newIsleCoast(at[0], at[1]) > -5 ? { isle2: true } : {}) }); /* (N1: 새 섬's shown with it) */
+      let at = spots.find(fits);
+      /* (1.10.413 S1 검토 safe-zones §2-1: one on the camp's palisade line steps off it -- 1.6 m inside, else outside, off the walks; neither, none) */
+      { const CR = ISLE2?.camp?.ring; if (at && CR) { const dx = at[0] - ISLE2.camp.x; const dz = at[1] - ISLE2.camp.z; const d = Math.hypot(dx, dz); if (Math.abs(d - CR.r) < 1.6) at = [CR.r - 1.6, CR.r + 1.6].map((r) => [ISLE2.camp.x + (dx / d) * r, ISLE2.camp.z + (dz / d) * r]).find(([x, z]) => walkable(x, z) && walkDist(x, z) > 0.4) || null; } }
+      if (at) lampSpots.push({ x: at[0], z: at[1], ...(D.newIsleCoast(at[0], at[1]) > -5 ? { isle2: true } : {}) }); /* (N1: 새 섬's shown with it) */
     } }
     // G4a 흩뿌리기 (notes docs/graphics-island-wide-20261108.md G4, assets 112; 사용자 「덤불, 바위들은 뚫고 지나가지 못하게」):
     // more bushes and rocks over the fields and woods, fallen logs in the woods, palms on the sandy shore (all of them block),
@@ -771,7 +774,7 @@
     const PIER2 = { x: 230, z: 197.3 }; const I2 = { trees: [], bushes: [], rocks: [], flowers: [], grass: [], logs: [] };
     const A = ANCIENT; const KEEP = 18; const offAncient = (x, z, r) => Math.hypot(x - A.x, z - A.z) > KEEP + r;
     const HEAD_END = TX?.EXT ? TX.EXT[TX.EXT.length - 1] : null; /* (1.10.397: 별마루섬 입구's stop -- its places, shelter and drop spot, 10 m round as the other stops) */
-    const isle2Free = (x, z, r) => roadClear({ x, z }, r) /* (1.10.396 N4-c: the taxi's road in through the wide gate) */ && !(HEAD_END && Math.hypot(x - HEAD_END[0], z - HEAD_END[1]) < 10 + r) && D.newIsleCoast(x, z) > 4 + r && slopeAt(x, z) < 0.6 && D.creekDist(x, z) > 1.5 + r && !onBridge(x, z) && Math.hypot(x - ISLE2.camp.x, z - ISLE2.camp.z) > ISLE2.camp.r + 1 + r
+    const isle2Free = (x, z, r) => roadClear({ x, z }, r) /* (1.10.396 N4-c: the taxi's road in through the wide gate) */ && !(HEAD_END && Math.hypot(x - HEAD_END[0], z - HEAD_END[1]) < 10 + r) && D.newIsleCoast(x, z) > 4 + r && slopeAt(x, z) < 0.6 && D.creekDist(x, z) > 1.5 + r && !onBridge(x, z) && Math.hypot(x - ISLE2.camp.x, z - ISLE2.camp.z) > (ISLE2.camp.ring ? ISLE2.camp.ring.r + 1.2 : ISLE2.camp.r + 1) + r /* (1.10.413 S1: out past the palisade's outer face) */
       && Math.hypot(x - ISLE2.peak.x, z - ISLE2.peak.z) > 9 + r && Math.hypot(x - PIER2.x, z - PIER2.z) > 8 + r && walkDist(x, z) > 1.6 + r && offAncient(x, z, r) && !natureBlocks.some((fn) => fn(x, z, r))
       && !isle2PropsNear(x, z, r); /* (1.10.375 N2a-1: off the fence, the cave, the camp's pieces, 우레's rock and the swamps -- isle2-props.js) */
     const at2 = () => { const a = rnd() * TAU; const d = Math.sqrt(rnd()) * (ISLE2.r + 8); return [ISLE2.x + Math.cos(a) * d, ISLE2.z + Math.sin(a) * d]; };

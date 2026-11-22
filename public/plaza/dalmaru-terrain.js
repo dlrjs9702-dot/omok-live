@@ -45,7 +45,7 @@
   // N1 새 섬 (notes docs/island-expansion-20261115.md §8, 163A~166A; 사용자 「자연 구역」): over the sea east of the village, the
   // island two thirds the size of this one -- its own coast, a peak (전망대), a south hill, a sea bluff on its east (돌돔), a
   // camp ground's flat, a creek from a spring on the peak's north-west flank to the north-west shore; the bridge to it at z 226
-  const NEW_ISLE = Object.freeze({ x: 365, z: 226, r: 145, peak: { x: 393, z: 212, h: 42, s: 70 }, hill: { x: 327, z: 312, h: 14, s: 34 }, bluff: { x: 497, z: 214, h: 13, s: 30 }, camp: { x: 259, z: 250, r: 18, h: 3 }, bridgeZ: 226 });
+  const NEW_ISLE = Object.freeze({ x: 365, z: 226, r: 145, peak: { x: 393, z: 212, h: 42, s: 70, safe: 14 }, hill: { x: 327, z: 312, h: 14, s: 34 }, bluff: { x: 497, z: 214, h: 13, s: 30 }, camp: { x: 259, z: 250, r: 18, h: 3, safe: 22.9, ring: { n: 60, r: 22.9 } }, bridgeZ: 226 }); /* (1.10.413 S1 사용자 결정 72, 검토 safe-zones-visible §2-1 · §3: `safe` -- the tigers' safe round, read by the server (lib/island-tigers) and the screens (tigers-view) alike; the camp's inside its tall palisade (`ring`: 60 pieces, their middles 22.9 m out)) */
   const CREEK = Object.freeze({ name: '별마루섬 개울', w: 2.4, pts: [[363, 176], [341, 160], [319, 150], [297, 136], [279, 118], [265, 104]] });
   const newIsleR = (th) => NEW_ISLE.r + 4 * Math.sin(3 * th + 0.5) + 2.5 * Math.sin(7 * th + 1.1) + 1.2 * Math.sin(13 * th);
   /* (+ on its land; far off, a bound -- its coast wobbles 7.7 m at most) */
