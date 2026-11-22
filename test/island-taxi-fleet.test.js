@@ -68,6 +68,21 @@ test('택시 ⑤: 뒤 차는 앞 차가 빠진 뒤에 당겨 섬 — 두 차가 
   }
 });
 
+// 1.10.404 문제 기록 de84f895 (notes issues-taxi-resident §12): a car staying at a terminal goes into its place front first -- never more than 20°
+// between where it faces and where it goes, 2 m and more from the shelter's middle line, and it ends in its place facing the road
+test('택시 종점: 내려 준 뒤 서는 자리로 갈 때 차 앞이 가는 방향, 쉼터를 돌아 뒤에서 들어감', () => {
+  for (const id of Object.keys(X.STOPS)) for (const place of [0, 1]) {
+    const s = X.stopOf(id); const sh = s.shelter; const fx = Math.sin(s.yaw); const fz = Math.cos(s.yaw); let last = X.parkPose(id, place, 0);
+    for (let i = 1; i <= 200; i += 1) {
+      const p = X.parkPose(id, place, i / 200); const mx = p.x - last.x; const mz = p.z - last.z; const step = Math.hypot(mx, mz);
+      if (step > 0.01) { const off = Math.abs(Math.atan2(Math.sin(Math.atan2(mx, mz) - p.yaw), Math.cos(Math.atan2(mx, mz) - p.yaw))) * 180 / Math.PI; assert.ok(off < 20, `${id} ${place}: ${off.toFixed(0)}° at ${i}`); }
+      const t = Math.max(-1.45, Math.min(1.45, (p.x - sh.x) * fx + (p.z - sh.z) * fz)); const gap = Math.hypot(p.x - sh.x - fx * t, p.z - sh.z - fz * t); assert.ok(gap > 2, `${id} ${place}: ${gap.toFixed(2)} m from the shelter at ${i}`);
+      last = p;
+    }
+    const end = X.parkPose(id, place, 1); const q = X.placeOf(id, place); assert.ok(Math.hypot(end.x - q.x, end.z - q.z) < 0.01, `${id} ${place}: in its place`); assert.ok(Math.abs(Math.atan2(Math.sin(end.yaw - q.yaw), Math.cos(end.yaw - q.yaw))) < 0.01, 'facing the road');
+  }
+});
+
 // 1.10.403 Codex 391~400 #10: 마을's two cars off to the full 별마루섬 입구 while 대청마당's two stay at 마을 -- the two coming back from 입구 went to
 // 마을's taken places (two cars a place) and 대청마당 had none. Now they go where there is room
 test('택시 Codex #10: 돌아갈 종점이 찼으면 빈자리 있는 가까운 종점으로 — 한 자리에 두 대 없음', () => {
