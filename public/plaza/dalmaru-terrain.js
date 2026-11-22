@@ -225,10 +225,10 @@
   /* (1.10.389 N3-a, 사용자 27A·37-3, assets 133: the east one high and long for the boats under it -- 56 m at the model's own length, a
      flat-topped trapezoid 7.0 m over the sea; its ramps' last 9 m on land each side. `bank`: the road's bank keeps to the old 42 m, the
      ground round its ends as it was) */
-  Object.assign(BRIDGES[1], { length: 56, ends: [[31.35, BRIDGE_Z], [87.35, BRIDGE_Z]], high: true, bank: 42 });
+  Object.assign(BRIDGES[1], { length: 56, ends: [[31.35, BRIDGE_Z], [87.35, BRIDGE_Z]], high: true, bank: 42, taxi: Object.freeze({ x0: 31, x1: 88, z0: 136, z1: 144 }) }); /* (1.10.405 L0 `taxi`: the box the taxi keeps one lane in -- island-taxi reads the bridges from here) */
   // (N1 새 섬: the village's east shore (168.25) to the new island's west shore (224) over 55.8 m of water, 3 m on land each end --
   // the same 윤슬다리 model drawn to 61.75 m, 새 섬다리)
-  BRIDGES.push({ x: 196.125, z: NEW_ISLE.bridgeZ, length: 61.75, ends: [[165.25, NEW_ISLE.bridgeZ], [227, NEW_ISLE.bridgeZ]], isle2: true });
+  BRIDGES.push({ x: 196.125, z: NEW_ISLE.bridgeZ, length: 61.75, ends: [[165.25, NEW_ISLE.bridgeZ], [227, NEW_ISLE.bridgeZ]], isle2: true, taxi: Object.freeze({ x0: 164.5, x1: 233, z0: 222.5, z1: 229.5 }) }); /* (L0: its box on through the wide gate) */
   // where the pieces stand (assets 55): angles round the island's centre, degrees (north = 270), r = distance from it
   const deg = (r, a) => ({ x: Math.round(r * Math.cos((a * Math.PI) / 180) * 10) / 10, z: Math.round(r * Math.sin((a * Math.PI) / 180) * 10) / 10, yawToCentre: Math.atan2(-Math.cos((a * Math.PI) / 180), -Math.sin((a * Math.PI) / 180)) });
   const PLACES = {

@@ -307,14 +307,15 @@
   function roadBank(x, z, h) {
     if (h >= BANK_TOP + BANK_ROUND || !TX) return h;
     if (!bankGrid) {
-      bankGrid = new Map(); const R = TX.ROUTE;
-      for (let i = 1; i < R.length; i += 1) { const [ax, az] = R[i - 1]; const [bx, bz] = R[i];
-        for (let cx = Math.floor((Math.min(ax, bx) - BANK_REACH) / 8); cx <= Math.floor((Math.max(ax, bx) + BANK_REACH) / 8); cx += 1) for (let cz = Math.floor((Math.min(az, bz) - BANK_REACH) / 8); cz <= Math.floor((Math.max(az, bz) + BANK_REACH) / 8); cz += 1) { const k = `${cx},${cz}`; if (!bankGrid.has(k)) bankGrid.set(k, []); bankGrid.get(k).push(i); } }
+      /* (1.10.405 L0: the roads the taxi banks (island-taxi BANKED) -- the first road, the island's loop to come; the road on to 별마루섬 not: banked it would
+         fill 8 m of the village's east shore by the bridge. A piece is [ax, az, bx, bz]) */
+      bankGrid = new Map(); for (const R of TX.BANKED || [TX.ROUTE]) for (let i = 1; i < R.length; i += 1) { const [ax, az] = R[i - 1]; const [bx, bz] = R[i]; const seg = [ax, az, bx, bz];
+        for (let cx = Math.floor((Math.min(ax, bx) - BANK_REACH) / 8); cx <= Math.floor((Math.max(ax, bx) + BANK_REACH) / 8); cx += 1) for (let cz = Math.floor((Math.min(az, bz) - BANK_REACH) / 8); cz <= Math.floor((Math.max(az, bz) + BANK_REACH) / 8); cz += 1) { const k = `${cx},${cz}`; if (!bankGrid.has(k)) bankGrid.set(k, []); bankGrid.get(k).push(seg); } }
     }
     const segs = bankGrid.get(`${Math.floor(x / 8)},${Math.floor(z / 8)}`); if (!segs) return h;
     for (const b of D.BRIDGES) if (Math.abs(x - b.x) < (b.bank || b.length) / 2 + 4 && Math.abs(z - b.z) < 2.8 + 4) return h;
-    const R = TX.ROUTE; let d = Infinity;
-    for (const i of segs) { const [ax, az] = R[i - 1]; const [bx, bz] = R[i]; const dx = bx - ax; const dz = bz - az; const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1e-9))); const e = Math.hypot(x - ax - dx * t, z - az - dz * t); if (e < d) d = e; }
+    let d = Infinity;
+    for (const [ax, az, bx, bz] of segs) { const dx = bx - ax; const dz = bz - az; const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1e-9))); const e = Math.hypot(x - ax - dx * t, z - az - dz * t); if (e < d) d = e; }
     if (d >= BANK_REACH) return h;
     const e = d - ROAD.half - 0.5; const drop = e <= -0.5 ? 0 : e >= 0.5 ? e : (e + 0.5) ** 2 / 2; /* (the bank's edge rounded over 1 m too) */
     const top = BANK_TOP - drop * BANK_SLOPE;
@@ -620,10 +621,11 @@
   const nearKeeper = (x, z) => Object.values(PL.quests).some((q) => Math.hypot(x - q.x, z - q.z) < 3.5) || [VILLAGE.painter, VILLAGE.busker, VILLAGE.electrician, VILLAGE.builder, VILLAGE.librarian, VILLAGE.grandpa, VILLAGE.guide, FARM.farmer].some((q) => Math.hypot(x - q.x, z - q.z) < 3.5);
   // (G4a: what blocks keeps off the taxi's road and its stops -- island-taxi.js, loaded before this file)
   const TAXI_BAND = 0.85 + 3.2; /* (from the road's middle: the car's half width, then the islanders' band 1.5~3 m beside it, a little over -- notes docs/taxi-yield-20261109.md) */
-  const taxiClear = (x, z, r) => { const X = (typeof require === 'function' ? require('./island-taxi.js') : globalThis.IslandTaxi); const roads = X.ROADS || [X.ROUTE]; return roads.every((route) => lineDist(x, z, route) > TAXI_BAND + r) && (X.ROAD_ENDS || [X.ROUTE[0], X.ROUTE.at(-1)]).every(([sx, sz]) => Math.hypot(x - sx, z - sz) > 10 + r) /* (395: the road on to 별마루섬 and its end's stop too) */ && (X.CROSSINGS || []).every((c) => Math.hypot(x - c.x, z - c.z) > (X.CROSS_CLEAR ?? 5) + r); }; /* (317: and its 건널목 -- doc 27행) */
+  const taxiClear = (x, z, r) => { const X = (typeof require === 'function' ? require('./island-taxi.js') : globalThis.IslandTaxi); const roads = X.ROADS || [X.ROUTE]; return roads.every((route) => lineDist(x, z, route) > TAXI_BAND + r) && (X.ROAD_ENDS || [X.ROUTE[0], X.ROUTE.at(-1)]).every(([sx, sz]) => Math.hypot(x - sx, z - sz) > 10 + r) /* (395: the road on to 별마루섬 and its end's stop too) */ && (X.CROSSINGS || []).every((c) => Math.hypot(x - c.x, z - c.z) > (X.CROSS_CLEAR ?? 5) + r) && (X.PARK_PATHS?.() || []).every((pl) => lineDist(x, z, pl) > 2.35 + r); }; /* (317: and its 건널목 -- doc 27행; 1.10.405 L0: and the terminals' ways round into their places, the car's half width and 1.5 m) */
   let natureCache = null; const natureBlocks = []; // (island-train: no tree on a lift's way)
   const addNatureBlock = (fn) => { natureBlocks.push(fn); natureCache = null; };
   addNatureBlock((x, z, r) => inFarmYard(x, z, r)); // (3회차 15: the farm yard clear)
+  addNatureBlock((x, z, r) => { const X = (typeof require === 'function' ? require('./island-taxi.js') : globalThis.IslandTaxi); return (X?.PARK_PATHS?.() || []).some((pl) => lineDist(x, z, pl) < 2.35 + r); }); /* (1.10.405 L0: the terminals' ways round into their places -- 대청마당's tree at (16.3, -47.1) stood on it) */
   if (Q) addNatureBlock((x, z, r) => Q.inArea(x, z, r + 1)); // (1.10.323 채석장: the quarry's ground clear of trees, bushes and rocks)
   if (Q) { const out = Q.solidsOf().filter((s) => s.quarryProp && !Q.inArea(s.x, s.z, 1)); addNatureBlock((x, z, r) => out.some((s) => Math.hypot(x - s.x, z - s.z) < s.r + r + 1)); } // (1.10.342: and round its props outside it -- the bench faces along the cliff edge)
   /* (385 부팅 무게 2, lib/boot-cache.js: the server's start hands in what this made before from the same code -- taken when the same
