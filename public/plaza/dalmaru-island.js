@@ -307,14 +307,15 @@
   function roadBank(x, z, h) {
     if (h >= BANK_TOP + BANK_ROUND || !TX) return h;
     if (!bankGrid) {
-      bankGrid = new Map(); const R = TX.ROUTE;
-      for (let i = 1; i < R.length; i += 1) { const [ax, az] = R[i - 1]; const [bx, bz] = R[i];
-        for (let cx = Math.floor((Math.min(ax, bx) - BANK_REACH) / 8); cx <= Math.floor((Math.max(ax, bx) + BANK_REACH) / 8); cx += 1) for (let cz = Math.floor((Math.min(az, bz) - BANK_REACH) / 8); cz <= Math.floor((Math.max(az, bz) + BANK_REACH) / 8); cz += 1) { const k = `${cx},${cz}`; if (!bankGrid.has(k)) bankGrid.set(k, []); bankGrid.get(k).push(i); } }
+      /* (1.10.405 L0: the roads the taxi banks (island-taxi BANKED) -- the first road, the island's loop to come; the road on to 별마루섬 not: banked it would
+         fill 8 m of the village's east shore by the bridge. A piece is [ax, az, bx, bz]) */
+      bankGrid = new Map(); for (const R of TX.BANKED || [TX.ROUTE]) for (let i = 1; i < R.length; i += 1) { const [ax, az] = R[i - 1]; const [bx, bz] = R[i]; const seg = [ax, az, bx, bz];
+        for (let cx = Math.floor((Math.min(ax, bx) - BANK_REACH) / 8); cx <= Math.floor((Math.max(ax, bx) + BANK_REACH) / 8); cx += 1) for (let cz = Math.floor((Math.min(az, bz) - BANK_REACH) / 8); cz <= Math.floor((Math.max(az, bz) + BANK_REACH) / 8); cz += 1) { const k = `${cx},${cz}`; if (!bankGrid.has(k)) bankGrid.set(k, []); bankGrid.get(k).push(seg); } }
     }
     const segs = bankGrid.get(`${Math.floor(x / 8)},${Math.floor(z / 8)}`); if (!segs) return h;
     for (const b of D.BRIDGES) if (Math.abs(x - b.x) < (b.bank || b.length) / 2 + 4 && Math.abs(z - b.z) < 2.8 + 4) return h;
-    const R = TX.ROUTE; let d = Infinity;
-    for (const i of segs) { const [ax, az] = R[i - 1]; const [bx, bz] = R[i]; const dx = bx - ax; const dz = bz - az; const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1e-9))); const e = Math.hypot(x - ax - dx * t, z - az - dz * t); if (e < d) d = e; }
+    let d = Infinity;
+    for (const [ax, az, bx, bz] of segs) { const dx = bx - ax; const dz = bz - az; const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1e-9))); const e = Math.hypot(x - ax - dx * t, z - az - dz * t); if (e < d) d = e; }
     if (d >= BANK_REACH) return h;
     const e = d - ROAD.half - 0.5; const drop = e <= -0.5 ? 0 : e >= 0.5 ? e : (e + 0.5) ** 2 / 2; /* (the bank's edge rounded over 1 m too) */
     const top = BANK_TOP - drop * BANK_SLOPE;
