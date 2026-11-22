@@ -54,6 +54,43 @@ test('택시 N4-c: 세 번째 종점·정류장 ⑥⑦ — 모든 두 자리 사
   assert.equal(X.bridgeOf(196, 226), 1); assert.equal(X.bridgeOf(59, 140), 0); assert.equal(X.bridgeOf(30, 236), -1);
 });
 
+// 1.10.403 문제 기록 6d2679c4·de84f895 (notes issues-taxi-resident-20261122 ⑤): the car behind pulled up while the front one still stood for its
+// rider -- 1.6 s in one place. Drawn as a screen draws it (from its place behind, eased over 2 s from pulledAt), the two stay a car's length apart
+test('택시 ⑤: 뒤 차는 앞 차가 빠진 뒤에 당겨 섬 — 두 차가 겹치지 않음', () => {
+  const sm = (k) => { const t = Math.min(1, Math.max(0, k)); return t * t * (3 - 2 * t); };
+  for (const [from, to, extra] of [['plaza', 'head', {}], ['isle', 'plaza', {}], ['plaza', 'dock', { empty: true }]]) {
+    const fleet = X.createFleet(0); const ride = { from, to, startedAt: 1000, ...extra }; const took = X.takeCar(fleet, from, ride, 1000);
+    const back = fleet.cars.find((c) => !c.ride && c.at === from && c.place === 0); assert.ok(back, 'the one behind now has the front place');
+    assert.equal(back.pulledAt, 1000 + X.PULL_AFTER(ride));
+    const f = X.placeOf(from, 1); const q = X.placeOf(from, 0); let least = Infinity;
+    for (let t = 1000; t <= back.pulledAt + 2500; t += 20) { const k = sm((t - back.pulledAt) / 2000); const r = { x: f.x + (q.x - f.x) * k, z: f.z + (q.z - f.z) * k }; const a = X.carAt(took.car.ride, t); least = Math.min(least, Math.hypot(a.x - r.x, a.z - r.z)); }
+    assert.ok(least >= 4.4, `${from}: ${least.toFixed(2)} m at the closest`);
+  }
+});
+
+// 1.10.403 Codex 391~400 #10: 마을's two cars off to the full 별마루섬 입구 while 대청마당's two stay at 마을 -- the two coming back from 입구 went to
+// 마을's taken places (two cars a place) and 대청마당 had none. Now they go where there is room
+test('택시 Codex #10: 돌아갈 종점이 찼으면 빈자리 있는 가까운 종점으로 — 한 자리에 두 대 없음', () => {
+  const fleet = X.createFleet(0); const rides = [];
+  for (const [from, to] of [['plaza', 'isle'], ['plaza', 'isle'], ['isle', 'head'], ['isle', 'head']]) { const ride = { from, to, startedAt: 0, runMs: 3000 }; assert.ok(X.takeCar(fleet, from, ride, 0)); rides.push(ride); }
+  for (let now = 0; now <= 60000; now += 250) { X.settle(fleet, now); check(fleet); }
+  assert.equal(standing(fleet), '2/2/2', '종점마다 두 대');
+});
+
+// 1.10.403 Codex 391~400 #2: A's fare pending, B takes the car pulled up; A's fare refused -- A's undo put the whole fleet back as it stood,
+// B's car with it (B charged, their car standing again). Now only A's car goes back
+test('택시 Codex #2: 결제 실패 되돌리기는 내 차만 — 그사이 남이 탄 차는 그대로', () => {
+  const fleet = X.createFleet(0); const rideA = { from: 'plaza', to: 'head', startedAt: 1000 }; const a = X.takeCar(fleet, 'plaza', rideA, 1000);
+  const rideB = { from: 'plaza', to: 'isle', startedAt: 1200 }; const b = X.takeCar(fleet, 'plaza', rideB, 1200); assert.ok(b && b.car !== a.car);
+  a.undo();
+  assert.equal(b.car.ride, rideB, "B's car still out with B"); assert.equal(rideB.car, b.car.id);
+  assert.equal(a.car.ride, null); assert.equal(a.car.at, 'plaza'); assert.equal(X.standingAt(fleet, 'plaza').length, 1); assert.equal(X.standingAt(fleet, 'plaza')[0].place, 0);
+  check(fleet);
+  // undone before anyone else came: both back as they were, the one behind behind again
+  const f2 = X.createFleet(0); const before = JSON.stringify(f2.cars); const t = X.takeCar(f2, 'isle', { from: 'isle', to: 'plaza', startedAt: 500 }, 500); t.undo();
+  assert.equal(JSON.stringify(f2.cars), before);
+});
+
 // 1.10.401 Codex 391~400 #1: the server's tick looks ahead on the ride's own table clock -- that copy kept only from and startedAt, so a ride
 // from a stop between the terminals (박물관 …) had no end and curbOf(undefined) threw, stopping the server; an empty car fetching a caller
 // there and going back the same. timeless keeps where it goes, leaves out only the waits and the aside

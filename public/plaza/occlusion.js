@@ -111,6 +111,8 @@ export function createOcclusion(camera) {
      (my middle, the last 0.8 m by me left out)? nothing faded; a holder rebuilt as its model changes (userData.seeRev) */
   const inScene = (o) => { for (; o; o = o.parent) { if (!o.visible) return false; if (o.isScene) return true; } return false; };
   function blocked(holders, p) {
+    /* (1.10.403 Codex 391~400 #19: a holder no longer in the list -- a yard storehouse moved or rebuilt -- its record let go, not kept a whole visit) */
+    if (records.size > holders.length) { const keep = new Set(holders); for (const root of [...records.keys()]) if (!keep.has(root)) remove(root); }
     direction.set(p.x, p.y + 1.1, p.z).sub(camera.position); const far = direction.length() - 0.8; if (far < 1.2) return false; ray.set(camera.position, direction.normalize());
     for (const root of holders) {
       if (!inScene(root)) continue;

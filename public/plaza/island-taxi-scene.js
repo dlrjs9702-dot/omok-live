@@ -46,12 +46,20 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
     const standing = car(); placeCar(standing, { x: s.x, z: s.z, yaw: s.yaw, phase: 'wait', d: 0 });
     return { id, s, standing, sign };
   });
+  const depthOnly = new THREE.MeshBasicMaterial({ colorWrite: false }); made.push(depthOnly); /* (403: a see-through car's depth, drawn first) */
   // 1.10.340 133A: a car see-through (its own copies of the materials -- the model's are shared by every car), solid again after
   function ghostCar(rec, on) {
     if (Boolean(rec.ghost) === Boolean(on)) return; rec.ghost = Boolean(on);
-    rec.h.traverse((o) => { if (!o.isMesh || o === rec.horn || o === rec.ask || rec.horn?.children?.includes(o) || rec.ask?.children?.includes(o)) return;
+    const meshes = []; rec.h.traverse((o) => { if (!o.isMesh || o.userData.depthOnly || o === rec.horn || o === rec.ask || rec.horn?.children?.includes(o) || rec.ask?.children?.includes(o)) return; meshes.push(o); });
+    for (const o of meshes) {
       if (!o.userData.ownMat) { o.material = Array.isArray(o.material) ? o.material.map((m) => m.clone()) : o.material.clone(); o.userData.ownMat = true; for (const m of [].concat(o.material)) made.push(m); }
-      for (const m of [].concat(o.material)) { m.transparent = rec.ghost; m.opacity = rec.ghost ? 0.4 : 1; m.depthWrite = !rec.ghost; m.needsUpdate = true; } });
+      for (const m of [].concat(o.material)) { m.transparent = rec.ghost; m.opacity = rec.ghost ? 0.4 : 1; m.depthWrite = !rec.ghost; m.needsUpdate = true; }
+      /* (1.10.403 문제 기록 ④, notes issues-taxi-resident-20261122: see-through without depth its inner faces showed through -- seats, the far side --
+         flickering as they sorted. Its depth first, no colour, after every solid thing (renderOrder: the one it goes by already drawn, seen
+         through it) and before the see-through: then only its nearest face shows, at 0.4) */
+      if (rec.ghost && !o.userData.depthTwin) { const d = new THREE.Mesh(o.geometry, depthOnly); d.userData.depthOnly = true; d.castShadow = false; d.receiveShadow = false; d.renderOrder = 10; o.add(d); o.userData.depthTwin = d; }
+      if (o.userData.depthTwin) o.userData.depthTwin.visible = rec.ghost;
+    }
   }
   for (const st of stops) st.standing.h.visible = false; /* (1.10.391 N4-a: the four cars below stand there -- the stop's own one no longer) */
   // 1.10.392 N4-b the road stops' signs (assets 163 taxi_stop_sign, 결정 41-3 A: its `plate` both faces -- one picture, the back's u turned

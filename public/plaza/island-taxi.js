@@ -245,14 +245,24 @@
   const headingTo = (c) => (!c.ride ? c.at : c.ride.stay === true ? toOf(c.ride) : c.ride.stay === false ? c.ride.from : null);
   const countAt = (fleet, stop) => fleet.cars.filter((c) => headingTo(c) === stop).length;
   const freePlace = (fleet, stop, except) => { const used = new Set(fleet.cars.filter((c) => c !== except && headingTo(c) === stop).map((c) => (c.ride ? c.ride.park || 0 : c.place))); for (let k = 0; k < PLACES; k += 1) if (!used.has(k)) return k; return 0; };
+  /* (1.10.403 문제 기록 6d2679c4·de84f895, notes issues-taxi-resident-20261122 ⑤: the one behind pulled up from the moment the rider got in, over
+     2 s, while the front car stood 1.2 s for the rider and then pulled away -- 1.6 s the two in one place, flickering. Now it starts once the
+     front car is in and 1.1 s on its way (4.5 m and more ahead by then); a screen eases it from its place behind, as before) */
+  const PULL_AFTER = (ride) => inOf(ride) + 1100;
   const standingAt = (fleet, stop) => fleet.cars.filter((c) => !c.ride && c.at === stop).sort((a, b) => a.place - b.place);
   // a ride from `from`: its car (the front one), the one behind pulled up, where it goes after -> { car, undo } or null (none standing)
   function takeCar(fleet, from, ride, now) {
     const standing = standingAt(fleet, from); const car = standing[0]; if (!car) return null;
-    const was = fleet.cars.map((c) => ({ c, at: c.at, place: c.place, ride: c.ride, pulledAt: c.pulledAt }));
-    car.ride = ride; car.at = null; ride.car = car.id; ride.seat = 0;
-    for (const c of standing.slice(1)) if (c.place > 0 && !standingAt(fleet, from).some((o) => o.place === 0)) { c.place = 0; c.pulledAt = now; }
-    return { car, undo: () => { for (const w of was) Object.assign(w.c, { at: w.at, place: w.place, ride: w.ride, pulledAt: w.pulledAt }); delete ride.car; delete ride.seat; } };
+    const place = car.place; car.ride = ride; car.at = null; ride.car = car.id; ride.seat = 0; const pulled = [];
+    for (const c of standing.slice(1)) if (c.place > 0 && !standingAt(fleet, from).some((o) => o.place === 0)) { pulled.push({ c, place: c.place, pulledAt: c.pulledAt, at: now + PULL_AFTER(ride) }); c.place = 0; c.pulledAt = now + PULL_AFTER(ride); } /* (403: after the front one has gone) */
+    /* (1.10.403 Codex 391~400 #2: undone -- a fare refused -- only this car back, and the one it had pulled up if that one is still standing as it
+       was left and has not started up yet; never the whole fleet as it stood before: someone else's car taken meanwhile stays theirs) */
+    return { car, undo: () => {
+      if (car.ride !== ride) return; car.ride = null; car.at = from; delete ride.car; delete ride.seat;
+      const back = pulled.filter((w) => !w.c.ride && w.c.at === from && w.c.place === 0 && w.c.pulledAt === w.at);
+      for (const w of back) { w.c.place = w.place; w.c.pulledAt = w.pulledAt; }
+      car.place = back.length ? place : freePlace(fleet, from, car);
+    } };
   }
   // the clock moved on: a ride just over decides where its car goes (stays where that stop has fewer than PLACES, else back home) and
   // which place it takes; each car whose glide or way back is over stands in it -> whether anything changed
@@ -265,7 +275,9 @@
     for (const c of fleet.cars) if (c.ride && c.ride.stay === undefined && rideOver(c.ride, now)) {
       const to = toOf(c.ride); moved = true;
       if (isTerminal(to) && countAt(fleet, to) < PLACES) { c.ride.stay = true; c.ride.park = freePlace(fleet, to, c); }
-      else if (isTerminal(to) && isTerminal(c.ride.from)) { c.ride.stay = false; c.ride.park = freePlace(fleet, c.ride.from, c); } /* (the way back the same road, as before) */
+      else if (isTerminal(to) && isTerminal(c.ride.from) && countAt(fleet, c.ride.from) < PLACES) { c.ride.stay = false; c.ride.park = freePlace(fleet, c.ride.from, c); } /* (the way back the same road, as before) */
+      /* (1.10.403 Codex 391~400 #10: home filled meanwhile -- others stayed there after letting their riders out: not back into a taken place, but on
+         empty to the nearest terminal with room, the one left with none) */
       else goEmpty(fleet, c, to, now); /* (392: from where it let its rider out) */
     }
     for (const c of fleet.cars) if (c.ride && c.ride.stay !== undefined && now >= backOf(c.ride, now)) {
@@ -301,5 +313,5 @@
   const PLACE_IDS = () => ['plaza', 'isle', 'head', ...Object.keys(ROADSTOPS)].sort((a, b) => sOf(a) - sOf(b)); /* (397: by the trunk -- 마을 at its corner, 별마루섬 입구 last) */
   return { boardOf, ROADSTOPS, ROAD_LEN, sOf, atS, curbOf, driveBetween, distanceOf, fareByRoad, PLACE_IDS, isTerminal, labelOf, toOf, sendCar, WAIT, nearestRoom, /* (392 N4-b) */
     LANE, PLACES, BACK, placeOf, laneOffs, createFleet, takeCar, settle, etaAt, fleetView, countAt, standingAt, onBridgeBox: (x, z, m = 0) => bridgeOf(x, z, m) >= 0, bridgeOf, BRIDGES, /* (391 N4-a; 397 both one-lane bridges) */ TRUNK, TRUNK_LEN, SPUR,
-    CROSSINGS, CROSS_HALF, CROSS_CLEAR, ROAD, LEAD, RAMP, sideAt, ghostAt, shifted, roadNow, rateOf, warpTo, realAt, rideOver, timeless, TURN, backOf, carAt, easeClock, ROUTE, EXT, ROADS, STREET, ROAD_ENDS: Object.freeze([ROUTE[0], ROUTE[ROUTE.length - 1], EXT[EXT.length - 1]]) /* (395: the stops at the roads' ends -- kept clear round, as the two were) */, STOPS, BRIDGE, ENTER, EXIT, EASE, FAST, SLOW, FARE, DAY_PASS, EXTRA, BOARD, ALIGHT, SEAT, roadOf, stopOf, dropOf, driveOf, tableOf, durationOf, poseAt, arrivalOf, doorOf, fareOf };
+    CROSSINGS, CROSS_HALF, CROSS_CLEAR, ROAD, LEAD, RAMP, sideAt, ghostAt, shifted, roadNow, rateOf, warpTo, realAt, rideOver, timeless, PULL_AFTER, TURN, backOf, carAt, easeClock, ROUTE, EXT, ROADS, STREET, ROAD_ENDS: Object.freeze([ROUTE[0], ROUTE[ROUTE.length - 1], EXT[EXT.length - 1]]) /* (395: the stops at the roads' ends -- kept clear round, as the two were) */, STOPS, BRIDGE, ENTER, EXIT, EASE, FAST, SLOW, FARE, DAY_PASS, EXTRA, BOARD, ALIGHT, SEAT, roadOf, stopOf, dropOf, driveOf, tableOf, durationOf, poseAt, arrivalOf, doorOf, fareOf };
 }));

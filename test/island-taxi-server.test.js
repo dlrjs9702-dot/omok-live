@@ -56,6 +56,10 @@ test('섬 택시 서버: 요금(누구나 1,000P, 하루 자유이용권 5,000P)
     const S = X.stopOf(from); await stand(b, S.out.x + 0.5, S.out.z + 0.5); const r = await req('/api/island/taxi', b, { from, pay }); assert.equal(r.status, 200, JSON.stringify(r.data));
     await sleep(X.durationOf(r.data.taxi) + 300); await stand(b, S.out.x, S.out.z); await req('/api/test/taxi-run', a, { ms: 3000 }); /* (294: its car back) */ return r.data;
   };
+  /* (1.10.403 Codex 391~400 #5·#7: 「타기」 from a window that showed yesterday's pass -- refused, nothing taken (not today's 8,000P pass bought); a price
+     over the one the window showed -- refused) */
+  for (const body of [{ from: 'plaza', to: 'isle', pay: 'pass', held: true }, { from: 'plaza', to: 'isle', pay: 'fare', fare: 500 }, { from: 'plaza', to: 'isle', pay: 'pass', fare: 1000 }]) {
+    const r = await req('/api/island/taxi', b, body); assert.equal(r.status, 409, JSON.stringify(body)); assert.equal(r.data.error, 'TAXI_PRICE'); assert.equal(await balance(b), owner, '아무것도 안 빠짐'); }
   const bought = await rideB('plaza', 'pass'); assert.deepEqual([bought.fare, bought.pass], [8000, true]); assert.equal(await balance(b), owner - 8000);
   const history = (await req('/api/points/history?limit=3', b)).data.items; assert.equal(history[0].reason, 'taxipass', '내역 「택시 자유이용권」');
   await stand(b, I.out.x + 0.5, I.out.z + 0.5); assert.equal((await req('/api/island/taxi?from=isle', b)).data.pass, true);
@@ -151,7 +155,11 @@ test('섬 택시 못 타는 이유: 게임 방은 그 이유로 막고, 멀리 �
   await req('/api/plaza/state', a, { x: P.out.x, z: P.out.z, yaw: 0, moving: false, act: 'sit', seat: 'b8', actN: 1 });
   const rode = await req('/api/island/taxi', a, { from: 'plaza' }); assert.equal(rode.status, 200, JSON.stringify(rode.data));
   // B in a game room: refused, the reason said
-  await req('/api/plaza/state', b, { x: P.out.x + 0.5, z: P.out.z + 0.5, yaw: 0, moving: false });
+  /* (1.10.403: by the stop for sure -- A just got in there, and the server keeps one from standing in another: a spot it moved B off to was at times past
+     the stop's reach, TOO_FAR, not the reason asked about) */
+  const S = X.STOPS.plaza ? X.stopOf('plaza') : P; let at = null;
+  for (const [dx, dz] of [[0.5, 0.5], [-0.8, 0.6], [0.9, -0.7], [-1.2, -1.0], [1.5, 0]]) { at = (await req('/api/plaza/state', b, { x: P.out.x + dx, z: P.out.z + dz, yaw: 0, moving: false })).data; if (at && Math.hypot(at.x - S.x, at.z - S.z) <= 5) break; }
+  assert.ok(Math.hypot(at.x - S.x, at.z - S.z) <= 5.5, JSON.stringify(at));
   assert.equal((await req('/api/rooms', b, { gameType: 'othello', visibility: 'public' })).status, 201);
-  const busy = await req('/api/island/taxi', b, { from: 'plaza' }); assert.equal(busy.data.error, 'TAXI_BUSY'); assert.equal(busy.data.reason, 'room', JSON.stringify(busy.data)); assert.match(busy.data.message, /게임 방/);
+  const busy = await req('/api/island/taxi', b, { from: 'plaza' }); assert.equal(busy.data.error, 'TAXI_BUSY', JSON.stringify({ busy: busy.data, at, stop: { x: S.x, z: S.z } })); assert.equal(busy.data.reason, 'room', JSON.stringify(busy.data)); assert.match(busy.data.message, /게임 방/);
 });

@@ -31,6 +31,25 @@ test('호랑이 잡기 서버: 두 마리 같은 순간이어도 한 번(물건 
   assert.equal(after, 8, '8초 안 두 번째 잡기는 없음');
 });
 
+// 1.10.403 Codex 391~400 #16: the loss not saved at the catch, then the server restarts before the retry -- the catch is kept and finished after the
+// restart with its own id: the two things go, once
+test('호랑이 잡기 서버: 물건 잃기 저장이 실패한 채 재시작해도 다시 켜진 뒤 같은 잡기로 한 번 마침', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'tiger-pending-')); rmAtExit(dir);
+  const first = await boot(t, dir); const key = await first.issue('재시작잡힘'); const a = await first.enter(key);
+  for (const [itemId, qty] of [['weed', 5], ['branch', 3]]) assert.equal((await first.req('/api/test/island/give', a, { itemId, qty })).status, 200);
+  await first.req('/api/plaza/state', a, { x: P.SWAMPS[1][0] + 18, z: P.SWAMPS[1][1], yaw: 0, moving: false }); /* (on the island: one to catch) */
+  await first.req('/api/test/store/fail', null, { method: 'questApply' });
+  assert.equal((await first.req('/api/test/tigers/catch', a, { id: 'ure' })).status, 200);
+  const count = async (srv, who) => { const d = (await srv.req('/api/island/bag', who)).data; return (d.bag?.items || d.items || []).filter((e) => ['weed', 'branch'].includes(e.itemId)).reduce((n, e) => n + e.qty, 0); };
+  assert.equal(await count(first, a), 8, '아직 안 빠짐(저장 실패)');
+  await new Promise((r) => { setTimeout(r, 400); }); await first.stop(); /* (before the first retry, 2 s on) */
+  const second = await boot(t, dir); const b = await second.enter(key);
+  let n = 8; for (let k = 0; k < 40 && n === 8; k += 1) { await new Promise((r) => { setTimeout(r, 200); }); n = await count(second, b); }
+  if (n !== 6) { const L = (s) => { const v = s.logs(); return (Array.isArray(v) ? v.join('\n') : String(v)).split(/\n|,/).filter((l) => /tiger|호랑이|world|실패/i.test(l)).join(' | '); }; console.log('LOGS1', L(first), 'LOGS2', L(second)); }
+  assert.equal(n, 6, '다시 켜진 뒤 두 개 빠짐');
+  await new Promise((r) => { setTimeout(r, 2500); }); assert.equal(await count(second, b), 6, '한 번만');
+});
+
 // 383 Codex 371~380 #9: chased -- 「막혔을 때」 (the unstuck move) refused
 test('호랑이에게 쫓기는 중에는 「막혔을 때」 안 됨', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'tiger-unstuck-')); rmAtExit(dir);
