@@ -182,7 +182,7 @@ const text = `// 1.10.375 N2a-1 별마루섬's still pieces -- MADE by tools/isl
   let all = null;
   function solids() {
     if (all) return all; all = [];
-    for (const [x, z, yaw, k] of DATA.FENCE) all.push(...circlesAt(FENCE_KINDS[k], x, z, yaw));
+    for (const [x, z, yaw, k] of DATA.FENCE) all.push(...circlesAt(FENCE_KINDS[k], x, z, yaw).map((c) => (FENCE_KINDS[k] === 'fence_wicket' ? { ...c, wicket: true } : c))); /* (1.10.414: a wicket's -- dalmaru-walk's 1 m reach grid goes through its 1.2 m) */
     for (const [x, z] of DATA.CORNERS) all.push(...circlesAt('fence_corner', x, z, 0));
     for (const [x, z, yaw, k] of DATA.CAMP) all.push(...circlesAt(CAMP_KINDS[k], x, z, yaw));
     for (const [x, z, yaw, k] of DATA.CAMP2 || []) all.push(...circlesAt(CAMP2_KINDS[k], x, z, yaw));

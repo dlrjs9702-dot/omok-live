@@ -1486,7 +1486,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         assets.dress(['character.walker.morak_work', 'character.npc'], m); m.headTop = 1.75; m.resident = 'morak'; m.root.userData.resident = 'morak';
         m.home = { x: kx, z: kz, yaw: m.root.rotation.y, id: 'camp:keeper' }; npcs.push(m); campKeeper = m;
       });
-      solids.push({ x: kx, z: kz, r: 0.4 }); doors['camp:keeper'] = { x: kx, z: kz, name: '모락 · 말 걸기' };
+      { const d = Math.hypot(C.x - kx, C.z - kz) || 1; const dx = kx + ((C.x - kx) / d) * 1.2; const dz = kz + ((C.z - kz) / d) * 1.2; solids.push({ x: kx, z: kz, r: 0.4 }); doors['camp:keeper'] = { x: dx, z: dz, name: '모락 · 말 걸기' }; } /* (talked to from 1.2 m before him -- dalmaru-walk reaches it, not his own round) */
     }
   })();
   // 1.10.390 N3-b 자연 구역 탐방선 (island-boat.js; notes n3-plan §4-2, 사용자 결정 37): the four boats on the server's clock -- the same on every
@@ -7121,7 +7121,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
     // walk the island from the first spot
     const R = Math.ceil(T.ISLAND_RADIUS); const W = R * 2 + 1; const seen = new Uint8Array(W * W); const hAt = new Float32Array(W * W);
-    const ok = (x, z) => T.walkable(x, z) && !solidsNear(x, z).some((o) => !o.gate && blocksNow(o) && Math.hypot(o.x - x, o.z - z) < o.r + 0.3); // (the mayor's gate: opened by him, not the map)
+    const ok = (x, z) => T.walkable(x, z) && !solidsNear(x, z).some((o) => !o.gate && !o.wicket && blocksNow(o) && Math.hypot(o.x - x, o.z - z) < o.r + 0.3); // (the mayor's gate: opened by him, not the map; 1.10.414 a camp wicket's 1.2 m -- walked through by a 0.3 body (test/camp-s1), narrower than this grid)
     const idx = (i, j) => (j + R) * W + (i + R);
     const s0 = [Math.round(T.SPAWN.x), Math.round(T.SPAWN.z)]; const queue = [s0]; seen[idx(...s0)] = 1; hAt[idx(...s0)] = heightAt(...s0);
     for (let q = 0; q < queue.length; q += 1) {
