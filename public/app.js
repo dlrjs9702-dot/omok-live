@@ -1726,9 +1726,11 @@
   // another opened while it was on its way
   let plazaWindowGen = 0;
   const closeIfStill = (gen) => { if (gen === plazaWindowGen) plazaDialog.close(); };
-  function openPlazaWindow(title, nodes) {
+  /* (1.10.418 U4 검토 ui-review §2-C C4 · §3-2: a window's width by what it holds -- 's' 440 (a few buttons, a short list), 'm' 560, else wide (1120)) */
+  function openPlazaWindow(title, nodes, size = 'wide') {
     plazaWindowGen += 1;
-    plazaDialog.classList.remove('talkMode', 'editMode', 'folded', 'mapMode', 'stampMode', 'boardMode', 'mailMode', 'shopMode', 'adminMode'); plaza.controller?.talkCamera?.(false); // openTalk puts both back for a resident's words
+    plazaDialog.classList.remove('talkMode', 'editMode', 'folded', 'mapMode', 'stampMode', 'boardMode', 'mailMode', 'shopMode', 'adminMode', 'winS', 'winM'); plaza.controller?.talkCamera?.(false); // openTalk puts both back for a resident's words
+    if (size === 's') plazaDialog.classList.add('winS'); else if (size === 'm') plazaDialog.classList.add('winM');
     plazaDialogTitle.textContent = title;
     // (3-1, 사용자 2026-10-19 성형외과 창에 변신 목록: a window opened over another one -- the window still open -- left
     // the earlier one's content in it; whatever is not part of this window goes back home first)
@@ -3623,7 +3625,7 @@
     const row = document.createElement('div'); row.className = 'goodBuy';
     for (const [to, label] of Object.entries(FLOORS)) { if (Number(to) === here) continue; const b = document.createElement('button'); b.type = 'button'; b.className = 'primary'; b.textContent = label; b.dataset.floor = to; b.addEventListener('click', () => liftTo(Number(to))); row.append(b); }
     const note = document.createElement('p'); note.className = 'lookMeta'; note.textContent = `지금 ${FLOORS[here]}`;
-    liftCard.replaceChildren(note, row); openPlazaWindow('승강기', [liftCard]);
+    liftCard.replaceChildren(note, row); openPlazaWindow('승강기', [liftCard], 's'); /* (1.10.418 U4 C4) */
   }
   async function liftTo(to) {
     if (furnitureBusy) return; furnitureBusy = true;
@@ -3656,7 +3658,7 @@
     });
     const no = document.createElement('button'); no.type = 'button'; no.className = 'secondary'; no.textContent = '그만두기'; no.addEventListener('click', () => plazaDialog.close());
     go.disabled = Boolean(p.owned); row.append(go, no); adoptCard.replaceChildren(name, what, ...(p.owned ? [] : [input]), row);
-    openPlazaWindow('펫샵', [adoptCard]); plazaDialog.classList.add('shopMode'); // (창 3단계: a price tag on the shelf)
+    openPlazaWindow('펫샵', [adoptCard], 'm'); plazaDialog.classList.add('shopMode'); /* (1.10.418 U4 D4: the board to the tag's size) */ // (창 3단계: a price tag on the shelf)
   }
   // the counter's keeper (v1.10.191: nothing on sale -- all in the yard): where they are, and today's special ones
   async function openPetCounter() {
@@ -3719,7 +3721,7 @@
     });
     const no = document.createElement('button'); no.type = 'button'; no.className = 'secondary'; no.textContent = '그만두기'; no.addEventListener('click', () => plazaDialog.close());
     row.append(buy, no); furnitureCard.replaceChildren(name, what, row);
-    openPlazaWindow('가구점', [furnitureCard]); plazaDialog.classList.add('shopMode');
+    openPlazaWindow('가구점', [furnitureCard], 'm'); plazaDialog.classList.add('shopMode');
   }
   // 가구 창고: what I bought, each turned round in 3D (the 꾸미기 창's preview) -- placed once 내 집 comes
   const storageBox = document.createElement('div'); storageBox.className = 'furnitureStorage'; storageBox.id = 'furnitureStorage';
@@ -3903,7 +3905,7 @@
         else { for (const it of ['compost', 'fertilizer']) if (held(items, it) > 0) row.append(btn(`${it === 'compost' ? '퇴비' : '비료'} 주기 (${held(items, it)})`, 'primary', act({ action: 'feed', item: it }, () => '거름을 줬어요. 남은 시간이 두 배로 빨리 지나요.'))); if (!row.children.length) status.textContent = '퇴비(잡초 3개로 손보기 상자에서 만들어요)나 비료를 주면 두 배로 빨리 자라요.'; }
       }
     }
-    row.append(btn('닫기', 'secondary', () => plazaDialog.close())); card.append(status, row); openPlazaWindow('🌱 텃밭', [card]);
+    card.append(status, row); openPlazaWindow('🌱 텃밭', [card], 'm');
   }
   async function openUpkeepBox() {
     await refreshHomes(); const u = homesState?.upkeep; if (!u) { showToast('내 집 앞에서 열 수 있어요.'); return; }
@@ -3929,7 +3931,7 @@
     const crafts = document.createElement('div'); crafts.className = 'upkeepCrafts';
     const NAMES = { weed: '잡초', stone: '작은 돌', branch: '나뭇가지', star_fragment: '별 조각', star_fragment_shiny: '반짝이는 별 조각' }; /* (366: the star furniture -- more than one kind a recipe) */
     for (const [key, r] of Object.entries(FARM.CRAFTS)) { const takes = Object.entries(r.takes); const b = btn(`${r.name} 만들기 · ${takes.map(([id, n]) => `${NAMES[id] || id} ${n}개`).join(' + ')}`, 'secondary', post({ action: 'craft', recipe: key }, (o) => `${o.made}을(를) 만들었어요.${o.good ? ' 가구 창고에 넣었어요.' : ''}`)); b.disabled = takes.some(([id, n]) => held(items, id) < n); crafts.append(b); }
-    card.append(crafts, status, btn('닫기', 'secondary', () => plazaDialog.close())); openPlazaWindow('🧰 손보기 상자', [card]);
+    card.append(crafts, status); openPlazaWindow('🧰 손보기 상자', [card], 'm');
   }
   let yardWeedBusy = false;
   async function pullYardWeed(id) {
@@ -4489,7 +4491,7 @@
     goodCard.replaceChildren(img, name, what, row);
     /* (379 곡괭이 하나만 사지는 버그: a tool by its kind -- the 곡괭이 too -- up to three, as the server's TOOL_MAX; counted as toolCount, by qty) */
     if (once) api('/api/island/bag').then((b) => { const kind = { fishing_rod: 'fishing_rod', fishing_rod_sturdy: 'fishing_rod', bugnet: 'bugnet', bugnet_sturdy: 'bugnet', pickaxe: 'pickaxe' }[id]; if (kind ? (b.items || []).filter((e) => e.tool === kind).reduce((n, e) => n + (e.qty || 1), 0) >= 3 : (b.items || []).some((e) => e.itemId === id && e.qty > 0)) { const own = row.querySelector('button'); own.disabled = true; own.textContent = '가지고 있어요'; } }).catch(() => {});
-    openPlazaWindow('잡화점', [goodCard]); plazaDialog.classList.add('shopMode');
+    openPlazaWindow('잡화점', [goodCard], 'm'); plazaDialog.classList.add('shopMode');
   }
   // v1.10.84 관공서 실내: the server takes me in (at the hall's door, past the mayor) or out (at the room's door) and says
   // where I stand now; the island's map is put away inside (body.townhallRoom)
@@ -5519,7 +5521,7 @@
         row.addEventListener('click', () => openStocks('board', c.code)); body.append(row);
       }
     }
-    card.append(btn('닫기', 'secondary', () => plazaDialog.close())); openPlazaWindow('📈 섬 증권거래소', [card]);
+    openPlazaWindow('📈 섬 증권거래소', [card]);
   }
   function stockDetail(body, d, code) {
     const c = d.companies.find((x) => x.code === code); if (!c) { body.append(line('이 회사는 이제 없어요.', 'lookMeta')); return; }
@@ -5574,7 +5576,7 @@
     const tabs = sEl('div', 'stocksTabs'); for (const [k, label] of [['buy', '사기'], ['sell', '팔기'], ['mine', `내 물건${d.owed ? ' · 💰' : ''}`]]) tabs.append(btn(label, k === tab ? 'primary' : 'secondary', () => openFlea(k))); card.append(tabs);
     const body = sEl('div', 'stocksBody'); card.append(body);
     if (tab === 'sell') await fleaSell(body, d); else if (tab === 'mine') fleaMine(body, d); else fleaBuy(body, d);
-    card.append(btn('닫기', 'secondary', () => plazaDialog.close())); openPlazaWindow('🏷️ 섬 벼룩시장', [card]);
+    openPlazaWindow('🏷️ 섬 벼룩시장', [card]);
   }
   function fleaBuy(body, d) {
     const bar = sEl('div', 'stocksOrder fleaBar'); const cat = sEl('select', 'fleaCat'); cat.setAttribute('aria-label', '분류'); cat.append(new Option('모든 분류', '')); for (const [k, v] of Object.entries(d.cats || {})) cat.append(new Option(v, k)); cat.value = fleaFilter.cat;
@@ -5656,7 +5658,7 @@
     const word = sEl('input', 'tedWord'); word.type = 'text'; word.maxLength = 20; word.placeholder = '…'; word.setAttribute('aria-label', '테드에게 할 말');
     const say = btn('작게 말하기', 'secondary', async (ev) => { const b = ev.currentTarget; b.disabled = true; try { const r = await api('/api/island/den/word', { method: 'POST', body: JSON.stringify({ word: word.value }) }); plaza.controller?.tedSay?.(r.say); if (r.open) { plaza.controller?.setDenDoor?.(true); plazaDialog.close(); } else b.disabled = false; } catch (error) { note.textContent = error.message; b.disabled = false; } });
     const wrow = sEl('div', 'stocksOrder'); wrow.append(word, say); card.append(wrow, note);
-    card.append(btn('닫기', 'secondary', () => plazaDialog.close())); openPlazaWindow('테드 창', [card]);
+    openPlazaWindow('테드 창', [card], 'm');
   }
   // 1.10.350 바 카운터 (지하): 지갑 전부 -> 칩 (50,000P 이상, 예금은 그대로), 칩 -> 포인트 1:1; no bartender yet -- the counter and its paper
   async function openDenBar() {
@@ -5669,7 +5671,7 @@
     else card.append(line('칩이 5,000개 아래가 되면 그 판이 끝난 뒤 나가셔야 해요. 계단으로 올라가면 남은 칩은 포인트로 돌아와요.', 'lookMeta denBarEntry'));
     if ((d.chips || 0) > 0) { const amt = sEl('input', 'stocksQtyInput denBarAmount'); amt.type = 'number'; amt.min = '1'; amt.value = String(d.chips); amt.inputMode = 'numeric'; amt.setAttribute('aria-label', '칩 수');
       const row = sEl('div', 'stocksOrder'); const back = btn('칩 → 포인트', 'secondary', (ev) => change('sell', Math.floor(Number(amt.value)))(ev)); row.append(amt, sEl('span', 'lookMeta', '칩'), back); card.append(row); }
-    card.append(note, btn('닫기', 'secondary', () => plazaDialog.close())); openPlazaWindow('바 카운터', [card]);
+    card.append(note); openPlazaWindow('바 카운터', [card], 'm');
   }
   async function denDoor(entering) {
     if (denBusy) return; denBusy = true;
@@ -5683,7 +5685,7 @@
   async function openDenNote() {
     let r; try { r = await api('/api/island/den/note', { method: 'POST', body: '{}' }); } catch (error) { showToast(error.message); return; }
     const card = sEl('div', 'denPaper'); const img = sEl('img'); img.src = '/assets/island/den-v1/papers/note_code.png'; img.alt = '접힌 쪽지'; const w = sEl('div', 'denPaperWord', r.word); card.append(img, w);
-    openPlazaWindow('오늘의 암호', [card, btn('닫기', 'secondary', () => plazaDialog.close())]);
+    openPlazaWindow('오늘의 암호', [card], 's');
   }
   const DEN_PICKS = { dice: [['big', '크다 (11~17)'], ['small', '작다 (4~10)'], ['odd', '홀'], ['even', '짝']], hilo: [['high', '더 높다'], ['low', '더 낮다']], roulette: [['red', '빨강'], ['black', '검정'], ['odd', '홀'], ['even', '짝'], ['low', '1~9'], ['high', '10~18']] };
   const DEN_RANK = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
@@ -5710,11 +5712,11 @@
     if (t.id === 'slots') row.append(btn('당기기', 'primary', go(null)));
     else for (const [p, label] of DEN_PICKS[t.id]) row.append(btn(label, 'secondary', go(p)));
     if (t.id === 'roulette') { const num = sEl('input', 'stocksQtyInput denNum'); num.type = 'number'; num.min = '0'; num.max = '18'; num.value = '7'; num.setAttribute('aria-label', '숫자'); row.append(num, btn('숫자에 (18배)', 'secondary', (ev) => go(Math.floor(Number(num.value)))(ev))); }
-    card.append(row, out, btn('닫기', 'secondary', () => plazaDialog.close())); openPlazaWindow(`🎲 ${t.name}`, [card]);
+    card.append(row, out); openPlazaWindow(`🎲 ${t.name}`, [card], 'm');
   }
   function showPardon(name) {
     const card = sEl('div', 'denPaper'); const img = sEl('img'); img.src = '/assets/island/den-v1/papers/pardon_maru.png'; img.alt = '용서장'; card.append(img, sEl('div', 'denPaperName', String(name || '')), sEl('div', 'denPaperDate', new Date().toLocaleDateString('ko-KR')));
-    openPlazaWindow('용서장', [card, btn('닫기', 'secondary', () => plazaDialog.close())]);
+    openPlazaWindow('용서장', [card], 's');
   }
   async function tedTalk() { const d = stocksView || (await refreshStocksBoard()); plaza.controller?.tedSay?.(window.IslandExchange?.lineOf(d, Math.floor(Math.random() * 12)) || '…네.'); }
   async function museumDoor(entering) {
@@ -6176,7 +6178,6 @@
     if (q.called) say({ place: q.called.place, awayS: q.awayS }); else status.textContent = '여기에 택시가 없어요. 부르면 가장 가까운 택시가 와요.';
     const row = document.createElement('div'); row.className = 'taxiActions';
     const call = document.createElement('button'); call.type = 'button'; call.className = 'primary'; call.id = 'taxiCallBtn'; call.textContent = '택시 부르기'; call.disabled = Boolean(q.called);
-    const close = document.createElement('button'); close.type = 'button'; close.className = 'secondary'; close.id = 'taxiCloseBtn'; close.textContent = '닫기'; close.addEventListener('click', () => plazaDialog.close());
     call.addEventListener('click', async () => {
       call.disabled = true;
       try { const p = plaza.controller?.pose?.(); if (p) await api('/api/plaza/state', { method: 'POST', body: JSON.stringify(p) }).catch(() => {});
@@ -6184,7 +6185,7 @@
         if (r.ready) { plazaDialog.close(); openTaxi(stop); return; } say(r); showToast(r.queued ? `택시를 기다려요 · 내 순서 ${r.place}번째` : `🚕 택시를 불렀어요 · 약 ${r.etaS}초${r.across ? ' · 길 건너편에서 타요' : ''}`, 2600);
       } catch (error) { status.textContent = error.message; call.disabled = false; }
     });
-    row.append(call, close); card.append(line, status, row); openPlazaWindow('🚕 택시 부르기', [card]); call.focus({ preventScroll: true });
+    row.append(call); card.append(line, status, row); openPlazaWindow('🚕 택시 부르기', [card], 's'); /* (1.10.418 U4 C3 · D3: the head's ✕ only, a small window) */ call.focus({ preventScroll: true });
   }
   const taxiPending = new Map(); /* (403 Codex #6: a 타기 not answered yet, by where from, where to and how paid -> its request) */
   async function openTaxi(from) {
@@ -6203,7 +6204,6 @@
     const rideText = (d) => { const w = d.loop ? '섬 한 바퀴 타기' : `${d.label}행 타기`; return q.pass ? w : `${w} · ${won(d.fare)}`; }; /* (412 「섬 한 바퀴」: back here) */
     const askText = (d) => `${d.loop ? '섬 한 바퀴 돌고 여기로 돌아올까요?' : `${d.label}까지 갈까요?`}${q.pass ? ' · 오늘 자유이용권 ✓' : ''}`;
     const ride = button('taxiRideBtn', rideText({ label: to, fare: q.fare }), 'primary'); const pass = q.pass ? null : button('taxiPassBtn', `오늘 자유이용권 · ${won(q.dayPass)}`, 'secondary');
-    const close = button('taxiCloseBtn', '닫기', 'secondary'); close.addEventListener('click', () => plazaDialog.close());
     const short = (price) => !q.pass && price > 0 && Number.isFinite(balance) && balance < price;
     if (pass && short(q.dayPass)) pass.disabled = true; /* (타기 and its line: by the place picked -- fit, below) */
     if (q.awayS > 0) { ride.disabled = true; if (pass) pass.disabled = true; status.textContent = `택시가 돌아오는 중이에요 · 약 ${q.awayS}초`; } /* (294 7: one car a stop -- out, coming back) */
@@ -6231,7 +6231,7 @@
       } catch (error) { status.textContent = error.message; going = false; for (const b of list.children) b.disabled = false; ride.disabled = short(pick.fare); if (pass) pass.disabled = short(q.dayPass); if (error?.data?.error === 'TAXI_PRICE') { plazaDialog.close(); openTaxi(from); } }
     };
     ride.addEventListener('click', () => go(q.pass ? 'pass' : 'fare')); pass?.addEventListener('click', () => go('pass'));
-    row.append(...[ride, pass, close].filter(Boolean)); card.append(line, list, status, row); openPlazaWindow('🚕 어디로 갈까요?', [card]); ride.focus({ preventScroll: true });
+    row.append(...[ride, pass].filter(Boolean)); card.append(line, list, status, row); openPlazaWindow('🚕 어디로 갈까요?', [card], 's'); /* (1.10.418 U4 C3 · D3, 검토 §5: a small window, its places a list, the head's ✕ only) */ ride.focus({ preventScroll: true });
   }
   async function openPlaque(id) {
     try {

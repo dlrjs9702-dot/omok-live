@@ -1428,8 +1428,8 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(h2,h3,h4,strong,label,summary,legend){color:var(--isle-ink)}
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(p,small,.smallMuted,.lookMeta,.skinMeta,.myInfoLabel){color:var(--isle-soft)}
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) .skinShopStatus{color:#9a3412}
-:root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode)>.recordsDialogHead>button:last-child{background:transparent;border:1px solid var(--isle-line);color:var(--isle-ink)}
-:root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode)>.recordsDialogHead>button:last-child:hover{background:var(--isle-hover)}
+:root[data-theme="light"] body.plazaMode .isle-sheet:not(.talkMode):not(.adminMode)>.recordsDialogHead>button:last-child{background:transparent;border:1px solid var(--isle-line);color:var(--isle-ink)}
+:root[data-theme="light"] body.plazaMode .isle-sheet:not(.talkMode):not(.adminMode)>.recordsDialogHead>button:last-child:hover{background:var(--isle-hover)}
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(button.ghost,button.secondary,.skinTab,.furniturePiece){background:var(--isle-card);color:var(--isle-ink);border:1px solid var(--isle-line);box-shadow:none}
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(button.ghost,button.secondary,.skinTab,.furniturePiece):hover{background:var(--isle-hover)}
 :root[data-theme="light"] body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(button.primary,button[type="submit"]:not(.ghost):not(.secondary)){background:var(--isle-btn);color:#fff;border:1px solid transparent}

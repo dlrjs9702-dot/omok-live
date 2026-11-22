@@ -1611,7 +1611,7 @@ body.touchIsland .islandChatGrip{width:28px;height:28px}.islandChatAlpha{display
 .plazaHint{position:absolute;left:50%;bottom:24px;transform:translateX(-50%) rotate(-1deg);padding:12px 22px 10px;font-weight:950;font-size:1.1rem;letter-spacing:.03em;pointer-events:none;white-space:nowrap} /* (U: an .isle-tape note) */
 @media (max-width: 1100px) { body:not(.touchIsland) .plazaHint { bottom: 64px; width: max-content; max-width: calc(100% - 32px); white-space: normal; text-align: center; } } /* (문제 기록 1103 5: a narrow PC window -- above the 가방·사진·시점 row, two lines if it must) */
 .plazaStage .lobbyInvitations{position:absolute;z-index:2;top:14px;right:14px;width:min(380px,40%)}
-.recordsDialog.plazaDialog{width:min(1120px,94vw);max-height:90vh}
+.recordsDialog.plazaDialog{width:min(1120px,94vw);max-height:90vh}.recordsDialog.plazaDialog.winS{width:min(440px,94vw)}.recordsDialog.plazaDialog.winM{width:min(560px,94vw)} /* (1.10.418 U4 C4: three widths) */
 .plazaDialogBody{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));align-items:start}
 .plazaDialogBody>*{margin:0!important;min-width:0}
 .plazaDialogBody input[type=radio],.plazaDialogBody input[type=checkbox]{width:auto;padding:0}
@@ -3129,10 +3129,12 @@ body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode)>.recordsDialogHea
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(h2,h3,h4,strong,label,summary,legend){color:var(--isle-ink)}
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) :is(p,small,.smallMuted,.lookMeta,.skinMeta,.myInfoLabel){color:var(--isle-soft)}
 body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode) .skinShopStatus{color:#9a3412}
-/* the head's close: ✕ (its name stays 「닫기」) */
-body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode)>.recordsDialogHead>button:last-child{width:34px;height:34px;min-height:34px;padding:0;border-radius:50%;font-size:0;background:transparent;border:1px solid var(--isle-line);color:var(--isle-ink)}
-body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode)>.recordsDialogHead>button:last-child::after{content:"✕";font-size:1rem;font-weight:800}
-body.plazaMode .isle-sheet:is(:not([class*="Mode"]),.editMode)>.recordsDialogHead>button:last-child:hover{background:var(--isle-hover)}
+/* the head's close: ✕ (its name stays 「닫기」) -- 1.10.418 U4 C2: one close on every island sheet, its …Mode windows too (출석 · 우체통 · 지도 · 게시판 ·
+   가격표 showed the word); a talk has none (잘 가요), the admin's U6; 40 px on a phone */
+body.plazaMode .isle-sheet:not(.talkMode):not(.adminMode)>.recordsDialogHead>button:last-child{width:34px;height:34px;min-height:34px;padding:0;border-radius:50%;font-size:0;background:transparent;border:1px solid var(--isle-line);color:var(--isle-ink)}
+body.plazaMode .isle-sheet:not(.talkMode):not(.adminMode)>.recordsDialogHead>button:last-child::after{content:"✕";font-size:1rem;font-weight:800}
+body.plazaMode .isle-sheet:not(.talkMode):not(.adminMode)>.recordsDialogHead>button:last-child:hover{background:var(--isle-hover)}
+@media (pointer:coarse){body.plazaMode .isle-sheet:not(.talkMode):not(.adminMode)>.recordsDialogHead>button:last-child{width:40px;height:40px;min-height:40px}}
 /* 1.10.417 U3 토큰화 (검토 ui-review-20261121 §3-3, 결정 43 A): the shared parts (.ghost .secondary .primary) take their colours from these, dark by
    default (:root, line 1) -- on every island sheet, its …Mode windows too (all but the admin's, U6), paper once here; a new window or part is paper
    with nothing more */
