@@ -8,7 +8,7 @@ const app = fs.readFileSync(path.join(__dirname, '../public/app.js'), 'utf8');
 const css = fs.readFileSync(path.join(__dirname, '../public/styles.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
 
 test('U4 닫기 하나: 머리 ✕ 규칙이 대화 · 관리자 말고 모든 섬 창(…Mode 포함), 아래 「닫기」 단추는 없음', () => {
-  assert.match(css, /body\.plazaMode \.isle-sheet:not\(\.talkMode\):not\(\.adminMode\)>\.recordsDialogHead>button:last-child::after\{content:"✕"/);
+  assert.match(css, /body\.plazaMode \.isle-sheet:not\(\.talkMode\)>\.recordsDialogHead>button:last-child::after\{content:"✕"/);
   assert.doesNotMatch(app, /btn\('닫기', 'secondary', \(\) => plazaDialog\.close\(\)\)/, 'a bottom 「닫기」 in a window with the head ✕');
   assert.doesNotMatch(app, /taxiCloseBtn/, 'the taxi windows: the head ✕ only');
 });

@@ -17,7 +17,7 @@ test('U3 부품: .ghost · .secondary · .primary가 변수로 색을 받고, �
   const base = (s) => rules.find((r) => r.sel === s)?.body || '';
   assert.match(base('.ghost'), /background:var\(--btn-ghost-bg,#1e293b\)/); assert.match(base('.ghost'), /color:var\(--btn-ghost-ink,/); assert.match(base('.ghost'), /border:1px solid var\(--btn-ghost-line,/);
   assert.match(base('.secondary'), /background:var\(--btn-secondary-bg,#2563eb\)/); assert.match(base('.primary'), /background:var\(--btn-primary-bg,#f8fafc\)/);
-  const island = rules.find((r) => r.sel === 'body.plazaMode .isle-sheet:not(.adminMode)'); assert.ok(island, 'the island sheets set them');
+  const island = rules.find((r) => r.sel === 'body.plazaMode .isle-sheet') /* (420 U6: the admin's too) */; assert.ok(island, 'the island sheets set them');
   for (const v of ['--btn-ghost-bg:var(--isle-card)', '--btn-ghost-ink:var(--isle-ink)', '--btn-secondary-bg:var(--isle-card)', '--btn-primary-bg:var(--isle-btn)', '--btn-primary-ink:#fff']) assert.ok(island.body.includes(v), v);
 });
 
