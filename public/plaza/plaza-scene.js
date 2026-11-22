@@ -1206,13 +1206,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       x.fillStyle = '#4a3828'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = '800 112px sans-serif'; x.fillText(text, 390, 132);
       const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.flipY = false; const face = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 });
       const fb = new THREE.Group(); for (const s of [-0.75, 0.75]) mesh(new THREE.BoxGeometry(0.28, 1.0, 0.28), mat(0x8a6440), s, 0.5, 0, fb); mesh(new THREE.BoxGeometry(1.56, 0.5, 0.08), mat(0xfff6e3), 0, 1.85, 0, fb);
-      const g = piece('dalmaru.dock_board', bx, by, bz, yaw, fb, false, () => g.traverse((o) => { if (o.isMesh && [].concat(o.material).some((m) => m?.name === 'dest_plate')) o.material = face; }));
+      const g = piece('dalmaru.dock_board', bx, by, bz, yaw, fb, false, () => g.traverse((o) => { if (o.isMesh && [].concat(o.material).some((m) => m?.name === 'dest_plate')) o.material = face; })); return g;
     };
     for (const b of T.DOCK_BOARDS || []) destBoard(b.text, b.x, heightAt(b.x, b.z), b.z, b.yaw);
     /* (1.10.409 assets 172 §5 「표지판 따로」: on each float's shore edge, facing whoever comes down the gangway -- 「타는 곳」 by the boarding berths,
        「내리는 곳」 by the arm (no arrow: the plate's two faces show one picture, an arrow would point wrong from the sea side)) */
     for (const D of [S.dock, S.dock2]) { if (!D) continue; const c = Math.cos(D.yaw); const s = Math.sin(D.yaw);
-      for (const [mx, mz, text] of [[-3, -1.5, '타는 곳'], [5, -1.5, '내리는 곳']]) { const bx = D.x + mx * c + mz * s; const bz = D.z - mx * s + mz * c; destBoard(text, bx, D.y + 0.15, bz, D.yaw);
+      for (const [mx, mz, text] of [[-3, -1.5, '타는 곳'], [5, -1.5, '내리는 곳']]) { const bx = D.x + mx * c + mz * s; const bz = D.z - mx * s + mz * c; const g = destBoard(text, bx, D.y + 0.15, bz, D.yaw); if (g) g.userData.onDeck = true; /* (on the float's deck, not the sea's bottom: dalmaru-walk's floating check) */
         for (const k of [-0.75, 0.75]) solids.push({ x: bx + k * c, z: bz - k * s, r: 0.2 }); } }
     // the stairs: its model runs along local -x from its foot; the low wall on its open side (and its back, the stone
     // under the steps) are walked round, its ends are open
@@ -7076,7 +7076,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       box.setFromObject(root); if (box.isEmpty()) continue;
       const walked = root.userData.walked;
       if (!walked && !live.some((s) => s.x > box.min.x - s.r && s.x < box.max.x + s.r && s.z > box.min.z - s.r && s.z < box.max.z + s.r)) unblocked.push(name);
-      if (walked || name.includes('stairs')) continue;
+      if (walked || root.userData.onDeck || name.includes('stairs')) continue; /* (409: what stands on a float's deck -- the ground under it the sea's bottom) */
       const g = [[box.min.x, box.min.z], [box.max.x, box.min.z], [box.min.x, box.max.z], [box.max.x, box.max.z], [(box.min.x + box.max.x) / 2, (box.min.z + box.max.z) / 2]].map(([x, z]) => T.meshGroundHeight(x, z));
       const y = root.position.y;
       if (y - Math.min(...g) > 1.2 && y - g[4] > 0.4) floating.push([name, r1(y - Math.min(...g))]);

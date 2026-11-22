@@ -324,7 +324,7 @@
         for (let cx = Math.floor((Math.min(ax, bx) - BANK_REACH) / 8); cx <= Math.floor((Math.max(ax, bx) + BANK_REACH) / 8); cx += 1) for (let cz = Math.floor((Math.min(az, bz) - BANK_REACH) / 8); cz <= Math.floor((Math.max(az, bz) + BANK_REACH) / 8); cz += 1) { const k = `${cx},${cz}`; if (!bankGrid.has(k)) bankGrid.set(k, []); bankGrid.get(k).push(seg); } }
     }
     const segs = bankGrid.get(`${Math.floor(x / 8)},${Math.floor(z / 8)}`); if (!segs) return h;
-    for (const b of D.BRIDGES) if (Math.abs(x - b.x) < (b.bank || b.length) / 2 + 4 && Math.abs(z - b.z) < (b.high || b.isle2 ? 3.9 : 2.8) + 4) return h; /* (408 bridges-two-way §5: the wide ones' 3.9) */
+    for (const b of D.BRIDGES) if (Math.abs(x - b.x) < (b.bank || b.length) / 2 + 4 && Math.abs(z - b.z) < (b.high || b.isle2 ? BANK_REACH + 0.5 : 2.8 + 4)) return h; /* (408 bridges-two-way §5: the wide ones' wider; 409 총괄: over the water the road is on the bridge -- the bank's reach (10.6 m) under it had raised two ridges across the boats' channel to -0.9, the keel 0.4 under the sea grazing them) */
     let d = Infinity;
     for (const [ax, az, bx, bz] of segs) { const dx = bx - ax; const dz = bz - az; const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1e-9))); const e = Math.hypot(x - ax - dx * t, z - az - dz * t); if (e < d) d = e; }
     if (d >= BANK_REACH) return h;
