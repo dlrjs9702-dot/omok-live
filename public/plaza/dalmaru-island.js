@@ -280,7 +280,7 @@
     const dx = x - TOP.x; const dz = z - TOP.z; const along = dx * STAIRS.ux + dz * STAIRS.uz; const out = -(dx * STAIRS.nx + dz * STAIRS.nz);
     // (문제 기록 4회차: 2.4 m deep it fell between the 2.5 m mesh's points -- drawn 7 m under where one stood at the top; 5 m deep)
     const edge = Math.max(-along - 0.4, along - 5, -out - 1.5, out - 9); if (edge < 2.5) h = Math.max(h, lerp(TOP.h, h, smooth(0, 2.5, edge))); // (from the stairs' end on: over their last steps it stood flat at the top -- a 1.9 m step up)
-    return bridgeEndFlat(x, z, roadBank(x, z, h));
+    return bridgeEndFlat(x, z, roadBank(x, z, h)); /* (404: last -- the road's bank had raised the south half) */
   }
   /* (1.10.404 문제 기록 dddccb8f, notes issues-taxi-resident §9 · bridges-two-way §0 ①: the high 윤슬다리's east end -- the ground there leans 0.51 m
      across, and the deck, lying on its middle line, dug into the south half. Flat at the end's own height 9.8 m across (the wide bridge's 7.8 and 1 m
@@ -292,7 +292,9 @@
     for (const f of endFlats) {
       const u = (x - f.x) * f.dir; const v = Math.abs(z - f.z); if (u < -END_FLAT.inside - END_FLAT.ease || u > END_FLAT.out + END_FLAT.ease || v > END_FLAT.hw + END_FLAT.ease) continue;
       const du = Math.max(0, -END_FLAT.inside - u, u - END_FLAT.out); const dv = Math.max(0, v - END_FLAT.hw); const dd = Math.hypot(du, dv);
-      if (dd < END_FLAT.ease) h = lerp(f.h, h, smooth(0, END_FLAT.ease, dd));
+      /* (a station's own pad keeps its level -- 달끝역's walkway by the end: the flat let go over its 2 m rim) */
+      let keep = 1; for (const p of PADS) { const pd = Math.hypot(x - p.x, z - p.z); if (pd < p.r + 2) keep = Math.min(keep, smooth(p.r, p.r + 2, pd)); }
+      if (dd < END_FLAT.ease) h = lerp(h, lerp(f.h, h, smooth(0, END_FLAT.ease, dd)), keep);
     }
     return h;
   }
