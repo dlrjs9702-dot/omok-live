@@ -116,6 +116,22 @@
       "sourceSha256": "7d7099c737399928f9a15140a892f324deddf65e91e9d6dbea4dde83233cd83a",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (as the other residents: High <= 32,000 / Low <= 10,000); assets 119 테드 창, the 증권거래소 clerk"
     },
+    "characters/npc_walker_morak_work.glb": {
+      "triangles": 31131,
+      "sourceSha256": "72707ee2fc0b3a03ac0819dabb65e65306c77e74c476f0c3435e4b185cc240cb",
+      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (as the other residents: High <= 32,000 / Low <= 10,000); assets 177 모락, the camp keeper"
+    },
+    "characters/npc_walker_morak_work_low.glb": {
+      "triangles": 9672,
+      "sourceSha256": "b01c361c54e8756f11d364a0a83a21637d7faff9dbae057804683a4837395110",
+      "reason": "User-authorized transformation fidelity exception, F3 walking islanders (as the other residents: High <= 32,000 / Low <= 10,000); assets 177 모락, the camp keeper"
+    },
+    "characters/npc_face_morak.glb": {
+      "meshes": 12,
+      "nodes": 24,
+      "materials": 12,
+      "reason": "assets 102 / 177: an islander's 12 expression pieces, each its own named node (shown one at a time on the Head bone)"
+    },
     "characters/npc_face_ted.glb": {
       "meshes": 12,
       "nodes": 24,
@@ -2361,6 +2377,24 @@
       "meshes": 5,
       "nodes": 14,
       "reason": "1.10.408 assets 171: the taxi road's gate -- the car gate's two leaves and the two people's wickets (leaf_l, leaf_r, side_l, side_r) meshes of their own (turned open by the game), stand_in / stand_out / side_way_l / side_way_r empty nodes"
+    },
+    "newisle-v1/camp_hearth_set.glb": {
+      "nodes": 2,
+      "reason": "1.10.414 S2 assets 164: the camp's hearth set -- its mesh under a named node, as packed"
+    },
+    "newisle-v1/camp_hearth_set_low.glb": {
+      "nodes": 2,
+      "reason": "1.10.414 S2 assets 164: the camp's hearth set -- its mesh under a named node, as packed"
+    },
+    "byeolmaru-v1/camp_office.glb": {
+      "meshes": 2,
+      "nodes": 7,
+      "reason": "1.10.414 S2 assets 176: the camp office -- its 「관리소」 plate a mesh of its own (written on by the game), keeper / sign_face / stand_front empty nodes"
+    },
+    "byeolmaru-v1/camp_office_low.glb": {
+      "meshes": 2,
+      "nodes": 7,
+      "reason": "1.10.414 S2 assets 176: the camp office -- its 「관리소」 plate a mesh of its own (written on by the game), keeper / sign_face / stand_front empty nodes"
     },
     "byeolmaru-v1/fence_palisade_tall.glb": {
       "nodes": 2,

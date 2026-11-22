@@ -1463,6 +1463,32 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     } };
   });
   const isle2Gate = isle2Gates[0] || null;
+  /* 1.10.414 S2 캠핑장 안 (사용자 결정 72 · 73, 검토 safe-zones-visible §2-2; assets 164 · 176 · 177): the office (176, 「관리소」 written on its `office_plate`,
+     snow, its lamp at night), 164's hearth set (embers at night), three tents (land-v1) -- each on its own with its stand-ins over its circles
+     (Isle2Props.CAMP2: what blocks is in its solids); 모락 (177) standing at the office's `keeper` (1.4, 0, -3.3), facing the fire, 「말 걸기」 */
+  let campKeeper = null;
+  (() => {
+    const P2 = globalThis.Isle2Props; if (!P2?.CAMP2) return;
+    const ID = { camp_office: 'byeolmaru.camp_office', camp_hearth_set: 'newisle.camp_hearth_set', tent_peaked: 'land.tent_peaked', tent_round: 'land.tent_round', tent_ridge: 'land.tent_ridge' };
+    const COLOR = { camp_office: 0x8a6440, camp_hearth_set: 0x6f5a48, tent_peaked: 0xc8a46a, tent_round: 0x6f8f5a, tent_ridge: 0xb86a4a };
+    const plateFace = () => { const c = document.createElement('canvas'); c.width = 512; c.height = 192; const x = c.getContext('2d'); x.fillStyle = '#f6ead0'; x.fillRect(0, 0, 512, 192); x.fillStyle = '#3f3426'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = '800 104px sans-serif'; x.fillText('관리소', 256, 100);
+      const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.flipY = false; textures.push(tex); return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 }); };
+    for (const [x, z, yaw, k] of P2.CAMP2) {
+      const kind = P2.CAMP2_KINDS[k]; const g = new THREE.Group(); g.position.set(x, heightAt(x, z), z); g.rotation.y = yaw; scene.add(g); const v = new THREE.Group(); g.add(v);
+      const B = P2.BOXES[kind]; if (B) mesh(new THREE.BoxGeometry(B[0], B[1], B[2]), mat(COLOR[kind]), 0, B[1] / 2, B[3], v);
+      if (kind === 'camp_hearth_set') for (const [bx, by, bz, w, h, d] of [[0, 0.7, 0, 1.6, 1.4, 1.6], [-1.55, 0.25, 0.2, 0.4, 0.5, 1.6], [0.2, 0.25, 1.55, 1.6, 0.5, 0.4]]) mesh(new THREE.BoxGeometry(w, h, d), mat(COLOR[kind]), bx, by, bz, v); /* (164 props164 boxes) */
+      const face = kind === 'camp_office' ? plateFace() : null;
+      assets.attach(ID[kind], g, v, face ? (entry) => { if (entry) g.traverse((o) => { if (o.isMesh && [].concat(o.material).some((m) => m?.name === 'office_plate')) o.material = face; }); } : undefined);
+      if (kind !== 'camp_office') continue;
+      const kx = x + Math.cos(yaw) * 1.4 + Math.sin(yaw) * -3.3; const kz = z - Math.sin(yaw) * 1.4 + Math.cos(yaw) * -3.3; const C = globalThis.IslandTerrain.dalmaru?.NEW_ISLE?.camp || { x: 259, z: 250 };
+      queueMicrotask(() => { /* (the scene's own builders -- makeCharacter's -- all set up first) */
+        const m = makeCharacter({ shirt: 0x5a6b3a, hair: 0x6a5a48, skin: 0xd8c8b0 }); m.root.position.set(kx, heightAt(kx, kz), kz); m.root.rotation.y = Math.atan2(C.x - kx, C.z - kz); scene.add(m.root);
+        assets.dress(['character.walker.morak_work', 'character.npc'], m); m.headTop = 1.75; m.resident = 'morak'; m.root.userData.resident = 'morak';
+        m.home = { x: kx, z: kz, yaw: m.root.rotation.y, id: 'camp:keeper' }; npcs.push(m); campKeeper = m;
+      });
+      { const d = Math.hypot(C.x - kx, C.z - kz) || 1; const dx = kx + ((C.x - kx) / d) * 1.2; const dz = kz + ((C.z - kz) / d) * 1.2; solids.push({ x: kx, z: kz, r: 0.4 }); doors['camp:keeper'] = { x: dx, z: dz, name: '모락 · 말 걸기' }; } /* (talked to from 1.2 m before him -- dalmaru-walk reaches it, not his own round) */
+    }
+  })();
   // 1.10.390 N3-b 자연 구역 탐방선 (island-boat.js; notes n3-plan §4-2, 사용자 결정 37): the four boats on the server's clock -- the same on every
   // screen -- the model (assets 134) at the waterline rocking a little, a captain at each wheel (결정 37-5: an islander's look and hat, each
   // boat's shirt its own colour; drawn within 40 m), the riders on its seats; within 180 m of me (the fog's far side)
@@ -6271,6 +6297,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       talkTurned = { o, yaw: o.root.rotation.y, homeYaw: o.npc.home?.yaw };
       o.root.rotation.y = toTalk - o.npc.root.rotation.y; if (o.npc.home) o.npc.home.yaw = o.root.rotation.y;
     }
+    else if (t.id === 'camp:keeper' && campKeeper) { /* (1.10.414 S2: 모락 too -- his face in the talk's picture (resident-looks faceSeen), back to the fire after) */
+      const k = campKeeper; talkTurned = { o: { root: k.root, npc: k }, yaw: k.root.rotation.y, homeYaw: k.home?.yaw }; k.root.rotation.y = toTalk; if (k.home) k.home.yaw = toTalk;
+    }
     return true;
   }
   const TALK_SIDES = [[1, 1], [-1, 1], [1, 0.6], [-1, 0.6]];
@@ -7095,7 +7124,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
     // walk the island from the first spot
     const R = Math.ceil(T.ISLAND_RADIUS); const W = R * 2 + 1; const seen = new Uint8Array(W * W); const hAt = new Float32Array(W * W);
-    const ok = (x, z) => T.walkable(x, z) && !solidsNear(x, z).some((o) => !o.gate && blocksNow(o) && Math.hypot(o.x - x, o.z - z) < o.r + 0.3); // (the mayor's gate: opened by him, not the map)
+    const ok = (x, z) => T.walkable(x, z) && !solidsNear(x, z).some((o) => !o.gate && !o.wicket && blocksNow(o) && Math.hypot(o.x - x, o.z - z) < o.r + 0.3); // (the mayor's gate: opened by him, not the map; 1.10.414 a camp wicket's 1.2 m -- walked through by a 0.3 body (test/camp-s1), narrower than this grid)
     const idx = (i, j) => (j + R) * W + (i + R);
     const s0 = [Math.round(T.SPAWN.x), Math.round(T.SPAWN.z)]; const queue = [s0]; seen[idx(...s0)] = 1; hAt[idx(...s0)] = heightAt(...s0);
     for (let q = 0; q < queue.length; q += 1) {
