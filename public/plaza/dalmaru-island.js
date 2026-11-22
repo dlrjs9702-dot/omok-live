@@ -286,14 +286,17 @@
      across, and the deck, lying on its middle line, dug into the south half. Flat at the end's own height 9.8 m across (the wide bridge's 7.8 and 1 m
      each side, made so once: the wider bridge needs no second cut) from 1.5 m under the deck's end to 3 m out, eased into the ground as it was
      over 3 m) */
+  /* (1.10.408 assets 171, bridges-two-way §5: 별마루다리's two ends too -- 0.47 / 0.43 m across 7.8 m. Its east end by the road gate: the flat let go over
+     the 1.5 m before the gate's line, so the ground inside it stays the gate's own cut (dalmaru-terrain gateCut: its leaves' room)) */
   const END_FLAT = Object.freeze({ hw: 4.9, inside: 1.5, out: 3, ease: 3 }); let endFlats = null;
   function bridgeEndFlat(x, z, h) {
-    if (!endFlats) { const list = []; endFlats = []; /* (none while the ends' own height is read) */ for (const b of D.BRIDGES) if (b.high) { const [ex, ez] = b.ends[1]; list.push({ x: ex, z: ez, dir: Math.sign(ex - b.x) || 1, h: land(ex, ez) }); } endFlats = list; }
+    if (!endFlats) { const list = []; endFlats = []; /* (none while the ends' own height is read) */ for (const b of D.BRIDGES) for (const k of b.high ? [1] : b.isle2 ? [0, 1] : []) { const [ex, ez] = b.ends[k]; list.push({ x: ex, z: ez, dir: Math.sign(ex - b.x) || 1, h: b.isle2 ? Math.max(...b.ends.map(([x0, z0]) => D.ground(x0, z0)), SEA) + 0.1 /* (its arched deck's one end height, base + YB.top, less 2 cm) */ : land(ex, ez), gate: b.isle2 && k === 1 ? (D.TAXI_GATES || [])[0] : null }); } endFlats = list; }
     for (const f of endFlats) {
       const u = (x - f.x) * f.dir; const v = Math.abs(z - f.z); if (u < -END_FLAT.inside - END_FLAT.ease || u > END_FLAT.out + END_FLAT.ease || v > END_FLAT.hw + END_FLAT.ease) continue;
       const du = Math.max(0, -END_FLAT.inside - u, u - END_FLAT.out); const dv = Math.max(0, v - END_FLAT.hw); const dd = Math.hypot(du, dv);
       /* (a station's own pad keeps its level -- 달끝역's walkway by the end: the flat let go over its 2 m rim) */
       let keep = 1; for (const p of PADS) { const pd = Math.hypot(x - p.x, z - p.z); if (pd < p.r + 2) keep = Math.min(keep, smooth(p.r, p.r + 2, pd)); }
+      if (f.gate) { const lz = (x - f.gate.x) * Math.sin(f.gate.yaw) + (z - f.gate.z) * Math.cos(f.gate.yaw); keep = Math.min(keep, 1 - smooth(-1.5, 0, lz)); }
       if (dd < END_FLAT.ease) h = lerp(h, lerp(f.h, h, smooth(0, END_FLAT.ease, dd)), keep);
     }
     return h;
@@ -313,7 +316,7 @@
         for (let cx = Math.floor((Math.min(ax, bx) - BANK_REACH) / 8); cx <= Math.floor((Math.max(ax, bx) + BANK_REACH) / 8); cx += 1) for (let cz = Math.floor((Math.min(az, bz) - BANK_REACH) / 8); cz <= Math.floor((Math.max(az, bz) + BANK_REACH) / 8); cz += 1) { const k = `${cx},${cz}`; if (!bankGrid.has(k)) bankGrid.set(k, []); bankGrid.get(k).push(seg); } }
     }
     const segs = bankGrid.get(`${Math.floor(x / 8)},${Math.floor(z / 8)}`); if (!segs) return h;
-    for (const b of D.BRIDGES) if (Math.abs(x - b.x) < (b.bank || b.length) / 2 + 4 && Math.abs(z - b.z) < 2.8 + 4) return h;
+    for (const b of D.BRIDGES) if (Math.abs(x - b.x) < (b.bank || b.length) / 2 + 4 && Math.abs(z - b.z) < (b.high || b.isle2 ? 3.9 : 2.8) + 4) return h; /* (408 bridges-two-way §5: the wide ones' 3.9) */
     let d = Infinity;
     for (const [ax, az, bx, bz] of segs) { const dx = bx - ax; const dz = bz - az; const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1e-9))); const e = Math.hypot(x - ax - dx * t, z - az - dz * t); if (e < d) d = e; }
     if (d >= BANK_REACH) return h;
@@ -352,7 +355,10 @@
     /* (1.10.407 사용자 결정 66·67 A, assets 170, notes bridges-two-way §3: the wide 윤슬다리 -- the road's own section, two lanes of 2.3 and a walk of 1.6
        each side, 7.8 m on one level; the same deck line (HB); its rails' inner face at 3.9, its ramps' guards at 4.35 (`guard`)) */
     if (b.high) return { x: b.x, z: b.z, ux: 1, uz: 0, half: b.length / 2, w: 7.8, guard: 4.35, high: true, base: Math.max(...ends, SEA) - HB.top + 0.12, e0: ends[0] + 0.02, e1: ends[1] + 0.02, get deck() { return this.base + HB.top; }, modelTop: (u) => HB.top + hbProfile(u, b.length / 2), model: 'dalmaru.bridge_yunseul_wide', ...(b.lane ? { lane: true } : {}) };
-    return { x: b.x, z: b.z, ux: 1, uz: 0, half: b.length / 2, w: 5.6, arch: YB.rise, base: Math.max(...ends, SEA) - YB.top + 0.12, get deck() { return this.base + YB.top; }, model: 'dalmaru.bridge_yunseul', ...(b.isle2 ? { isle2: true } : {}) };
+    /* (1.10.408 사용자 결정 67-2 A, assets 171: 별마루다리 low and wide -- its own model at its own length (no stretch), the same YB deck line, 7.8 m,
+       its ramps' guards at 4.35 as the wide 윤슬다리's; the taxi road over it, its yellow middle line in code) */
+    if (b.isle2) return { x: b.x, z: b.z, ux: 1, uz: 0, half: b.length / 2, w: 7.8, guard: 4.35, arch: YB.rise, base: Math.max(...ends, SEA) - YB.top + 0.12, get deck() { return this.base + YB.top; }, model: 'byeolmaru.bridge_byeolmaru_wide', ownLength: true, isle2: true, lane: true };
+    return { x: b.x, z: b.z, ux: 1, uz: 0, half: b.length / 2, w: 5.6, arch: YB.rise, base: Math.max(...ends, SEA) - YB.top + 0.12, get deck() { return this.base + YB.top; }, model: 'dalmaru.bridge_yunseul' };
   });
   /* (the ease at least 2 m, longer where the bank stands lower -- no steeper than the ramp's 0.27 + 0.18: the east bank, cut by the
      road's bank, 0.73 under the planks' end -> 4 m) */

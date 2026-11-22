@@ -695,7 +695,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     const r0 = deckAt({ b, u: -b.half }); const r1 = deckAt({ b, u: b.half }); // (2회차 4: a bridge whose ends meet different banks slopes, its rails with it)
     for (const side of [-1, 1]) { const rail = mesh(keep(new THREE.BoxGeometry(0.1, 0.1, Math.hypot(b.half * 2, r1 - r0))), post, side * (b.w / 2 - 0.1), Math.max(b.deck, (r0 + r1) / 2) + 0.9, 0, visual); rail.rotation.x = -Math.atan2(r1 - r0, b.half * 2); rail.castShadow = false; }
     if (b.model) { // (달마루섬 윤슬다리: its own model, whose arched deck is the one walked on -- deckAt)
-      const h = new THREE.Group(); h.position.set(b.x, b.base, b.z); h.rotation.y = Math.atan2(-b.uz, b.ux); h.scale.x = b.high ? 1 : (b.half * 2) / 50; scene.add(h);
+      const h = new THREE.Group(); h.position.set(b.x, b.base, b.z); h.rotation.y = Math.atan2(-b.uz, b.ux); h.scale.x = b.high || b.ownLength ? 1 : (b.half * 2) / 50; scene.add(h); /* (408: 별마루다리's 171 model at its own 61.75 m) */
       /* (1.10.389 N3-a, assets 133: the high one at its own 56 m; its last 2 m eased onto the banks as deckAt is -- the model bent there to it) */
       if (b.high) h.userData.fit = (v) => { const u = Math.max(-b.half, Math.min(b.half, v.x)); v.y += deckAt({ b, u }) - b.base - b.modelTop(u); };
       /* (its ramps' guarded sides over land (dalmaru-island rampGuards): stand-in walls under the rails, each run one box -- the model's side arches stand there) */
@@ -1035,7 +1035,7 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     const rows = (list, kind, k) => list.filter((a) => a[3] === k).map(([x, z, yaw]) => ({ x, z, yaw, isle2: true }));
     const onGround = (o) => setM(o.x, onMesh(o.x, o.z), o.z, 1, 1, o.yaw || 0);
     P2.FENCE_KINDS.forEach((kind, k) => {
-      if (kind === 'fence_gate' || kind === 'fence_gate_wide') return; /* (1.10.377: the gate on its own in plaza-scene -- its leaf opens as one comes near; 394 the wide one too) */
+      if (kind === 'fence_gate' || kind === 'fence_gate_wide' || kind === 'fence_gate_road') return; /* (1.10.377: the gate on its own in plaza-scene -- its leaf opens as one comes near; 394 the wide one too) */
       const geo = kind === 'fence_gate' ? mergeColored([part(new THREE.BoxGeometry(0.24, 2.42, 0.24), WOOD, -1.08, 1.21, 0), part(new THREE.BoxGeometry(0.24, 2.42, 0.24), WOOD, 1.08, 1.21, 0), part(new THREE.BoxGeometry(2.4, 0.16, 0.2), WOOD, 0, 2.34, 0)]) : box(kind, k === 3 ? STONE : WOOD);
       instanced(geo, natureMat, rows(P2.FENCE, kind, k), onGround, { cell: 60, target: [`byeolmaru.${kind}`] });
     });

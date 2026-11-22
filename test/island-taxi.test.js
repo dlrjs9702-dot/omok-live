@@ -178,7 +178,7 @@ test('N4-c 별마루섬 가는 길: 걸을 수 있는 땅·다리, 경사 0.3 �
     for (let d = 0; d < L; d += 0.5) { const x = ax + ((bx - ax) * d) / L; const z = az + ((bz - az) * d) / L; assert.ok(ok(x, z), `${x.toFixed(1)},${z.toFixed(1)} not walkable`);
       if (!T.onBridge(x, z) && !T.onBridge(x + (bx - ax) / L, z + (bz - az) / L)) assert.ok(Math.abs(T.heightAt(x + (bx - ax) / L, z + (bz - az) / L) - T.heightAt(x, z)) <= 0.3 + 1e-6, `slope at ${x.toFixed(1)},${z.toFixed(1)}`); } }
   assert.ok(len > 300 && len < 340, `${len}`);
-  const gate = P2.FENCE.find((f) => P2.FENCE_KINDS[f[3]] === 'fence_gate_wide'); const S = X.STREET;
+  const gate = P2.FENCE.find((f) => /^fence_gate_(wide|road)$/.test(P2.FENCE_KINDS[f[3]])); const S = X.STREET;
   const solids = [...T.natureSolids(), ...T.structureSolids(), ...T.villageSolids(), ...P2.solids()];
   for (const s of solids) { const edge = T.lineDist(s.x, s.z, E) - (s.r || 0.5); if (edge > X.ROAD.half - 0.15 || T.onBridge(s.x, s.z) || s.guard) continue;
     if (Math.hypot(s.x - gate[0], s.z - gate[1]) < 6) continue; /* (the gate and the pieces either side of it) */
