@@ -2362,6 +2362,14 @@
       "nodes": 14,
       "reason": "1.10.408 assets 171: the taxi road's gate -- the car gate's two leaves and the two people's wickets (leaf_l, leaf_r, side_l, side_r) meshes of their own (turned open by the game), stand_in / stand_out / side_way_l / side_way_r empty nodes"
     },
+    "byeolmaru-v1/fence_palisade_tall.glb": {
+      "nodes": 2,
+      "reason": "1.10.413 S1 assets 174: the camp's tall palisade -- its mesh under a named node, as packed"
+    },
+    "byeolmaru-v1/fence_palisade_tall_low.glb": {
+      "nodes": 2,
+      "reason": "1.10.413 S1 assets 174: the camp's tall palisade -- its mesh under a named node, as packed"
+    },
     "byeolmaru-v1/fence_wicket.glb": {
       "meshes": 2,
       "nodes": 7,
