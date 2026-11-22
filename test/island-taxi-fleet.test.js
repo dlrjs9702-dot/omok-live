@@ -39,7 +39,8 @@ test('택시 N4-a 차선: 길 가운데에서 오른쪽 1.15 m, 양끝 8 m와 �
 // 1.10.397 N4-c (notes n4-plan §5-3): the third terminal 별마루섬 입구 at EXT's end -- every two places a drive with no gap, at the drive's end the
 // place it is to; the road between them along the trunk (마을's spur added); on both one-lane bridges and through the wide gate the lane's middle
 test('택시 N4-c: 세 번째 종점·정류장 ⑥⑦ — 모든 두 자리 사이 길(끊김 없음, 끝은 그 자리), 거리·요금, 넓은 두 다리(윤슬 · 별마루)와 찻길 문은 제 차로', () => {
-  const ids = X.PLACE_IDS(); assert.deepEqual(ids.slice(-3), ['villageMid', 'villageEast', 'head']); assert.ok(ids.includes('isle'));
+  const ids = X.PLACE_IDS(); const trunk = ids.filter((id) => !X.ROADSTOPS[id]?.road); assert.deepEqual(trunk.slice(-3), ['villageMid', 'villageEast', 'head']); assert.ok(ids.includes('isle'));
+  assert.deepEqual(ids.slice(-5), ['westWaterfront', 'hanokGate', 'stones', 'choseung', 'villageWest'], '411: L2 · L1 stops after the trunk');
   assert.equal(Math.round(X.distanceOf('plaza', 'isle') * 10) / 10, Math.round(X.ROAD_LEN * 10) / 10, 'the two old ends as before');
   assert.ok(Math.abs(X.distanceOf('plaza', 'head') - X.TRUNK_LEN) < 1e-9); assert.ok(Math.abs(X.distanceOf('isle', 'head') - (X.TRUNK_LEN - X.sOf('isle') + X.SPUR)) < 1e-9);
   assert.equal(X.fareByRoad('plaza', 'isle'), 1000); assert.equal(X.fareByRoad('plaza', 'head'), 1750);

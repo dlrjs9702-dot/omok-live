@@ -9,24 +9,30 @@ const X = require('../public/plaza/island-taxi.js');
 const P2 = (() => { try { return require('../public/plaza/isle2-props.js'); } catch { return null; } })();
 
 test('정류장 양쪽: 표지 · 바닥 표시 둘씩 걸을 수 있는 땅, 표지 1.5 m · 표시 0.95 m 안 단단한 것 없음, 건너편 차 자리는 건널목에서 6 m 밖', { skip: !T.dalmaru && '달마루섬 전용' }, () => {
-  const solids = [...T.natureSolids(), ...T.villageSolids(), ...(T.structureSolids?.() || []), ...(P2 ? P2.solids() : [])]; const bad = [];
+  const solids = [...T.natureSolids(), ...T.villageSolids(), ...(T.structureSolids?.() || []), ...(P2 ? P2.solids() : [])].filter((o) => !o.rail); /* (411: the bay's railing -- a walk's sign stands beside it, as on the village street by the fences) */ const bad = [];
   for (const id of Object.keys(X.ROADSTOPS)) for (const side of [1, -1]) {
     const c = X.curbOf(id, side); const s = c.sign; const m = X.boardOf(id, side); const tag = `${id} ${side}`;
     if (!T.walkable(s.x, s.z)) bad.push(`${tag} sign off the ground`); if (!T.walkable(m.x, m.z)) bad.push(`${tag} mark off the ground`);
     for (const o of solids) { if (Math.hypot(o.x - s.x, o.z - s.z) - (o.r || 0) < (side < 0 ? 1.5 : 0.8) /* (the first side's signs as they stood: 0.88 m by 달끝나루's lamp) */) bad.push(`${tag} sign by ${o.x.toFixed(1)},${o.z.toFixed(1)}`); if (Math.hypot(o.x - m.x, o.z - m.z) - (o.r || 0) < 0.95) bad.push(`${tag} mark by ${o.x.toFixed(1)},${o.z.toFixed(1)}`); }
     if (side < 0) for (const k of X.CROSSINGS) if (Math.hypot(k.x - c.x, k.z - c.z) < 6) bad.push(`${tag} by a crossing`); /* (the first side's places as they were) */
-    assert.equal(c.side, side); assert.ok(Math.abs(Math.atan2(Math.sin(c.yaw - X.curbOf(id, -side).yaw), Math.cos(c.yaw - X.curbOf(id, -side).yaw))) > 3, `${tag} the two face opposite ways`);
+    assert.equal(c.side, side); assert.ok(Math.abs(Math.atan2(Math.sin(c.yaw - X.curbOf(id, -side).yaw), Math.cos(c.yaw - X.curbOf(id, -side).yaw))) > 2.6, `${tag} the two face opposite ways`); /* (within 30°: a far side a little along a bend) */
   }
   assert.deepEqual(bad, []);
 });
 
 test('정류장 양쪽: 대청마당 쪽에서 오면 +1, 별마루섬 쪽에서 오면 −1에 서고, 서기 전 15 m는 중앙선을 넘지 않음; 서 있는 쪽에서 떠남', { skip: !T.dalmaru && '달마루섬 전용' }, () => {
-  const lateral = (x, z) => { const f = X.footOn(x, z); let best = null; for (let s = 0; s <= X.TRUNK_LEN; s += 0.5) { const p = X.atS(s); const d = Math.hypot(p.x - f.x, p.z - f.z); if (!best || d < best.d) best = { d, p }; } const p = best.p; return (x - p.x) * Math.cos(p.yaw) - (z - p.z) * Math.sin(p.yaw); };
-  for (const id of Object.keys(X.ROADSTOPS)) for (const [from, want] of [['plaza', 1], ['head', -1]]) {
+  /* (411: across the middle of whichever road it is on -- its piece's own way, the side +1 as the stop's: the right going from 대청마당 / the corner / west) */
+  const lateral = (x, z, id) => { const c = X.curbOf(id, 1); const f = X.footOn(x, z); const p = X.GRAPH.pieces[f.piece]; let i = 1; while (i < p.pts.length - 1 && p.cum[i] < f.along) i += 1;
+    let ux = p.pts[i][0] - p.pts[i - 1][0]; let uz = p.pts[i][1] - p.pts[i - 1][1]; const L = Math.hypot(ux, uz) || 1; ux /= L; uz /= L; if (ux * Math.sin(c.yaw) + uz * Math.cos(c.yaw) < 0) { ux = -ux; uz = -uz; }
+    return (x - f.x) * uz - (z - f.z) * ux; };
+  /* (411: a stop off the trunk -- L2's, L1's -- is +1 coming from 대청마당 or 별마루섬 alike; its -1 from further along its own road) */
+  const beyond = (id) => (!X.ROADSTOPS[id].road ? 'head' : X.ROADSTOPS[id].road === 'L2' && id !== 'choseung' ? 'choseung' : null);
+  for (const id of Object.keys(X.ROADSTOPS)) for (const [from, want] of [['plaza', 1], [beyond(id), -1]]) {
+    if (!from) continue;
     assert.equal(X.arriveSide(from, id), want, `${from} -> ${id}`);
     const ride = { from, to: id, startedAt: 0, empty: true }; const t = X.tableOf(from, undefined, id); const end = t.road[t.road.length - 1]; const c = X.curbOf(id, want);
     assert.ok(Math.hypot(end[0] - c.x, end[1] - c.z) < 1e-6, `${from} -> ${id} ends at its curb`);
-    const ms = t.runMs; for (let k = 1; k <= 60; k += 1) { const q = X.poseAt(ride, ms - k * 100); if (Math.hypot(q.x - c.x, q.z - c.z) > 15) break; const lat = lateral(q.x, q.z); assert.ok(lat * want > -0.3, `${from} -> ${id}: ${lat.toFixed(2)} m across the middle ${(k * 100)} ms before`); }
+    const ms = t.runMs; for (let k = 1; k <= 60; k += 1) { const q = X.poseAt(ride, ms - k * 100); if (Math.hypot(q.x - c.x, q.z - c.z) > 15) break; const lat = lateral(q.x, q.z, id); assert.ok(lat * want > -0.3, `${from} -> ${id}: ${lat.toFixed(2)} m across the middle ${(k * 100)} ms before`); }
   }
   /* (a car standing on the far side sets off from there: its drive's first point is that curb) */
   for (const id of Object.keys(X.ROADSTOPS)) for (const curb of [1, -1]) { const t = X.tableOf(id, undefined, 'plaza', curb); const c = X.curbOf(id, curb); assert.ok(Math.hypot(t.road[0][0] - c.x, t.road[0][1] - c.z) < 1e-6, `${id} from ${curb}`); }
@@ -40,8 +46,9 @@ test('정류장 양쪽: 대청마당 쪽에서 오면 +1, 별마루섬 쪽에서
    over 3 m/s on the half circle, never turning on the spot (2° a 50 ms at most while under 0.2 m/s), its bow along its way over 1.5 m/s (20°)) */
 test('정류장 반대 방향 출발: 반원을 걷는 빠르기로 돌고, 제자리에서 돌지 않고, 뱃머리(차 앞)가 가는 쪽', () => {
   const bad = [];
+  const further = (id) => (!X.ROADSTOPS[id].road ? 'head' : X.ROADSTOPS[id].road === 'L2' && id !== 'choseung' ? 'choseung' : null); /* (411: the way on past it) */
   for (const id of Object.keys(X.ROADSTOPS)) for (const curb of [1, -1]) {
-    const to = curb > 0 ? 'plaza' : 'head'; const t = X.tableOf(id, undefined, to, curb); if (!t.road.turn) { bad.push(`${id} ${curb}: no turn`); continue; }
+    const to = curb > 0 ? 'plaza' : further(id); if (!to) continue; const t = X.tableOf(id, undefined, to, curb); if (!t.road.turn) { bad.push(`${id} ${curb}: no turn`); continue; }
     const ride = { from: id, to, startedAt: 0, curb }; let prev = null;
     for (let ms = 0; ms < t.runMs; ms += 50) { const q = X.poseAt(ride, ms); if (prev && q.d < 12) { const v = Math.hypot(q.x - prev.x, q.z - prev.z) / 0.05; const dy = Math.abs(Math.atan2(Math.sin(q.yaw - prev.yaw), Math.cos(q.yaw - prev.yaw))) * 180 / Math.PI;
       if (q.d < 7 && v > 3.2) bad.push(`${id} ${curb}: ${v.toFixed(1)} m/s round the turn`); if (v < 0.2 && dy > 2) bad.push(`${id} ${curb}: turns ${dy.toFixed(1)}° standing`);
