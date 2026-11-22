@@ -55,7 +55,9 @@ function places() {
 test('달마루섬 길: 모든 장소가 대청마당에서 길로 이어지고, 길은 한 덩어리, 막다른 길 없음', { skip: !ON && '달마루섬 전용' }, () => {
   const { W, inPlaza, linked } = network();
   const cut = W.map((w, i) => (linked(i) ? null : `길${i + 1}(${w.tier})`)).filter(Boolean);
-  const unreached = places().filter(([, p]) => !inPlaza(p.x, p.z) && !W.some((w, i) => linked(i) && near(p, w, REACH))).map(([n, p]) => `${n}(${Math.round(p.x)},${Math.round(p.z)})`);
+  /* (1.10.411: a taxi road's walks are walks too -- by L2's corner the waterfront walk runs inside its band) */
+  const X = require('../public/plaza/island-taxi.js'); const byRoad = (p) => (X.ROADS || []).some((r) => T.lineDist(p.x, p.z, r) <= X.ROAD.half + REACH);
+  const unreached = places().filter(([, p]) => !inPlaza(p.x, p.z) && !W.some((w, i) => linked(i) && near(p, w, REACH)) && !byRoad(p)).map(([n, p]) => `${n}(${Math.round(p.x)},${Math.round(p.z)})`);
   const all = places().map(([, p]) => p);
   const dead = [];
   W.forEach((w, i) => { for (const [x, z] of [w.pts[0], w.pts[w.pts.length - 1]]) {

@@ -152,7 +152,7 @@ test('N1 새 섬: 땅 넓이 2/3, 새 섬다리 양끝 뭍, 길 모두 걸을 �
   const N = T.nature(); const on2 = (a) => a.filter((o) => o.isle2);
   assert.ok(on2(N.trees).length >= 600 && on2(N.bushes).length >= 280 && on2(N.rocks).length >= 120 /* (1.10.369 구역 + 무게: zone quotas, the thick wood leaving less room, wild flowers only by 동산's and 산책길's trees -- 310 bushes, 131 rocks, 365 grass) */ && on2(N.grass).length >= 300, JSON.stringify([on2(N.trees).length, on2(N.bushes).length, on2(N.rocks).length, on2(N.grass).length]));
   assert.ok([...N.trees, ...N.bushes, ...N.rocks].every((o) => Boolean(o.isle2) === D.newIsleCoast(o.x, o.z) > 0), 'isle2 exactly on it');
-  assert.ok(N.trees.filter((t) => !t.isle2).length >= 360 && N.bushes.filter((b) => !b.isle2).length >= 600, 'the main island kept');
+  assert.ok(N.trees.filter((t) => !t.isle2).length >= 340 && N.bushes.filter((b) => !b.isle2).length >= 580, 'the main island kept'); /* (1.10.411: L1 · L2's 7.8 m bands took what stood in them -- 37 by the loop plan's count) */
   assert.equal(T.harvestTrees().some((t) => D.newIsleCoast(t.x, t.z) > 0), false, 'no fruit there (N2)');
   assert.equal(T.ISLAND_RADIUS, 540);
   const G = T.GROUND2; assert.equal((G.x0 + 295) % 2.5, 0); assert.equal((G.z0 + 295) % 2.5, 0); assert.equal(G.size / G.seg, 2.5);
