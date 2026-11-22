@@ -2396,6 +2396,14 @@
       "nodes": 7,
       "reason": "1.10.414 S2 assets 176: the camp office -- its 「관리소」 plate a mesh of its own (written on by the game), keeper / sign_face / stand_front empty nodes"
     },
+    "byeolmaru-v1/lookout_tower.glb": {
+      "nodes": 5,
+      "reason": "1.10.416 S4 assets 178: the lookout tower -- its mesh under a named node, stair_foot / lookout / top_landing empty nodes"
+    },
+    "byeolmaru-v1/lookout_tower_low.glb": {
+      "nodes": 5,
+      "reason": "1.10.416 S4 assets 178: the lookout tower -- its mesh under a named node, stair_foot / lookout / top_landing empty nodes"
+    },
     "byeolmaru-v1/fence_stonewall_tall.glb": {
       "nodes": 2,
       "reason": "1.10.415 S3 assets 175: the lookout's tall stone wall -- its mesh under a named node, as packed"

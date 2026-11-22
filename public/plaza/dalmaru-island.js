@@ -422,7 +422,23 @@
   const onDock = (x, z, grow = 0) => { for (const d of DOCKS) { const r = d.rects.find((o) => inRect(o, x, z, grow)); if (r) return r; } return undefined; };
   const inRect = (r, x, z, grow = 0) => { const dx = x - r.x; const dz = z - r.z; return Math.abs(dx * r.ux + dz * r.uz) <= r.half + grow && Math.abs(-dx * r.uz + dz * r.ux) <= r.w / 2 + grow; };
 
+  /* 1.10.416 S4 망루 (assets 178 walk-surfaces.json, 검토 safe-zones-visible §2-4 · §3 「걷는 면 목록」): what one walks on at the lookout tower, in its frame
+     (x, z; -Z its front) -- three flights (one slope 0.46) and their landings round the outside up to the deck 6 m over the ground at its middle; none over
+     another. [id, x0, x1, z0, z1, height] -- a flight's [axis, from, to, y0, y1]. Each never under the ground there (as the ridge's stairs) */
+  const TOWER = ISLE2?.peak?.tower ? (() => { const t = ISLE2.peak.tower;
+    const SURF = [['start', 3, 3.4, 2, 3.4, 0], ['F1', -2, 3, 2, 3.4, ['x', 3, -2, 0, 2.308]], ['L1', -3.4, -2, 2, 3.4, 2.308], ['F2', -3.4, -2, -2, 2, ['z', 2, -2, 2.308, 4.154]],
+      ['L2', -3.4, -2, -3.4, -2, 4.154], ['F3', -2, 2, -3.4, -2, ['x', -2, 2, 4.154, 6]], ['L3', 2, 3.4, -3.4, -2, 6], ['floor', -2, 3.4, -2, 2, 6]];
+    return Object.freeze({ ...t, c: Math.cos(t.yaw), s: Math.sin(t.yaw), base: D.ground(t.x, t.z) + (land(t.x, t.z) - D.landHeight(t.x, t.z)), surfaces: SURF }); })() : null;
+  function onTower(x, z) {
+    if (!TOWER) return null; const dx = x - TOWER.x; const dz = z - TOWER.z; if (dx * dx + dz * dz > 25) return null;
+    const lx = dx * TOWER.c - dz * TOWER.s; const lz = dx * TOWER.s + dz * TOWER.c;
+    for (const [id, x0, x1, z0, z1, h] of TOWER.surfaces) { if (lx < x0 || lx > x1 || lz < z0 || lz > z1) continue;
+      let y = h; if (Array.isArray(h)) { const [axis, from, to, y0, y1] = h; const t = ((axis === 'x' ? lx : lz) - from) / (to - from); y = y0 + (y1 - y0) * Math.max(0, Math.min(1, t)); }
+      return { id, y, top: id === 'floor' || id === 'L3', lx, lz }; }
+    return null;
+  }
   function heightAt(x, z) {
+    const tw = onTower(x, z); if (tw) return Math.max(TOWER.base + tw.y, ground(x, z)); /* (1.10.416 S4: the tower's stairs and deck) */
     const hit = onBridge(x, z); if (hit) return deckAt(hit);
     const st = onStairs(x, z); if (st) return Math.max(STAIRS.base + stairRise(st.u), ground(x, z));
     if (inRect(PIER, x, z)) return PIER.deck;
@@ -440,7 +456,7 @@
     if (v === undefined) { v = false; const cx = i * STEP - HALF; const cz = j * STEP - HALF; for (let a = 1; a <= 3 && !v; a += 1) for (let b = 1; b <= 3 && !v; b += 1) { const px = cx + (STEP * a) / 4; const pz = cz + (STEP * b) / 4; if (Math.max(ground(px, pz), SEA) - Math.max(meshGroundHeight(px, pz), SEA) > 0.1) v = true; } bulgeCells.set(key, v); }
     return v;
   }
-  const walkable = (x, z) => Boolean(onBridge(x, z) || onStairs(x, z) || inRect(PIER, x, z) || onDock(x, z)) || (!isWater(x, z) && slopeAt(x, z) < 0.9 && D.coastDist(x, z) > 1.2 && !underDrawnRock(x, z));
+  const walkable = (x, z) => Boolean(onBridge(x, z) || onStairs(x, z) || onTower(x, z) || inRect(PIER, x, z) || onDock(x, z)) || (!isWater(x, z) && slopeAt(x, z) < 0.9 && D.coastDist(x, z) > 1.2 && !underDrawnRock(x, z));
   // (문제 기록 4회차 「통과할 수 있는 산맥」) round the stairs the ridge's face is steeper than the 2.5 m ground mesh: where the
   // ground is drawn more than 0.5 m over or under one's feet -- rock over one's head, air under one's feet -- one may not
   // stand: what is seen stops (round them only: a cheap test first)
@@ -974,7 +990,7 @@
     coastR: () => D.R_OUT, coastDist: D.coastDist, cliffAt, rawLand: D.landHeight, land, ground, creekWaterY, meshGroundHeight, settledSpot, heightAt, walkable,
     streamDist: () => Infinity, walkDist, STREAMS: [], streamCurves: [], walkCurves, RIVER_WIDE: { pts: [] }, riverExtra: () => 0,
     streamDepth: () => 0, streamWaterHeight: () => SEA, POND: { x: 1e5, z: 1e5, r: 0 }, PADS,
-    bridges, onBridge, deckAt, onStairs, STAIRS, PIER, DOCK, DOCK2, DOCKS, DOCK_BOARDS /* (399) */, BREAKWATER: { x: 1e5, z: 1e5, ux: 1, uz: 0, half: 0, w: 0, deck: 0 }, bayR: D.R_BAY,
+    bridges, onBridge, deckAt, onStairs, STAIRS, onTower, TOWER /* (1.10.416 S4) */, PIER, DOCK, DOCK2, DOCKS, DOCK_BOARDS /* (399) */, BREAKWATER: { x: 1e5, z: 1e5, ux: 1, uz: 0, half: 0, w: 0, deck: 0 }, bayR: D.R_BAY,
     fishWater, canFish: (x, z) => fishWater(x, z) !== null, ISLAND_RADIUS: 540 /* (v1.10.230: the village's far corner, r 323; N1: 새 섬's east end x 516 -- 330 -> 540) */,
     /* N1 새 섬's ground: its own mesh on the main ground's 2.5 m lattice (x0, z0 on it), a cell its when within 14 m of its coast
        (the main ground leaves those out -- no cell drawn twice); its own ground maps over this square */
