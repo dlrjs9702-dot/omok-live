@@ -13,6 +13,17 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.404 문제 기록 고침(notes issues-taxi-resident-20261122)
+
+- c086f60d 높은 윤슬다리 깜빡임: 다리 맞추기(fit)를 LOD 단계마다 따로(asset-loader) — 두 단계가 한 묶음으로 같이 그려지던 것(389부터).
+- a720f494·78b5ccc5 배 뒤 걷기: 내릴 때 loop('idle') → release()(나·다른 사람).
+- 9748abea 건널목 줄 끝: rd.b 문턱 smoothstep(0.46, 0.54).
+- de84f895 종점: 남는 차는 내린 자리에서 앞으로 4.5 m → 쉼터 뒤 반원(지름 6.4) → 뒤에서 자리로(PARK 5 s, 어긋남 20° 안 시험). 빈 차로 돌아오는 마지막은 L0에서.
+- 3353cf17 대청마당: 가장자리 따라가는 길 칠 안 함(road.png 다시) — 차 길은 그대로.
+- 7e6f3839 배: 서서 출발·가속·감속 1.5 m/s², 뱃길 모서리 둥글게(두 번 깎기), 뱃머리 2.5 s 동안 느릴 때 돌림 — 건너는 시간 약 29→36 s(총괄 OK).
+- dddccb8f 다리 동쪽 끝 땅: 길 둑 뒤에 폭 9.8 × 안 1.5·밖 3 m 평평(끝 높이), 3 m에 풀기, 역 터 2 m는 그대로 — 다리판 아래 땅 0 cm.
+- a0d86433 역 들어가는 길 정남은 해변 둑 기울기(1.28 > 0.85) 때문에 동쪽 다리 넓히기 묶음으로.
+
 ## v1.10.403 Codex 391~400 나머지 + 택시 셋(notes codex-review-391-400, issues-taxi-resident-20261122 ⑤③④)
 
 - 택시: #2 결제 실패 되돌리기는 내 차·내가 당긴 차만 · #5 자정 지난 보유권 「타기」 TAXI_PRICE · #6 요금 claim = 화면 요청 id(응답 없던 같은 요청은 그 결제로, 한 결제 한 운행·10분) · #7·#13 누를 때 행선지·요금 고정, 고를 때마다 버튼·모자람 · #9 한 정류장 두 호출이면 차 두 대 · #10 돌아갈 종점이 차면 빈자리 종점 · #11 한 줄 다리 bridgeHold · #12 급이동 3초 부르기·타기 안 됨 · #18 종점 빈 자리 충돌 원은 차 있을 때만 · 게임 방 이유를 거리보다 먼저.
@@ -25,8 +36,3 @@
 - 배트맨 활공 때 cape_spread 0→1(0.25 s, High·Low 메시). 슈퍼맨 Fly(55°, 주먹 머리 옆), 아이언맨 재질 부드럽게 + 60-1 헬멧 아래 면 잘라 겹침 177→10 cm²(예산 △ 갱신).
 - 걷어 냄(400 머리 위 몫): HEAD_SINK·이름표 어깨 옆(tagBeside)·폰 세로 headPetK·1인칭 머리 펫 숨김. 펫 이름표는 자세 그대로 잰 높이+6 cm(역할 바뀌면 다시).
 - 파일 39개 SHA 일치(HeadSit·HeadSitWide는 안 씀).
-
-## v1.10.401 핫픽스 — Codex 391~400 #1 택시 중간 정류장 출발 시 서버 종료
-
-- 서버 택시 틱(100 ms)이 앞을 내다볼 때 운행을 `{ from, startedAt }`로만 복사 → 중간 정류장(ROADSTOPS) 출발은 끝(`to`)이 없어 `curbOf(undefined)` 예외로 프로세스 종료(393부터; 부른 빈 차가 돌아갈 때도). `IslandTaxi.timeless(ride)`: to·empty·stay·park는 지키고 warp·side·ghost만 뺌.
-- 시험: island-taxi-fleet(모든 중간 정류장 × 종점 3 × 손님/빈 차, 옛 복사는 throw·새 복사는 시계 없는 운행과 같은 자리), island-taxi-call(실제 속도로 배 타는 곳 → 박물관, 1.5 s 뒤 서버 응답 — 고치기 전 코드는 같은 TypeError로 실패).
