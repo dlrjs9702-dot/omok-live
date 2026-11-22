@@ -406,6 +406,9 @@
     }
   }
   REGISTRY['npc_face.ted'] = { url: `${CH}/npc_face_ted.glb`, near: 30, shadows: false };
+  /* (1.10.414 S2 assets 177: 모락, the camp's keeper -- standing at the office, on the common rig at 0.9, his own faces) */
+  REGISTRY['character.walker.morak_work'] = { url: `${CH}/npc_walker_morak_work.glb`, low: { url: `${CH}/npc_walker_morak_work_low.glb` }, rotationY: Math.PI, motions: true, baked: true, scale: 0.9 };
+  REGISTRY['npc_face.morak'] = { url: `${CH}/npc_face_morak.glb`, near: 30, shadows: false };
   const village = (file, extra = {}) => ({ url: `/assets/island/village-v1/${file}.glb`, low: { url: `/assets/island/village-v1/${file}_low.glb` }, near: 50, ...extra });
   for (const s of [0, 1, 2, 3]) { REGISTRY[`village.mural.${s}`] = village(`mural_stage${s}`); REGISTRY[`village.stepstones.${s}`] = village(`stepstones_stage${s}`); }
   for (const p of ['easel', 'busk_stage', 'lamp_broken', 'lamp_fixed', 'toolbox', 'bookcart', 'table_omok', 'table_cards']) REGISTRY[`village.${p}`] = village(p);
@@ -718,6 +721,9 @@
     for (const k of ['reeds_a', 'reeds_b', 'reeds_c', 'swamp_lily_a', 'swamp_lily_b', 'swamp_fungus', 'swamp_grass_a', 'swamp_grass_b', 'swamp_planks']) REGISTRY[`byeolmaru.${k}`] = { ...two(B1, k), near: 25, shadows: false, hideFar: 40 };
     REGISTRY['byeolmaru.swamp_stones'] = { ...two(B1, 'swamp_stones'), near: 30 };
     for (const k of ['campfire', 'log_bench', 'log_stool', 'sign_reserve', 'sign_trail' /* (1.10.377: their letters by plaza-scene, at the FACE spots) */]) REGISTRY[`newisle.${k}`] = { ...two(N1, k), near: 30 };
+    /* (1.10.414 S2: 164's hearth set -- embers lit at night; 176's office -- 「관리소」 written on its plate, snow on its roof, its lamp and windows at night) */
+    REGISTRY['newisle.camp_hearth_set'] = { ...two(N1, 'camp_hearth_set'), near: 40, nightGlow: true };
+    REGISTRY['byeolmaru.camp_office'] = { ...two(B1, 'camp_office'), near: 60, keepNodes: true, snow: true, nightGlow: true };
     const S = (low) => Object.fromEntries(['spring', 'summer', 'autumn', 'winter'].map((s) => [s, `/assets/island/spring157/${s}/spring_cave${low}.glb`]));
     REGISTRY['spring.cave'] = { seasons: S(''), low: { seasons: S('_low') }, near: 40, swap: true /* (1.10.377: its water, falling water and foam the creek's -- island.js setSwapMaterials) */ };
     /* (1.10.376 N2a-2 별마루섬 호랑이, assets 152e: 우레 and 안개 -- their own rig and ten clips (tigers-view.js, assets.creature), 1.6x (사용자 2A; 안개's

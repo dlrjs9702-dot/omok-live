@@ -4864,6 +4864,36 @@
       "precompressed": true
     },
     {
+      "out": "byeolmaru-v1/camp_office.glb",
+      "src": "office176:01. High/byeolmaru-v1/camp_office.glb",
+      "sha256": "8d3c244682e03574de1159ef0566872961e032bd33274d0b67ae1cd56f773b45",
+      "lowSrc": "office176:02. Low/byeolmaru-v1/camp_office_low.glb",
+      "lowSha256": "8994463ce0b4d04ce2b730587765774f9a20223948af68ce9e769801f0811130",
+      "precompressed": true
+    },
+    {
+      "out": "newisle-v1/camp_hearth_set.glb",
+      "src": "polish164:01. High/newisle-v1/camp_hearth_set.glb",
+      "sha256": "2f38f043c22951242261eb8b8215f740cf8c65df0c8cda0a085cadd3893b6314",
+      "lowSrc": "polish164:02. Low/newisle-v1/camp_hearth_set_low.glb",
+      "lowSha256": "6c34afa894f73e61f9b6c5f27867b4f0de537e1a71908bd26b14ba8c7ccfc8e1",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_walker_morak_work.glb",
+      "src": "morak177:01. High/npc_walker_morak_work.glb",
+      "sha256": "72707ee2fc0b3a03ac0819dabb65e65306c77e74c476f0c3435e4b185cc240cb",
+      "lowSrc": "morak177:02. Low/npc_walker_morak_work_low.glb",
+      "lowSha256": "b01c361c54e8756f11d364a0a83a21637d7faff9dbae057804683a4837395110",
+      "precompressed": true
+    },
+    {
+      "out": "characters/npc_face_morak.glb",
+      "src": "morak177:01. High/npc_face_morak.glb",
+      "sha256": "5bd9ba606ab414a442ab3e51ea6b116ed5118498e38f44b193de8bd8afa1c7b6",
+      "precompressed": true
+    },
+    {
       "out": "byeolmaru-v1/fence_palisade_tall.glb",
       "src": "camp174:01. High/byeolmaru-v1/fence_palisade_tall.glb",
       "sha256": "26a857d5df24b5625898fffd31baefd873b3c410690fbbf33ed383f7d75a591c",
@@ -15855,6 +15885,9 @@
     "byeolmaru171": "171. Game Island byeolmaru bridge and gate 2026-11-22",
     "docks172": "172. Game Island boat docks 2026-11-22",
     "river173": "173. Game Island west river road bridge 2026-11-22",
-    "camp174": "174. Game Island camp fences 2026-11-22"
+    "camp174": "174. Game Island camp fences 2026-11-22",
+    "polish164": "164. Game Island polish bundle 2026-11-21",
+    "office176": "176. Game Island camp office 2026-11-22",
+    "morak177": "177. Game Island camp keeper Morak 2026-11-22"
   }
 }

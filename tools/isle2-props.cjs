@@ -149,8 +149,20 @@ const BOXES = {
   fence_corner: [0.42, 2.08, 0.42, 0], sign_tiger: [1.9, 2.33, 0.2, 0], tiger_rock: [3.0, 0.98, 2.0, 0], swamp_stones: [1.34, 0.53, 1.77, 0], campfire: [1.22, 0.36, 1.22, 0], log_bench: [1.62, 0.48, 0.46, 0.05], log_stool: [0.52, 0.42, 0.52, 0],
 };
 const CAVE_BOXES = caveSolids.rockBoxes;
+/* ---- 1.10.414 S2 the camp inside (사용자 결정 72 · 73, 검토 safe-zones-visible §2-2's places): 176's office, its -Z (door, 「관리소」) to the fire; 164's
+   hearth set (its -Z to the walk in, 164 HANDOFF ③); three tents (land-v1), each facing the fire -- all within 13.5 m of the middle (the ring walk and
+   its lamps from 13.7 m). [x, z, yaw, kind of CAMP2_KINDS] ---- */
+const CAMP2_KINDS = ['camp_office', 'camp_hearth_set', 'tent_peaked', 'tent_round', 'tent_ridge'];
+const toFire = (x, z) => r3(Math.atan2(-(C.x - x), -(C.z - z))); /* (rotation.y turning a model's -Z to (-sin, -cos): there, the fire) */
+const CAMP2 = [[256, 259.5, toFire(256, 259.5), 0], [248.7, 249.13, 1.375, 1], [266.5, 242.5, toFire(266.5, 242.5), 2], [269.5, 251, toFire(269.5, 251), 3], [265, 259, toFire(265, 259), 4]];
+Object.assign(CIRCLES, {
+  camp_office: [[-1.1, -1.7, 1.0], [1.1, -1.7, 1.0], [-1.1, 0, 1.0], [1.1, 0, 1.0], [-1.1, 1.7, 1.0], [1.1, 1.7, 1.0], [-2.6, 1.5, 0.5]], /* (176 HANDOFF §4) */
+  camp_hearth_set: [[0, 0, 0.8], [-1.55, -0.35, 0.24], [-1.55, 0.2, 0.24], [-1.55, 0.75, 0.24], [-0.35, 1.55, 0.24], [0.2, 1.55, 0.24], [0.75, 1.55, 0.24]], /* (164 props164 solids) */
+  tent_peaked: [[0, -1.55, 1.45], [0, 0, 1.6], [0, 1.55, 1.45]], tent_round: [[0, 0, 1.9], [-1.05, -0.75, 1.2], [1.05, -0.75, 1.2], [-1.05, 0.75, 1.2], [1.05, 0.75, 1.2]], tent_ridge: [[0, -1.95, 1.3], [0, -0.65, 1.4], [0, 0.65, 1.4], [0, 1.95, 1.3]], /* (land-v1: 3.9 × 5.0, 5.1 × 4.7, 3.6 × 5.5 m) */
+});
+Object.assign(BOXES, { camp_office: [4.5, 2.7, 5.5, 0], camp_hearth_set: null /* (three boxes -- plaza-scene) */, tent_peaked: [2.9, 3.2, 4.6, 0], tent_round: [4.2, 2.0, 3.8, 0], tent_ridge: [2.7, 3.0, 5.1, 0] });
 
-const data = { FENCE: [...FENCE, ...CAMP_FENCE], CORNERS, SIGN, SIGN_RESERVE, SIGN_TRAIL, CAVE, CAMP, ROCK, SWAMPS, SWAMP_OUTLINES, REEDS, DECO };
+const data = { FENCE: [...FENCE, ...CAMP_FENCE], CAMP2, CORNERS, SIGN, SIGN_RESERVE, SIGN_TRAIL, CAVE, CAMP, ROCK, SWAMPS, SWAMP_OUTLINES, REEDS, DECO };
 const text = `// 1.10.375 N2a-1 별마루섬's still pieces -- MADE by tools/isle2-props.cjs (do not edit: run it again). The fence round the island (${FENCE.length} pieces of
 // 2.4 m, [x, z, yaw, kind of FENCE_KINDS]; the gate where the walk from 별마루다리 crosses it), its corner posts, 157's spring cave, the camp's
 // fire / benches / stools, 우레's rock, the swamps (their outlines in the world: a bike inside is slowed) with reeds and 152c's pieces. CIRCLES
@@ -161,7 +173,7 @@ const text = `// 1.10.375 N2a-1 별마루섬's still pieces -- MADE by tools/isl
   else root.Isle2Props = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, () => {
   'use strict';
-  const FENCE_KINDS = ${JSON.stringify(KINDS)}; const CAMP_KINDS = ${JSON.stringify(CAMP_KINDS)}; const SWAMP_KINDS = ${JSON.stringify(SWAMP_KINDS)}; const REED_KINDS = ${JSON.stringify(REED_KINDS)}; const DECO_KINDS = ${JSON.stringify(DECO_KINDS)};
+  const FENCE_KINDS = ${JSON.stringify(KINDS)}; const CAMP_KINDS = ${JSON.stringify(CAMP_KINDS)}; const CAMP2_KINDS = ${JSON.stringify(CAMP2_KINDS)}; const SWAMP_KINDS = ${JSON.stringify(SWAMP_KINDS)}; const REED_KINDS = ${JSON.stringify(REED_KINDS)}; const DECO_KINDS = ${JSON.stringify(DECO_KINDS)};
   const DATA = ${JSON.stringify(data)};
   const CIRCLES = ${JSON.stringify(CIRCLES)};
   const BOXES = ${JSON.stringify(BOXES)}; const CAVE_BOXES = ${JSON.stringify(CAVE_BOXES)};
@@ -173,6 +185,7 @@ const text = `// 1.10.375 N2a-1 별마루섬's still pieces -- MADE by tools/isl
     for (const [x, z, yaw, k] of DATA.FENCE) all.push(...circlesAt(FENCE_KINDS[k], x, z, yaw));
     for (const [x, z] of DATA.CORNERS) all.push(...circlesAt('fence_corner', x, z, 0));
     for (const [x, z, yaw, k] of DATA.CAMP) all.push(...circlesAt(CAMP_KINDS[k], x, z, yaw));
+    for (const [x, z, yaw, k] of DATA.CAMP2 || []) all.push(...circlesAt(CAMP2_KINDS[k], x, z, yaw));
     if (DATA.ROCK) all.push(...circlesAt('tiger_rock', DATA.ROCK[0], DATA.ROCK[1], DATA.ROCK[2]));
     if (DATA.SIGN) all.push(...circlesAt('sign_tiger', DATA.SIGN[0], DATA.SIGN[1], DATA.SIGN[2]));
     if (DATA.SIGN_RESERVE) all.push(...circlesAt('sign_reserve', DATA.SIGN_RESERVE[0], DATA.SIGN_RESERVE[1], DATA.SIGN_RESERVE[2]));
@@ -184,7 +197,7 @@ const text = `// 1.10.375 N2a-1 별마루섬's still pieces -- MADE by tools/isl
   // in a swamp (a bike there slowed): inside any outline
   const inPoly = (x, z, p) => { let inside = false; for (let i = 0, j = p.length - 1; i < p.length; j = i, i += 1) { const [xi, zi] = p[i]; const [xj, zj] = p[j]; if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside; } return inside; };
   const inSwamp = (x, z) => DATA.SWAMPS.some(([sx, sz], i) => Math.hypot(x - sx, z - sz) < 7 && inPoly(x, z, DATA.SWAMP_OUTLINES[i]));
-  return Object.freeze({ ...DATA, FENCE_KINDS, CAMP_KINDS, SWAMP_KINDS, REED_KINDS, DECO_KINDS, CIRCLES, BOXES, CAVE_BOXES, circlesAt, solids, inSwamp });
+  return Object.freeze({ ...DATA, FENCE_KINDS, CAMP_KINDS, CAMP2_KINDS, SWAMP_KINDS, REED_KINDS, DECO_KINDS, CIRCLES, BOXES, CAVE_BOXES, circlesAt, solids, inSwamp });
 });
 `;
 if (process.argv.includes('--check')) { const now = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8').replace(/\r\n/g, '\n') : ''; if (now !== text) { console.error('isle2-props.js is stale: run node tools/isle2-props.cjs'); process.exit(1); } console.log('isle2-props ok'); }
