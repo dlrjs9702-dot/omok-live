@@ -225,7 +225,7 @@
   /* (1.10.389 N3-a, 사용자 27A·37-3, assets 133: the east one high and long for the boats under it -- 56 m at the model's own length, a
      flat-topped trapezoid 7.0 m over the sea; its ramps' last 9 m on land each side. `bank`: the road's bank keeps to the old 42 m, the
      ground round its ends as it was) */
-  Object.assign(BRIDGES[1], { length: 56, ends: [[31.35, BRIDGE_Z], [87.35, BRIDGE_Z]], high: true, bank: 42, taxi: Object.freeze({ x0: 31, x1: 88, z0: 136, z1: 144 }) }); /* (1.10.405 L0 `taxi`: the box the taxi keeps one lane in -- island-taxi reads the bridges from here) */
+  Object.assign(BRIDGES[1], { length: 56, ends: [[31.35, BRIDGE_Z], [87.35, BRIDGE_Z]], high: true, bank: 42, lane: true }); /* (1.10.405 L0 `taxi`: the box the taxi keeps one lane in -- island-taxi reads the bridges from here. 1.10.407 assets 170: two lanes now, none; `lane`: the taxi road over it, its yellow middle line drawn on the deck) */
   // (N1 새 섬: the village's east shore (168.25) to the new island's west shore (224) over 55.8 m of water, 3 m on land each end --
   // the same 윤슬다리 model drawn to 61.75 m, 새 섬다리)
   BRIDGES.push({ x: 196.125, z: NEW_ISLE.bridgeZ, length: 61.75, ends: [[165.25, NEW_ISLE.bridgeZ], [227, NEW_ISLE.bridgeZ]], isle2: true, taxi: Object.freeze({ x0: 164.5, x1: 233, z0: 222.5, z1: 229.5 }) }); /* (L0: its box on through the wide gate) */
@@ -252,7 +252,7 @@
     mural: { x: -33, z: -105, face: [0, -84] } /* (1.10.325 54A: to the north-west 쉼터, facing the fountain) */, busk: { x: -6.4, z: -10.1, face: [0, 95] }, stones: { x: -103.5, z: 39 }, bookcart: { x: -25, z: -91, face: [-20, -86] }, /* (묶음 5: by the north-west garden, off 알림마루) */
     omokTable: { x: -94, z: -8, face: [-86, -4] }, birthday: { x: 9.9, z: -74.1, face: [0, -84] }, /* (1.10.346 155A C안: across the north walk from the 벼룩시장 board) */
     hallLamps: [[-4.1, -22], [5.0, -30], [-4.1, -38]], // the three lamps the electrician mends, beside the walk to the water (off it; T1 길 넓히기: at the taxi road's walk's outer edge, 4.5 m from its middle at x 0.5)
-    stationmaster: { x: 89, z: 146 }, // by 달끝역's way in (1.10.389 N3-a: from (83, 137) -- the high bridge's ramp stands there now; 2.2 m from the station's way in (88.3, 143.9), 3.5 m off the bridge's side, 6.7 off the road's middle, by the walk)
+    stationmaster: { x: 89, z: 146 }, // by 달끝역's way in (1.10.389 N3-a: from (83, 137) -- the high bridge's ramp stands there now; 2.2 m from the station's way in (88.3, 143.9) then -- 4.3 m from 1.10.407's straight one (91.9, 142.9) -- 3.5 m off the bridge's side, 6.7 off the road's middle, by the walk)
     // 5단계 the quest givers and the places they send one to (lib/island-quests.js; 지금 섬's own spots there)
     // October's fields (a scarecrow and a hay bale each), its brooms, hay and a cauldron by 거울호수 (island-halloween.js)
     halloween: { fields: [[-60, 20], [60, 20], [120, 40], [-8, 150], [-132, 30]], extras: [['broom', -112, -22, 0.6], ['broom', -96, 36, 2.1], ['hay', -122, 46, 1.2], ['cauldron', -82, -24, 1.57]] },
@@ -265,11 +265,14 @@
   // each lift and its way in. liftAt: the platform 3.24 m in from the line (island-train DOCK), the lift 5.5 m past its middle,
   // the way in 7 m inland of the lift -- test/station-ground checks it against island-train's own)
   const toDeg = (t) => (t * 180) / Math.PI;
-  TRAIN.stops = { E: { a: toDeg(TRAIN.stations.east), r: 179, y: 14, lift: 1 }, I: { a: 90, r: 175.5, y: 12, lift: 1 }, W: { a: toDeg(TRAIN.stations.west), r: 179, y: 14, lift: -1 }, N: { a: 270, r: 165, y: 27, lift: 1 } };
+  // (1.10.407 a0d86433 「승강장 올라가는 부분 방향」: 달끝역 · 초승역 go in straight north (`in`, the way in's direction), not 32°
+  // aslant toward the centre -- it reached the wide 윤슬다리's new guard 4.3 m off its middle; the new way in is 4.5 m past its end)
+  TRAIN.stops = { E: { a: toDeg(TRAIN.stations.east), r: 179, y: 14, lift: 1, in: [0, -1] }, I: { a: 90, r: 175.5, y: 12, lift: 1 }, W: { a: toDeg(TRAIN.stations.west), r: 179, y: 14, lift: -1, in: [0, -1] }, N: { a: 270, r: 165, y: 27, lift: 1 } };
+  TRAIN.entryOf = (id, x, z) => { const r = Math.hypot(x, z); const [ux, uz] = TRAIN.stops[id].in || [-x / r, -z / r]; return [x + ux * 7, z + uz * 7]; };
   TRAIN.liftAt = (id) => {
     const s = TRAIN.stops[id]; const t = (s.a * Math.PI) / 180; const pr = s.r - 3.24;
-    const x = pr * Math.cos(t) + s.lift * 5.5 * Math.sin(t); const z = pr * Math.sin(t) - s.lift * 5.5 * Math.cos(t); const r = Math.hypot(x, z);
-    return { x, z, entry: [x - (x / r) * 7, z - (z / r) * 7] };
+    const x = pr * Math.cos(t) + s.lift * 5.5 * Math.sin(t); const z = pr * Math.sin(t) - s.lift * 5.5 * Math.cos(t);
+    return { x, z, entry: TRAIN.entryOf(id, x, z) };
   };
   const NAMES = { island: '달마루섬', ridge: '달마루 능선', cliff: '영웅마루', plaza: '대청마당', notice: '알림마루', bay: '윤슬만', isle: '툇마루섬', bridge: '윤슬다리', village: '이웃골', west: '푸른숲골', lake: '거울호수', falls: '마루폭포', east: '잔치마루', eastRiver: '은하내', lighthouse: '초승등대', pier: '달끝나루', newIsle: '별마루섬', newBridge: '별마루다리', camp: '캠핑장', peak: '전망대 봉우리', creek: '별마루섬 개울' }; /* (N1: 사용자 2026-11-18 「A」 -- 별마루섬, 별마루다리) */
 

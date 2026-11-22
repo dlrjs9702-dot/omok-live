@@ -97,14 +97,19 @@
     const TX = (typeof module === 'object' && module.exports ? require('./island-taxi.js') : (typeof self !== 'undefined' ? self : globalThis).IslandTaxi);
     const roads = TX ? (TX.ROADS || [TX.ROUTE]) : []; const crossings = TX?.CROSSINGS || []; const half = TX?.CROSS_HALF ?? 2.2; const LANE = TX?.ROAD?.lane ?? 1.45; const ROADW = TX?.ROAD?.half ?? 3.2;
     /* (건널목: the road's middle within `half` of one is a walk to cross on; a bridge's deck stays as it was -- the way over the stream) */
-    const crossingAt = (x, z) => crossings.some((c) => Math.hypot(x - c.x, z - c.z) < half + 0.75);
+    /* (1.10.407: its stripe across the road, not a disc -- two 7 m apart at the wide 윤슬다리's east end made one cheap run down the lanes between them;
+       each crossing's own way along the road read once from the nearest piece of it) */
+    const along = crossings.map((c) => { let best = { d: Infinity, ux: 1, uz: 0 }; for (const route of roads) for (let s = 1; s < route.length; s += 1) { const [ax, az] = route[s - 1]; const [bx, bz] = route[s]; const L = Math.hypot(bx - ax, bz - az) || 1e-9; const u = Math.max(0, Math.min(1, ((c.x - ax) * (bx - ax) + (c.z - az) * (bz - az)) / (L * L))); const d = Math.hypot(c.x - ax - (bx - ax) * u, c.z - az - (bz - az) * u); if (d < best.d) best = { d, ux: (bx - ax) / L, uz: (bz - az) / L }; } return best; });
+    const crossingAt = (x, z) => crossings.some((c, k) => Math.hypot(x - c.x, z - c.z) < half + 0.75 && Math.abs((x - c.x) * along[k].ux + (z - c.z) * along[k].uz) < half + 0.3);
+    const onWideBridge = (x, z) => (T.bridges || []).some((b) => b.w >= 7.8 && Math.abs((x - b.x) * b.ux + (z - b.z) * b.uz) <= b.half && Math.abs(-(x - b.x) * b.uz + (z - b.z) * b.ux) <= b.w / 2); /* (407) */
     for (const route of roads) for (let s = 1; s < route.length; s += 1) { /* (1.10.395 N4-c: the road on to 별마루섬 too) */
       const [ax, az] = route[s - 1]; const [bx, bz] = route[s]; const len2 = (bx - ax) ** 2 + (bz - az) ** 2 || 1e-9;
       const reach = ROADW + 0.6; const [i0, j0] = cellOf(Math.min(ax, bx) - reach, Math.min(az, bz) - reach); const [i1, j1] = cellOf(Math.max(ax, bx) + reach, Math.max(az, bz) + reach);
       for (let j = Math.max(0, j0); j <= Math.min(N - 1, j1); j += 1) for (let i = Math.max(0, i0); i <= Math.min(N - 1, i1); i += 1) {
         const c = centre(i, j); const u = Math.max(0, Math.min(1, ((c.x - ax) * (bx - ax) + (c.z - az) * (bz - az)) / len2)); const d = Math.hypot(c.x - ax - (bx - ax) * u, c.z - az - (bz - az) * u); const id = j * N + i;
         /* (T1 길 넓히기, notes island-expansion §9-4: the two lanes dear but at a 건널목, the walks beside them cheap) */
-        if (d < LANE + 0.2) { if (crossingAt(c.x, c.z)) cost[id] = 1; else if (!onAnyBridge(c.x, c.z)) cost[id] = TAXI_ROAD_COST; } else if (d <= ROADW && cost[id] !== TAXI_ROAD_COST) cost[id] = 1;
+        /* (1.10.407 assets 170, notes bridges-two-way §7: a bridge as wide as the road (two lanes and walks) the road's rule too -- its walks, not its lanes) */
+        if (d < LANE + 0.2) { if (crossingAt(c.x, c.z)) cost[id] = 1; else if (!onAnyBridge(c.x, c.z) || onWideBridge(c.x, c.z)) cost[id] = TAXI_ROAD_COST; } else if (d <= ROADW && cost[id] !== TAXI_ROAD_COST) cost[id] = 1;
       }
     }
     grid = { blocked, cost, comp: connect(blocked) }; building = null;

@@ -611,7 +611,7 @@ test('운영 등록부: 사계절 나무·관목이 모두 쓰이고, 정자는 
   if (!require('../../public/plaza/island-terrain.js').dalmaru) for (let k = ids.length - 1; k >= 0; k -= 1) if (ids[k].startsWith('dalmaru.') || ids[k].startsWith('plaza.')) ids.splice(k, 1); // (달마루섬's own models: placed only on it -- 대청마당's paving too)
   // (달마루섬: its cliff fronts are shown as facility.townhall/store, their aliases; the 작명소 and the trader are indoors --
   // the 개명 신청 window and the 백화점's 노점, built on the way in; 묶음 1: 대청마당 has gardens, no planters)
-  if (require('../../public/plaza/island-terrain.js').dalmaru) for (const id of ['dalmaru.facade_townhall', 'dalmaru.facade_mall', 'facility.naming', 'facility.trader', 'prop.planter']) { const k = ids.indexOf(id); if (k >= 0) ids.splice(k, 1); }
+  if (require('../../public/plaza/island-terrain.js').dalmaru) for (const id of ['dalmaru.bridge_yunseul_high' /* (1.10.407: the wide one stands there now) */, 'dalmaru.facade_townhall', 'dalmaru.facade_mall', 'facility.naming', 'facility.trader', 'prop.planter']) { const k = ids.indexOf(id); if (k >= 0) ids.splice(k, 1); }
   // (「땅에 칠하는 길」: painted walks lay no path pieces -- only 대청마당's busking disc)
   if (await page.evaluate(() => window.PlazaDebug().environment.edgeDecor.painted)) for (let k = ids.length - 1; k >= 0; k -= 1) if (ids[k].startsWith('path.') && ids[k] !== 'path.junction.disc.town') ids.splice(k, 1);
   await expect.poll(async () => { const s = (await debug(page))?.assets?.shown || {}; return Object.fromEntries(ids.map((id) => [id, s[id]])); }, { timeout: 60000 }).toEqual(Object.fromEntries(ids.map((id) => [id, 'model']))); // (by id: a miss names itself)

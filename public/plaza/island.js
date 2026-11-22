@@ -702,9 +702,16 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
       if (b.model) for (const s of [-1, 1]) { /* (396: the low model bridges' guarded sides too) */
         const us = (T.structureSolids?.() || []).filter((o) => o.guard && Math.abs(o.x - b.x) <= b.half + 1 && Math.sign(o.z - b.z) === s).map((o) => o.x - b.x).sort((p, q) => p - q);
         for (let i = 0; i < us.length;) { let j = i; while (j + 1 < us.length && us[j + 1] - us[j] < 0.6) j += 1;
-          const u0 = Math.max(-b.half, us[i] - 0.4); const u1 = Math.min(b.half, us[j] + 0.4); const top = Math.max(deckAt({ b, u: u0 }), deckAt({ b, u: u1 })); const foot = Math.min(ground(b.x + u0, b.z + s * 3.25), ground(b.x + u1, b.z + s * 3.25)) - 0.2;
-          mesh(keep(new THREE.BoxGeometry(0.5, top - foot, u1 - u0)), post, -s * 3.25, (top + foot) / 2, (u0 + u1) / 2, visual); i = j + 1; }
+          const gv = b.guard || 3.25; /* (407: the wide one's guards at 4.35) */
+          const u0 = Math.max(-b.half, us[i] - 0.4); const u1 = Math.min(b.half, us[j] + 0.4); const top = Math.max(deckAt({ b, u: u0 }), deckAt({ b, u: u1 })); const foot = Math.min(ground(b.x + u0, b.z + s * gv), ground(b.x + u1, b.z + s * gv)) - 0.2;
+          mesh(keep(new THREE.BoxGeometry(0.5, top - foot, u1 - u0)), post, -s * gv, (top + foot) / 2, (u0 + u1) / 2, visual); i = j + 1; }
       }
+      /* (1.10.407 결정 67-3 A, notes bridges-two-way §3: the taxi road's yellow middle line on the deck in code, not in the model -- the road
+         paint's colour and 0.15 m width, 1.2 cm over the planks as walked (deckAt), pushed forward so it never flickers with them) */
+      if (b.lane) { const pos = []; const idx = []; const n = Math.ceil(b.half * 4);
+        for (let i = 0; i <= n; i += 1) { const u = -b.half + (2 * b.half * i) / n; const y = deckAt({ b, u }) + 0.012; pos.push(-0.075, y, u, 0.075, y, u); if (i < n) idx.push(2 * i, 2 * i + 2, 2 * i + 1, 2 * i + 1, 2 * i + 2, 2 * i + 3); }
+        const geo = keep(new THREE.BufferGeometry()); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx); geo.computeVertexNormals();
+        const line = mesh(geo, mat(new THREE.Color().setRGB(0.96, 0.78, 0.26).getHex(), { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), 0, 0, 0, g); line.castShadow = false; line.name = 'bridge_lane_line'; }
       assets?.attach(b.model, h, visual); continue;
     }
     // in the bridge's frame (z along it, the entry turns the model's length onto z and sizes it by `scale`)

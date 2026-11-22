@@ -4840,6 +4840,14 @@
       "precompressed": true
     },
     {
+      "out": "dalmaru-v1/bridge_yunseul_wide.glb",
+      "src": "yunseul170:01. High/bridge_yunseul_wide.glb",
+      "sha256": "577a60438311e23b0c6e807cd5bc9f962f2674530bdf9c8ca07da91810e0e076",
+      "lowSrc": "yunseul170:02. Low/bridge_yunseul_wide_low.glb",
+      "lowSha256": "3953515a9534884c45664288d59063789356ea4a8b5f8c57c82ff32647004b14",
+      "precompressed": true
+    },
+    {
       "out": "dalmaru-v1/ferry.glb",
       "src": "ferry134:01. High/ferry.glb",
       "sha256": "0fb19eb4fe68b022f7b5b8f5ab9012c3338d5b05c8050c171774eadc7bd72677",
@@ -15794,6 +15802,7 @@
     "taxi163": "163. Game Island taxi gate and stop sign 2026-11-21",
     "review168": "168. Game Island review fixes 2026-11-21",
     "pets169": "169. Game Island pet poses 2026-11-22",
-    "bikepets169b": "169b. Game Island bike pets 2026-11-22"
+    "bikepets169b": "169b. Game Island bike pets 2026-11-22",
+    "yunseul170": "170. Game Island yunseul bridge 2026-11-22"
   }
 }

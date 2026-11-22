@@ -12,7 +12,7 @@ const D = T.dalmaru; const SEA = D.SEA ?? -0.6;
 const E = T.bridges.find((b) => b.high);
 
 test('N3-a 높은 윤슬다리: 56 m 제 길이, 가운데 바다 위 7 m 안팎, 배 길 밑 4.5 m 넘음, 양끝은 땅과 이어짐(턱 없음), 끝 내리막도 0.45 넘지 않음', { skip: !T.dalmaru && '달마루섬 전용' }, () => {
-  assert.ok(E, 'the east bridge is the high one'); assert.equal(E.model, 'dalmaru.bridge_yunseul_high'); assert.equal(E.half, 28); assert.equal(E.x, 59.35); assert.equal(E.z, 140);
+  assert.ok(E, 'the east bridge is the high one'); assert.equal(E.model, 'dalmaru.bridge_yunseul_wide'); assert.equal(E.w, 7.8); assert.equal(E.guard, 4.35); /* (1.10.407 assets 170: the wide one in 133's place) */ assert.equal(E.half, 28); assert.equal(E.x, 59.35); assert.equal(E.z, 140);
   const mid = T.deckAt({ b: E, u: 0 }); assert.ok(mid - SEA > 6.9 && mid - SEA < 7.2, `middle ${mid - SEA}`);
   for (const u of [-6, 0, 6]) assert.ok(T.deckAt({ b: E, u }) - 0.96 - SEA > 4.5, 'the boats\' lane: its underside 0.96 under the planks (assets 133: 5.06 over the sea at the model\'s base)');
   for (const [u, x] of [[-E.half, E.x - E.half], [E.half, E.x + E.half]]) { const off = x + Math.sign(u) * 0.3; assert.ok(Math.abs(T.deckAt({ b: E, u }) - T.heightAt(off, E.z)) < 0.12, `end ${x}: ${T.deckAt({ b: E, u })} vs ${T.heightAt(off, E.z)}`); }
@@ -26,7 +26,7 @@ test('N3-a 비탈 옆 막기: 판이 옆 땅보다 0.4 m 넘게 높은 곳은 �
   for (const g of guards) { const v = g.z - E.z; assert.ok(Math.abs(v) - g.r >= 2.8, 'off its walk'); assert.equal(T.onBridge(g.x, g.z), null); }
   // walking in from the side: no land cell beside a ramp where the planks stand 0.9 m and more over it is left open (a body 0.3)
   let open = [];
-  for (let u = -E.half; u <= E.half; u += 0.25) for (const s of [-1, 1]) { const x = E.x + u; const z = E.z + s * 3.1; if (!T.walkable(x, z) || T.deckAt({ b: E, u }) - T.ground(x, z) < 0.9) continue; if (!guards.some((g) => Math.hypot(g.x - x, g.z - z) < g.r + 0.3)) open.push([x, z]); }
+  for (let u = -E.half; u <= E.half; u += 0.25) for (const s of [-1, 1]) { const x = E.x + u; const z = E.z + s * (E.w / 2 + 0.15); /* (407: just past the wide one's 3.9 m walk) */ if (!T.walkable(x, z) || T.deckAt({ b: E, u }) - T.ground(x, z) < 0.9) continue; if (!guards.some((g) => Math.hypot(g.x - x, g.z - z) < g.r + 0.3)) open.push([x, z]); }
   assert.deepEqual(open, []);
   for (const c of X.CROSSINGS) assert.ok(guards.every((g) => Math.hypot(g.x - c.x, g.z - c.z) > (X.CROSS_CLEAR ?? 5)), `crossing ${c.x},${c.z}`);
 });
