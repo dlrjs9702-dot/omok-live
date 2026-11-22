@@ -14,12 +14,12 @@ test('탐방선 물길: 두 줄 모두 1 m마다 물 위, 뭍에서 선체 2 m �
   const E = T.bridges.find((b) => b.high); const piers = [-16, -9, 9, 16].flatMap((u) => [-3.0, 3.0].map((v) => ({ x: E.x + u, z: E.z + v, r: 0.8 }))); /* (1.10.407 assets 170: the wide one's piers at v ±3.0, their feet 0.8) */
   const pillars = (R.PILLARS || []).map((p) => ({ x: p.x ?? p[0], z: p.z ?? p[1] }));
   for (const [from, to] of [['dal', 'byeol'], ['byeol', 'dal']]) {
-    const p = B.pathOf(from, 0, to, 0); assert.ok(p.ms > 24000 && p.ms < 38000, `${from}: ${p.ms}`);
-    /* (404: the bow the way it goes -- within 22° whenever it moves faster than 4 m/s, every berth to every berth) */
-    for (const [bf, bt] of [[0, 0], [1, 1], [2, 2], [0, 1]]) { const boat = { phase: 'sail', from, to, berthFrom: bf, berthTo: bt, t0: 0, at: null }; const q = B.pathOf(from, bf, to, bt); for (let ms = 10; ms < q.ms - 10; ms += 20) { const a = B.poseAt(boat, ms - 5); const b = B.poseAt(boat, ms + 5); const mx = b.x - a.x; const mz = b.z - a.z; if (Math.hypot(mx, mz) / 0.01 <= 4) continue; const y = B.poseAt(boat, ms).yaw; const off = Math.abs(Math.atan2(Math.sin(Math.atan2(mx, mz) - y), Math.cos(Math.atan2(mx, mz) - y))) * 180 / Math.PI; assert.ok(off < 22, `${from} ${bf}->${bt}: ${off.toFixed(0)}° at ${ms} ms`); } } /* (1.10.404 문제 기록 7e6f3839: from standing and slowly into the berth, bow first -- about 4 s more than at full speed from the first moment) */
+    /* (1.10.409 결정 75 · assets 172: a rider's crossing -- off a boarding berth ahead (a metre sideways first), the lane, into the other side's
+       unloading berth ahead (its last metre sideways); dock-maneuver §5 about 42 ~ 45 s, here its own pieces' paces) */
+    const p = B.pathOf(from, 0, to, 2); assert.ok(p.ms > 36000 && p.ms < 55000, `${from}: ${p.ms}`);
     const bad = [];
     for (const s of p.samples) {
-      if (Math.hypot(s.x - B.DOCKS[from].berths[0].x, s.z - B.DOCKS[from].berths[0].z) < 6 || Math.hypot(s.x - B.DOCKS[to].berths[0].x, s.z - B.DOCKS[to].berths[0].z) < 6) continue; /* (at the berths: below) */
+      if (s.kind !== 'lane') continue; /* (the berths' own ways: the next test, hull by hull) */
       const off = -landD(s.x, s.z) - B.NODES.beam / 2 - 0.1; if (off < 2) bad.push(`land ${s.x.toFixed(1)},${s.z.toFixed(1)} ${off.toFixed(1)}`);
       for (const o of piers) if (Math.hypot(s.x - o.x, s.z - o.z) - o.r - 1.6 < 2) bad.push(`pier ${s.x.toFixed(1)},${s.z.toFixed(1)}`);
       for (const o of pillars) if (Math.hypot(s.x - o.x, s.z - o.z) - 1.6 < 2) bad.push(`pillar ${s.x.toFixed(1)},${s.z.toFixed(1)}`);
@@ -27,8 +27,35 @@ test('탐방선 물길: 두 줄 모두 1 m마다 물 위, 뭍에서 선체 2 m �
     assert.deepEqual(bad.slice(0, 8), [], `${from} -> ${to}`);
   }
   // the two ways apart: no point of one within 3.5 m of the other's (the boats 3.2 wide) but at the ends
-  const a = B.pathOf('dal', 0, 'byeol', 0).samples; const b = B.pathOf('byeol', 0, 'dal', 0).samples;
-  const close = a.filter((s) => s.d > 15 && s.d < a.at(-1).d - 20 && b.some((q) => Math.hypot(q.x - s.x, q.z - s.z) < 3.5)); assert.deepEqual(close.length, 0);
+  const a = B.pathOf('dal', 0, 'byeol', 2).samples; const b = B.pathOf('byeol', 0, 'dal', 2).samples;
+  const close = a.filter((s) => s.kind === 'lane' && b.some((q) => q.kind === 'lane' && Math.hypot(q.x - s.x, q.z - s.z) < 3.5)); assert.deepEqual(close.length, 0);
+});
+
+/* (1.10.409 결정 75 · dock-maneuver §4 시험: every way -- each crossing from each berth to the unloading one or the waiting spot, the empty boat's shift
+   into each boarding berth, the waiting spot's way in -- every sample's hull deep enough (but the old shallow stretch under the high bridge, as before),
+   off both floats and arms, sideways a metre at most each time, the bow the way it goes ahead (15°) and astern (180° ± 15°)) */
+test('172 넓은 부두 길: 모든 길 선체 깊은 물 · 뜬 판·팔과 안 겹침 · 옆으로 1 m까지 · 앞으로 15° / 뒤로 180° ± 15°', { skip: !T.dalmaru && '달마루섬 전용' }, () => {
+  const hull = (s) => { const out = []; const sn = Math.sin(s.yaw); const c = Math.cos(s.yaw); for (let u = -4; u <= 4; u += 0.5) for (const v of [-1.6, 0, 1.6]) out.push([s.x + sn * u + c * v, s.z + c * u - sn * v]); return out; };
+  const onFloat = (x, z) => (T.DOCKS || []).some((k) => k.rects.some((r) => Math.abs((x - r.x) * r.ux + (z - r.z) * r.uz) <= r.half && Math.abs(-(x - r.x) * r.uz + (z - r.z) * r.ux) <= r.w / 2));
+  const ways = []; for (const [f, t] of [['dal', 'byeol'], ['byeol', 'dal']]) for (const k of [0, 1, 2]) for (const to of [2, -1]) ways.push([`${f}:${k}>${t}:${to}`, B.pathOf(f, k, t, to)]);
+  for (const id of ['dal', 'byeol']) { ways.push([`${id} moor`, B.moorPath(id)]); for (const k of [0, 1]) ways.push([`${id} shift ${k}`, B.shiftPath(id, k)]); }
+  const bad = [];
+  for (const [name, p] of ways) {
+    let sideRun = 0;
+    p.samples.forEach((s, i) => {
+      if (Math.hypot(s.x - 59.35, s.z - 140) > 20) for (const [x, z] of hull(s)) if (T.ground(x, z) >= SEA - 1.0) { bad.push(`${name} shallow ${x.toFixed(1)},${z.toFixed(1)}`); break; }
+      for (const [x, z] of hull(s)) if (onFloat(x, z)) { bad.push(`${name} float ${x.toFixed(1)},${z.toFixed(1)}`); break; }
+      if (!i) return; const a = p.samples[i - 1]; const ds = Math.hypot(s.x - a.x, s.z - a.z);
+      sideRun = s.kind === 'side' ? sideRun + ds : 0; if (sideRun > 1 + 1e-6) bad.push(`${name} sideways ${sideRun.toFixed(2)}`);
+      if (s.kind === 'side' || ds < 1e-6) return; const go = Math.atan2(s.x - a.x, s.z - a.z); const want = s.kind === 'astern' ? s.yaw + Math.PI : s.yaw;
+      const off = Math.abs(Math.atan2(Math.sin(go - want), Math.cos(go - want))) * 180 / Math.PI; if (off > 15) bad.push(`${name} bow ${off.toFixed(0)}° at ${s.x.toFixed(1)},${s.z.toFixed(1)}`);
+    });
+    const e = p.samples.at(-1); if (name.endsWith(':2') || name.includes('moor')) { const id = name.includes('moor') ? name.split(' ')[0] : name.split('>')[1].split(':')[0]; const u = B.DOCKS[id].berths[2]; if (Math.hypot(e.x - u.x, e.z - u.z) > 0.05) bad.push(`${name} ends off its berth`); }
+    if (name.includes('shift')) { const [id, , k] = name.split(' '); const u = B.DOCKS[id].berths[+k]; if (Math.hypot(e.x - u.x, e.z - u.z) > 0.05) bad.push(`${name} ends ${Math.hypot(e.x - u.x, e.z - u.z).toFixed(2)} m off its berth`); }
+  }
+  assert.deepEqual(bad.slice(0, 10), []);
+  /* (dock-maneuver §5: the empty boat's shift about 41 s into the outer berth, 45 s into the inner) */
+  for (const id of ['dal', 'byeol']) { const s0 = B.shiftPath(id, 0).ms; const s1 = B.shiftPath(id, 1).ms; assert.ok(s0 > 35000 && s0 < 48000 && s1 > s0, `${id} shift ${s0} ${s1}`); }
 });
 
 test('탐방선 대는 자리: 선착장마다 셋 + 앞바다 대기, 선체(8 × 3.2) 모두 물 위·바닥 1 m 넘게 깊음, 서로 안 겹침, 뜬 판과도 안 겹침', { skip: !T.dalmaru && '달마루섬 전용' }, () => {
@@ -54,7 +81,7 @@ test('탐방선 규칙: 늘 4척, 조용해지면 2척 / 2척, 엇갈려 건너�
     const r = run(f, [{ at: 0, fn: (n) => B.board(f, 'dal', 'a', n) }, { at: 0, fn: (n) => B.board(f, 'byeol', 'b', n) }], 20000);
     assert.ok(r.seen.every((x) => x.ok)); assert.deepEqual(['dal', 'byeol'].map((d) => f.boats.filter((b) => b.at === d && b.phase === 'docked').length), [2, 2]); assert.equal(B.riderOf(f, 'a'), null); }
   { const f = B.createFleet({ now: 0, scale: 10 }); // 한쪽에서만 둘 → 건너편 4척 → 2척이 빈 배로 돌아감
-    run(f, [{ at: 0, fn: (n) => B.board(f, 'dal', 'a', n) }, { at: 1000, fn: (n) => B.board(f, 'dal', 'b', n) }], 30000);
+    run(f, [{ at: 0, fn: (n) => B.board(f, 'dal', 'a', n) }, { at: 1000, fn: (n) => B.board(f, 'dal', 'b', n) }], 60000); /* (409: the shifts and the waiting spot take their time) */
     assert.deepEqual(['dal', 'byeol'].map((d) => f.boats.filter((b) => b.at === d && b.phase === 'docked').length), [2, 2]); }
   { const f = B.createFleet({ now: 0, scale: 10 }); // 5명: 4명이 차면 바로, 5번째는 옆 배
     const res = ['a', 'b', 'c', 'd', 'e'].map((t) => B.board(f, 'dal', t, 0)); assert.ok(res.every((x) => x.ok));

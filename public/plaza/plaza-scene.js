@@ -1196,17 +1196,24 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     applyStoryScene();
     solids.push(...T.structureSolids()); // (the shared circles: the islanders' routes keep off them too)
     piece('dalmaru.pier_dalkkeut', S.pier.x, S.pier.y, S.pier.z, S.pier.yaw, box(3.6, 0.2, 20, 0xc58b5a, 10), true);
-    piece('dalmaru.dock_boat', S.dock.x, S.dock.y, S.dock.z, S.dock.yaw, box(12, 0.15, 3, 0xc58b5a), true);
-    if (S.dock2) piece('dalmaru.dock_boat', S.dock2.x, S.dock2.y, S.dock2.z, S.dock2.yaw, box(12, 0.15, 3, 0xc58b5a), true); // (1.10.389 N3-a 별마루섬 부두: the same, its gangway east)
+    /* (1.10.409 assets 172: both docks the wide one -- a 22 x 4 m float and its unloading arm) */
+    piece('dalmaru.dock_boat_wide', S.dock.x, S.dock.y, S.dock.z, S.dock.yaw, box(22, 0.15, 4, 0xc58b5a), true);
+    if (S.dock2) piece('dalmaru.dock_boat_wide', S.dock2.x, S.dock2.y, S.dock2.z, S.dock2.yaw, box(22, 0.15, 4, 0xc58b5a), true); // (1.10.389 N3-a 별마루섬 부두: the same, its gangway east)
     /* (1.10.399 assets 168 dock_dest_board, 에셋 검사 2회차: where each dock's boat goes -- its `plate` both faces (the back's u turned round) the words,
        drawn as the taxi stops' signs; its two posts block (T.structureSolids), a stand-in box over each) */
-    for (const b of T.DOCK_BOARDS || []) {
+    const destBoard = (text, bx, by, bz, yaw) => {
       const c = document.createElement('canvas'); c.width = 780; c.height = 250; const x = c.getContext('2d'); x.fillStyle = '#fff6e3'; x.fillRect(0, 0, 780, 250); x.strokeStyle = '#8a6b45'; x.lineWidth = 12; x.strokeRect(6, 6, 768, 238);
-      x.fillStyle = '#4a3828'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = '800 112px sans-serif'; x.fillText(b.text, 390, 132);
+      x.fillStyle = '#4a3828'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = '800 112px sans-serif'; x.fillText(text, 390, 132);
       const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.flipY = false; const face = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 });
       const fb = new THREE.Group(); for (const s of [-0.75, 0.75]) mesh(new THREE.BoxGeometry(0.28, 1.0, 0.28), mat(0x8a6440), s, 0.5, 0, fb); mesh(new THREE.BoxGeometry(1.56, 0.5, 0.08), mat(0xfff6e3), 0, 1.85, 0, fb);
-      const g = piece('dalmaru.dock_board', b.x, heightAt(b.x, b.z), b.z, b.yaw, fb, false, () => g.traverse((o) => { if (o.isMesh && [].concat(o.material).some((m) => m?.name === 'dest_plate')) o.material = face; }));
-    }
+      const g = piece('dalmaru.dock_board', bx, by, bz, yaw, fb, false, () => g.traverse((o) => { if (o.isMesh && [].concat(o.material).some((m) => m?.name === 'dest_plate')) o.material = face; })); return g;
+    };
+    for (const b of T.DOCK_BOARDS || []) destBoard(b.text, b.x, heightAt(b.x, b.z), b.z, b.yaw);
+    /* (1.10.409 assets 172 §5 「표지판 따로」: on each float's shore edge, facing whoever comes down the gangway -- 「타는 곳」 by the boarding berths,
+       「내리는 곳」 by the arm (no arrow: the plate's two faces show one picture, an arrow would point wrong from the sea side)) */
+    for (const D of [S.dock, S.dock2]) { if (!D) continue; const c = Math.cos(D.yaw); const s = Math.sin(D.yaw);
+      for (const [mx, mz, text] of [[-3, -1.5, '타는 곳'], [5, -1.5, '내리는 곳']]) { const bx = D.x + mx * c + mz * s; const bz = D.z - mx * s + mz * c; const g = destBoard(text, bx, D.y + 0.15, bz, D.yaw); if (g) g.userData.onDeck = true; /* (on the float's deck, not the sea's bottom: dalmaru-walk's floating check) */
+        for (const k of [-0.75, 0.75]) solids.push({ x: bx + k * c, z: bz - k * s, r: 0.2 }); } }
     // the stairs: its model runs along local -x from its foot; the low wall on its open side (and its back, the stone
     // under the steps) are walked round, its ends are open
     const st = T.STAIRS; const stairs = new THREE.Group(); const flights = new THREE.Group(); stairs.add(flights);
@@ -1485,7 +1492,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       o.g.position.set(p.x, boatSea + bob, p.z); o.g.rotation.set(Math.sin(now / 1300 + o.k) * 0.015, p.yaw, Math.sin(now / 1100 + o.k) * 0.02, 'YXZ');
       const d = Math.hypot(p.x - at.x, p.z - at.z);
       { const sp = o.last && dt > 0 ? Math.hypot(p.x - o.last.x, p.z - o.last.z) / dt : 0; o.last = { x: p.x, z: p.z }; /* (399: the wake by its pace -- in and out as it eases, the slower stretch too) */
-        const want = d < 120 && sp > 0.5 ? Math.min(1, sp / BT.FAST) : 0; o.wakeK += (want - o.wakeK) * Math.min(1, dt * 1.5);
+        const want = d < 120 && sp > 0.5 && p.wake !== false /* (409 결정 75: none astern or sideways) */ ? Math.min(1, sp / BT.FAST) : 0; o.wakeK += (want - o.wakeK) * Math.min(1, dt * 1.5);
         o.wake.visible = o.wakeK > 0.02; if (o.wake.visible) { o.wake.position.set(p.x, boatSea + 0.05, p.z); o.wake.rotation.y = p.yaw; o.wakeMat.opacity = 0.55 * o.wakeK; o.wake.scale.z = 0.5 + 0.5 * o.wakeK; } }
       o.g.visible = d < 180; const capOn = d < 40; if (o.cap.root.visible !== capOn) o.cap.root.visible = capOn; if (capOn) o.cap.anim?.update?.(dt);
     }
@@ -7069,7 +7076,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       box.setFromObject(root); if (box.isEmpty()) continue;
       const walked = root.userData.walked;
       if (!walked && !live.some((s) => s.x > box.min.x - s.r && s.x < box.max.x + s.r && s.z > box.min.z - s.r && s.z < box.max.z + s.r)) unblocked.push(name);
-      if (walked || name.includes('stairs')) continue;
+      if (walked || root.userData.onDeck || name.includes('stairs')) continue; /* (409: what stands on a float's deck -- the ground under it the sea's bottom) */
       const g = [[box.min.x, box.min.z], [box.max.x, box.min.z], [box.min.x, box.max.z], [box.max.x, box.max.z], [(box.min.x + box.max.x) / 2, (box.min.z + box.max.z) / 2]].map(([x, z]) => T.meshGroundHeight(x, z));
       const y = root.position.y;
       if (y - Math.min(...g) > 1.2 && y - g[4] > 0.4) floating.push([name, r1(y - Math.min(...g))]);

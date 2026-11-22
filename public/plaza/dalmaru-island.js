@@ -324,7 +324,7 @@
         for (let cx = Math.floor((Math.min(ax, bx) - BANK_REACH) / 8); cx <= Math.floor((Math.max(ax, bx) + BANK_REACH) / 8); cx += 1) for (let cz = Math.floor((Math.min(az, bz) - BANK_REACH) / 8); cz <= Math.floor((Math.max(az, bz) + BANK_REACH) / 8); cz += 1) { const k = `${cx},${cz}`; if (!bankGrid.has(k)) bankGrid.set(k, []); bankGrid.get(k).push(seg); } }
     }
     const segs = bankGrid.get(`${Math.floor(x / 8)},${Math.floor(z / 8)}`); if (!segs) return h;
-    for (const b of D.BRIDGES) if (Math.abs(x - b.x) < (b.bank || b.length) / 2 + 4 && Math.abs(z - b.z) < (b.high || b.isle2 ? 3.9 : 2.8) + 4) return h; /* (408 bridges-two-way §5: the wide ones' 3.9) */
+    for (const b of D.BRIDGES) if (Math.abs(x - b.x) < (b.bank || b.length) / 2 + 4 && Math.abs(z - b.z) < (b.high || b.isle2 ? BANK_REACH + 0.5 : 2.8 + 4)) return h; /* (408 bridges-two-way §5: the wide ones' wider; 409 총괄: over the water the road is on the bridge -- the bank's reach (10.6 m) under it had raised two ridges across the boats' channel to -0.9, the keel 0.4 under the sea grazing them) */
     let d = Infinity;
     for (const [ax, az, bx, bz] of segs) { const dx = bx - ax; const dz = bz - az; const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1e-9))); const e = Math.hypot(x - ax - dx * t, z - az - dz * t); if (e < d) d = e; }
     if (d >= BANK_REACH) return h;
@@ -403,15 +403,15 @@
   // (문제 기록 5회차 2 「하늘에 떠 있어」: at y 0 its deck stood 0.75 m over the sea -- a float rides low: 0.4 m; v1.10.190 assets
   // 81: on piles down to the sand, its gangway level)
   const DOCK_Y = -0.35;
-  const DOCK = { x: PL.dock.x, z: PL.dock.z - 2, root: { x: PL.dock.x, z: PL.dock.z - 2, y: DOCK_Y, yaw: 0 },
-    rects: [{ x: PL.dock.x, z: PL.dock.z - 2, ux: 1, uz: 0, half: 6, w: 3, deck: 0.15 + DOCK_Y }, { x: PL.dock.x, z: PL.dock.z - 5.6, ux: 0, uz: 1, half: 2.3, w: 1.6, deck: 0.3 + DOCK_Y },
-      { x: PL.dock.x, z: PL.dock.z - 8.1, ux: 0, uz: 1, half: 0.22, w: 1.8, deck: 0.03 + DOCK_Y }] }; // (v1.10.190, assets 81: the stone steps off the gangway's land end, world z -4.6)
-  /* 1.10.389 N3-a (notes n3-plan-20261120 §3-3 · §4-1): 별마루섬 부두 -- the same dock.boat once more off its west-north-west shore by the
-     bridge head, its float north-south (x 222.1 ~ 225.1, z 191 ~ 203), its gangway east onto the beach (its steps' end where the beach is
-     walked, 1.2 m in from the water); walked on as 배 타는 곳 is */
-  const dockAt = (p, yaw) => { const gx = -Math.sin(yaw); const gz = -Math.cos(yaw); const ax = Math.cos(yaw); const az = -Math.sin(yaw);
-    return { x: p.x, z: p.z, root: { x: p.x, z: p.z, y: DOCK_Y, yaw }, rects: [{ x: p.x, z: p.z, ux: ax, uz: az, half: 6, w: 3, deck: 0.15 + DOCK_Y }, { x: p.x + gx * 3.6, z: p.z + gz * 3.6, ux: gx, uz: gz, half: 2.3, w: 1.6, deck: 0.3 + DOCK_Y },
-      { x: p.x + gx * 6.1, z: p.z + gz * 6.1, ux: gx, uz: gz, half: 0.22, w: 1.8, deck: 0.03 + DOCK_Y }] }; };
+  /* 1.10.389 N3-a (notes n3-plan-20261120 §3-3 · §4-1): 별마루섬 부두 -- the same dock once more off its west-north-west shore by the bridge head, its
+     float north-south, its gangway east onto the beach (its steps' end where the beach is walked, 1.2 m in from the water); walked on as 배 타는 곳 is.
+     1.10.409 assets 172 넓은 부두 (both): a 22 x 4 m float and a 3 x 10 m arm off its +x end out to sea (the unloading berth); the root 0.5 m seaward
+     of 81's so the float's shore edge, the gangway (4.2 m, its land end world z -4.6 at 배 타는 곳) and the steps stay where they were. `p` 81's root;
+     g the gangway's way (shoreward), a the float's (+x its arm end) */
+  const dockAt = (p, yaw) => { const gx = -Math.sin(yaw); const gz = -Math.cos(yaw); const ax = Math.cos(yaw); const az = -Math.sin(yaw); const x = p.x - gx * 0.5; const z = p.z - gz * 0.5;
+    return { x, z, root: { x, z, y: DOCK_Y, yaw }, rects: [{ x, z, ux: ax, uz: az, half: 11, w: 4, deck: 0.15 + DOCK_Y }, { x: x + ax * 9.5 - gx * 7, z: z + az * 9.5 - gz * 7, ux: -gx, uz: -gz, half: 5, w: 3, deck: 0.15 + DOCK_Y } /* (the arm) */,
+      { x: x + gx * 4.1, z: z + gz * 4.1, ux: gx, uz: gz, half: 2.3, w: 1.6, deck: 0.3 + DOCK_Y }, { x: x + gx * 6.6, z: z + gz * 6.6, ux: gx, uz: gz, half: 0.22, w: 1.8, deck: 0.03 + DOCK_Y }] }; };
+  const DOCK = dockAt({ x: PL.dock.x, z: PL.dock.z - 2 }, 0);
   const DOCK2 = ISLE2 && PL.dock2 ? dockAt(PL.dock2, -Math.PI / 2) : null;
   const DOCKS = [DOCK, ...(DOCK2 ? [DOCK2] : [])];
   const onDock = (x, z, grow = 0) => { for (const d of DOCKS) { const r = d.rects.find((o) => inRect(o, x, z, grow)); if (r) return r; } return undefined; };
