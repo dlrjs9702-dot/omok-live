@@ -293,7 +293,7 @@
      the gate's own cut (dalmaru-terrain gateCut: its leaves' room)) */
   const END_FLAT = Object.freeze({ hw: 4.9, inside: 1.5, out: 3, ease: 3 }); let endFlats = null;
   function bridgeEndFlat(x, z, h) {
-    if (!endFlats) { const list = []; endFlats = []; /* (none while the ends' own height is read) */ for (const b of D.BRIDGES) for (const k of b.high ? [1] : b.isle2 || b.river ? [0, 1] : []) { const [ex, ez] = b.ends[k]; const l = Math.hypot(ex - b.x, ez - b.z) || 1; /* (411: each end's own outward way -- the river bridge slantwise) */
+    if (!endFlats) { const list = []; endFlats = []; /* (none while the ends' own height is read) */ for (const b of D.BRIDGES) for (const k of b.high ? b.flat || [1] : b.isle2 || b.river ? [0, 1] : []) { const [ex, ez] = b.ends[k]; const l = Math.hypot(ex - b.x, ez - b.z) || 1; /* (411: each end's own outward way -- the river bridge slantwise) */
       list.push({ x: ex, z: ez, ax: (ex - b.x) / l, az: (ez - b.z) / l, h: b.isle2 || b.river ? Math.max(...b.ends.map(([x0, z0]) => D.ground(x0, z0)), SEA) + 0.1 /* (its arched deck's one end height, base + YB.top, less 2 cm) */ : land(ex, ez), gate: b.isle2 && k === 1 ? (D.TAXI_GATES || [])[0] : null, across: Boolean(b.isle2 || b.river), mid: landBefore(ex, ez) }); } endFlats = list; }
     for (const f of endFlats) {
       const u = (x - f.x) * f.ax + (z - f.z) * f.az; const v = Math.abs(-(x - f.x) * f.az + (z - f.z) * f.ax); if (u < -END_FLAT.inside - END_FLAT.ease || u > END_FLAT.out + END_FLAT.ease || v > END_FLAT.hw + END_FLAT.ease) continue;

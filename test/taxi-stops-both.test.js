@@ -26,9 +26,11 @@ test('정류장 양쪽: 대청마당 쪽에서 오면 +1, 별마루섬 쪽에서
     let ux = p.pts[i][0] - p.pts[i - 1][0]; let uz = p.pts[i][1] - p.pts[i - 1][1]; const L = Math.hypot(ux, uz) || 1; ux /= L; uz /= L; if (ux * Math.sin(c.yaw) + uz * Math.cos(c.yaw) < 0) { ux = -ux; uz = -uz; }
     return (x - f.x) * uz - (z - f.z) * ux; };
   /* (411: a stop off the trunk -- L2's, L1's -- is +1 coming from 대청마당 or 별마루섬 alike; its -1 from further along its own road) */
-  const beyond = (id) => (!X.ROADSTOPS[id].road ? 'head' : X.ROADSTOPS[id].road === 'L2' && id !== 'choseung' ? 'choseung' : null);
-  for (const id of Object.keys(X.ROADSTOPS)) for (const [from, want] of [['plaza', 1], [beyond(id), -1]]) {
-    if (!from) continue;
+  /* (412 L3: the ring closed -- the -1 from whichever place's shortest way comes from the other side; every stop has one) */
+  const ids = X.PLACE_IDS(); const beyond = (id) => ids.find((a) => a !== id && X.arriveSide(a, id) === -1) || null;
+  const before = (id) => ['plaza', ...ids].find((a) => a !== id && X.arriveSide(a, id) === 1) || null;
+  for (const id of Object.keys(X.ROADSTOPS)) for (const [from, want] of [[before(id), 1], [beyond(id), -1]]) {
+    if (!from && id === 'villageWest' && want < 0) continue; /* (L1's dead end past it) */ assert.ok(from, `${id}: reached from its ${want} side`);
     assert.equal(X.arriveSide(from, id), want, `${from} -> ${id}`);
     const ride = { from, to: id, startedAt: 0, empty: true }; const t = X.tableOf(from, undefined, id); const end = t.road[t.road.length - 1]; const c = X.curbOf(id, want);
     assert.ok(Math.hypot(end[0] - c.x, end[1] - c.z) < 1e-6, `${from} -> ${id} ends at its curb`);
@@ -46,9 +48,10 @@ test('정류장 양쪽: 대청마당 쪽에서 오면 +1, 별마루섬 쪽에서
    over 3 m/s on the half circle, never turning on the spot (2° a 50 ms at most while under 0.2 m/s), its bow along its way over 1.5 m/s (20°)) */
 test('정류장 반대 방향 출발: 반원을 걷는 빠르기로 돌고, 제자리에서 돌지 않고, 뱃머리(차 앞)가 가는 쪽', () => {
   const bad = [];
-  const further = (id) => (!X.ROADSTOPS[id].road ? 'head' : X.ROADSTOPS[id].road === 'L2' && id !== 'choseung' ? 'choseung' : null); /* (411: the way on past it) */
+  /* (412 L3: the ring closed -- a place its shortest way leaves on the other side from the curb it stands at) */
+  const ids = X.PLACE_IDS();
   for (const id of Object.keys(X.ROADSTOPS)) for (const curb of [1, -1]) {
-    const to = curb > 0 ? 'plaza' : further(id); if (!to) continue; const t = X.tableOf(id, undefined, to, curb); if (!t.road.turn) { bad.push(`${id} ${curb}: no turn`); continue; }
+    const to = ids.find((b) => b !== id && X.leaveSide(id, b) === -curb); if (!to) { if (id !== 'villageWest') bad.push(`${id} ${curb}: no way the other side`); continue; } /* (villageWest: L1's dead end past it -- every place the same way) */ const t = X.tableOf(id, undefined, to, curb); if (!t.road.turn) { bad.push(`${id} ${curb}: no turn`); continue; }
     const ride = { from: id, to, startedAt: 0, curb }; let prev = null;
     for (let ms = 0; ms < t.runMs; ms += 50) { const q = X.poseAt(ride, ms); if (prev && q.d < 12) { const v = Math.hypot(q.x - prev.x, q.z - prev.z) / 0.05; const dy = Math.abs(Math.atan2(Math.sin(q.yaw - prev.yaw), Math.cos(q.yaw - prev.yaw))) * 180 / Math.PI;
       if (q.d < 7 && v > 3.2) bad.push(`${id} ${curb}: ${v.toFixed(1)} m/s round the turn`); if (v < 0.2 && dy > 2) bad.push(`${id} ${curb}: turns ${dy.toFixed(1)}° standing`);

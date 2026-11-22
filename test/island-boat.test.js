@@ -11,7 +11,7 @@ const D = T.dalmaru; const SEA = D.SEA ?? -0.6;
 const landD = (x, z) => Math.max(D.coastDist(x, z), D.newIsleCoast(x, z)); // (> 0 on land; < 0 the distance out over the water)
 
 test('탐방선 물길: 두 줄 모두 1 m마다 물 위, 뭍에서 선체 2 m 넘게, 다리 기둥·열차 기둥에서 2 m 넘게, 다리 밑 8 m/s로 약 28초', { skip: !T.dalmaru && '달마루섬 전용' }, () => {
-  const E = T.bridges.find((b) => b.high); const piers = [-16, -9, 9, 16].flatMap((u) => [-3.0, 3.0].map((v) => ({ x: E.x + u, z: E.z + v, r: 0.8 }))); /* (1.10.407 assets 170: the wide one's piers at v ±3.0, their feet 0.8) */
+  const E = T.bridges.find((b) => b.high && b.x > 0) /* (412: the west one high too) */; const piers = [-16, -9, 9, 16].flatMap((u) => [-3.0, 3.0].map((v) => ({ x: E.x + u, z: E.z + v, r: 0.8 }))); /* (1.10.407 assets 170: the wide one's piers at v ±3.0, their feet 0.8) */
   const pillars = (R.PILLARS || []).map((p) => ({ x: p.x ?? p[0], z: p.z ?? p[1] }));
   for (const [from, to] of [['dal', 'byeol'], ['byeol', 'dal']]) {
     /* (1.10.409 결정 75 · assets 172: a rider's crossing -- off a boarding berth ahead (a metre sideways first), the lane, into the other side's

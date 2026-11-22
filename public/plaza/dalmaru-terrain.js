@@ -226,7 +226,10 @@
   /* (1.10.389 N3-a, 사용자 27A·37-3, assets 133: the east one high and long for the boats under it -- 56 m at the model's own length, a
      flat-topped trapezoid 7.0 m over the sea; its ramps' last 9 m on land each side. `bank`: the road's bank keeps to the old 42 m, the
      ground round its ends as it was) */
-  Object.assign(BRIDGES[1], { length: 56, ends: [[31.35, BRIDGE_Z], [87.35, BRIDGE_Z]], high: true, bank: 42, lane: true }); /* (1.10.405 L0 `taxi`: the box the taxi keeps one lane in -- island-taxi reads the bridges from here. 1.10.407 assets 170: two lanes now, none; `lane`: the taxi road over it, its yellow middle line drawn on the deck) */
+  Object.assign(BRIDGES[1], { length: 56, ends: [[31.35, BRIDGE_Z], [87.35, BRIDGE_Z]], high: true, bank: 42, lane: true, flat: [1] });
+  /* (1.10.412 L3 (사용자 결정 67 · 69, notes taxi-island-loop §3 · bridges-two-way §8, b055b39b): the west one the same -- high and wide (assets 170),
+     56 m, its ends 7 m out each way (-87.35 · -31.35); the ring's road over it. `flat`: the end whose ground leans across -- the cape's) */
+  Object.assign(BRIDGES[0], { length: 56, ends: [[-87.35, BRIDGE_Z], [-31.35, BRIDGE_Z]], high: true, bank: 42, lane: true, flat: [0] }); /* (1.10.405 L0 `taxi`: the box the taxi keeps one lane in -- island-taxi reads the bridges from here. 1.10.407 assets 170: two lanes now, none; `lane`: the taxi road over it, its yellow middle line drawn on the deck) */
   // (N1 새 섬: the village's east shore (168.25) to the new island's west shore (224) over 55.8 m of water, 3 m on land each end --
   // the same 윤슬다리 model drawn to 61.75 m, 새 섬다리)
   /* (1.10.411 assets 173, notes taxi-island-loop §2 ㄹ: the west river's road bridge on L2 -- 14 m, 7.8 m wide, low and arched (0.4), across the river

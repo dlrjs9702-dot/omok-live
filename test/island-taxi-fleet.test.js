@@ -41,8 +41,9 @@ test('택시 N4-a 차선: 길 가운데에서 오른쪽 1.15 m, 양끝 8 m와 �
 test('택시 N4-c: 세 번째 종점·정류장 ⑥⑦ — 모든 두 자리 사이 길(끊김 없음, 끝은 그 자리), 거리·요금, 넓은 두 다리(윤슬 · 별마루)와 찻길 문은 제 차로', () => {
   const ids = X.PLACE_IDS(); const trunk = ids.filter((id) => !X.ROADSTOPS[id]?.road); assert.deepEqual(trunk.slice(-3), ['villageMid', 'villageEast', 'head']); assert.ok(ids.includes('isle'));
   assert.deepEqual(ids.slice(-5), ['westWaterfront', 'hanokGate', 'stones', 'choseung', 'villageWest'], '411: L2 · L1 stops after the trunk');
-  assert.equal(Math.round(X.distanceOf('plaza', 'isle') * 10) / 10, Math.round(X.ROAD_LEN * 10) / 10, 'the two old ends as before');
-  assert.ok(Math.abs(X.distanceOf('plaza', 'head') - X.TRUNK_LEN) < 1e-9); assert.ok(Math.abs(X.distanceOf('isle', 'head') - (X.TRUNK_LEN - X.sOf('isle') + X.SPUR)) < 1e-9);
+  /* (1.10.412 L3: the ring closed -- 툇마루섬 nearer the west way round now, 368.2 m against the trunk's 404.4; the fare the same) */
+  assert.ok(X.distanceOf('plaza', 'isle') < X.ROAD_LEN && Math.abs(X.distanceOf('plaza', 'isle') - 368.2) < 0.5, `the two old ends the shorter way ${X.distanceOf('plaza', 'isle')}`);
+  assert.ok(X.distanceOf('plaza', 'head') < X.TRUNK_LEN && Math.abs(X.distanceOf('plaza', 'head') - 682.1) < 0.5, `plaza -> head the west way ${X.distanceOf('plaza', 'head')}`); assert.ok(Math.abs(X.distanceOf('isle', 'head') - (X.TRUNK_LEN - X.sOf('isle') + X.SPUR)) < 1e-9);
   assert.equal(X.fareByRoad('plaza', 'isle'), 1000); assert.equal(X.fareByRoad('plaza', 'head'), 1750);
   for (const a of ids) for (const b of ids) { if (a === b) continue;
     const road = X.driveBetween(a, b); for (let i = 1; i < road.length; i += 1) assert.ok(Math.hypot(road[i][0] - road[i - 1][0], road[i][1] - road[i - 1][1]) < 20, `${a}->${b} a gap at ${i}`);
