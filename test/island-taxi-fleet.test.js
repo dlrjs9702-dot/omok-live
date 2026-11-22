@@ -45,7 +45,7 @@ test('택시 N4-c: 세 번째 종점·정류장 ⑥⑦ — 모든 두 자리 사
   assert.equal(X.fareByRoad('plaza', 'isle'), 1000); assert.equal(X.fareByRoad('plaza', 'head'), 1750);
   for (const a of ids) for (const b of ids) { if (a === b) continue;
     const road = X.driveBetween(a, b); for (let i = 1; i < road.length; i += 1) assert.ok(Math.hypot(road[i][0] - road[i - 1][0], road[i][1] - road[i - 1][1]) < 20, `${a}->${b} a gap at ${i}`);
-    const end = road[road.length - 1]; const want = X.isTerminal(b) ? X.dropOf(b) : X.curbOf(b); assert.ok(Math.hypot(end[0] - want.x, end[1] - want.z) < 1e-6, `${a}->${b} ends there`);
+    const end = road[road.length - 1]; const want = X.isTerminal(b) ? X.dropOf(b) : X.curbOf(b, X.arriveSide(a, b)); /* (410 결정 65-3 A: its own way's side) */ assert.ok(Math.hypot(end[0] - want.x, end[1] - want.z) < 1e-6, `${a}->${b} ends there`);
     const t = X.tableOf(a, 0, b); assert.ok(t.total > 0 && Number.isFinite(t.runMs)); }
   const t = X.tableOf('plaza', 0, 'head');
   const offAt = (x, z) => { let best = null; t.road.forEach(([px, pz], i) => { const e = Math.hypot(px - x, pz - z); if (!best || e < best.e) best = { e, o: t.offs[i] }; }); return best.o; };
