@@ -44,7 +44,7 @@
     stall_awning: { foot: [2.75, 1.75], solids: [[-0.86, 0, 0.5], [0, 0, 0.5], [0.86, 0, 0.5]] }, fountain: { foot: [1.75, 2], solids: [[0, -0.45, 0.5], [0, 0.45, 0.5]] },
     greenhouse_small: { foot: [2.75, 4.5], solids: [[0, -1.65, 0.5], [0, -0.55, 0.5], [0, 0.55, 0.5], [0, 1.65, 0.5]] }, pebbles: { foot: [1, 1], solids: [] }, duck: { foot: [0.25, 0.5], solids: [[0, 0, 0.1]] },
     // v1.10.251 기록의 탑 트로피 (assets 98): 1 m square, its base the 0.45 m round that blocks
-    ...Object.fromEntries(['mole', 'reaction', 'color', 'numbers', 'beat', 'sky', 'mines', 'sudoku', 'nonogram', 'bridges', 'circuit', 'klondike', 'freecell', 'spider', 'star'].map((sym) => [`trophy_${sym}`, { foot: [1, 1], solids: [[0, 0, 0.45]], trophy: true, glow: true }])),
+    ...Object.fromEntries(['mole', 'reaction', 'color', 'numbers', 'beat', 'sky', 'mines', 'sudoku', 'nonogram', 'bridges', 'circuit', 'klondike', 'freecell', 'spider', 'star', 'lights', 'slide', 'blocks', 'apple', 'melon' /* (H1 assets 180) */].map((sym) => [`trophy_${sym}`, { foot: [1, 1], solids: [[0, 0, 0.45]], trophy: true, glow: true }])),
     // 1.10.386 마당 창고 (사용자 결정 19~21·24·32, assets 160 storehouse.json): its four stages, the doors at its -z with a 0.75 m apron in the
     // footprint; two rows of blocking rounds over the body; `door`: where one stands to open it (0.6 m before the doors). One a house, built
     // and grown at the 관공서, never among the yard's counted pieces (STORE.uid)

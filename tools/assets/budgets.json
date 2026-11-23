@@ -1610,6 +1610,56 @@
       "nodes": 6,
       "reason": "v1.10.251 assets 98 기록의 탑 마당 트로피: gltfpack -km keeps the named parts the game uses -- trophy_metal (its gold, silver or bronze), trophy_plate (written on), glow"
     },
+    "yard-v1/trophy_lights.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "H1 assets 180 기록의 탑 마당 트로피 (불빛 채우기 · 숫자 밀기 · 블록 퍼즐 · 사과 게임 · 수박 만들기): as assets 98's -- trophy_metal, trophy_plate, glow kept by -km"
+    },
+    "yard-v1/trophy_lights_low.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "H1 assets 180 기록의 탑 마당 트로피 (불빛 채우기 · 숫자 밀기 · 블록 퍼즐 · 사과 게임 · 수박 만들기): as assets 98's -- trophy_metal, trophy_plate, glow kept by -km"
+    },
+    "yard-v1/trophy_slide.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "H1 assets 180 기록의 탑 마당 트로피 (불빛 채우기 · 숫자 밀기 · 블록 퍼즐 · 사과 게임 · 수박 만들기): as assets 98's -- trophy_metal, trophy_plate, glow kept by -km"
+    },
+    "yard-v1/trophy_slide_low.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "H1 assets 180 기록의 탑 마당 트로피 (불빛 채우기 · 숫자 밀기 · 블록 퍼즐 · 사과 게임 · 수박 만들기): as assets 98's -- trophy_metal, trophy_plate, glow kept by -km"
+    },
+    "yard-v1/trophy_blocks.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "H1 assets 180 기록의 탑 마당 트로피 (불빛 채우기 · 숫자 밀기 · 블록 퍼즐 · 사과 게임 · 수박 만들기): as assets 98's -- trophy_metal, trophy_plate, glow kept by -km"
+    },
+    "yard-v1/trophy_blocks_low.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "H1 assets 180 기록의 탑 마당 트로피 (불빛 채우기 · 숫자 밀기 · 블록 퍼즐 · 사과 게임 · 수박 만들기): as assets 98's -- trophy_metal, trophy_plate, glow kept by -km"
+    },
+    "yard-v1/trophy_apple.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "H1 assets 180 기록의 탑 마당 트로피 (불빛 채우기 · 숫자 밀기 · 블록 퍼즐 · 사과 게임 · 수박 만들기): as assets 98's -- trophy_metal, trophy_plate, glow kept by -km"
+    },
+    "yard-v1/trophy_apple_low.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "H1 assets 180 기록의 탑 마당 트로피 (불빛 채우기 · 숫자 밀기 · 블록 퍼즐 · 사과 게임 · 수박 만들기): as assets 98's -- trophy_metal, trophy_plate, glow kept by -km"
+    },
+    "yard-v1/trophy_melon.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "H1 assets 180 기록의 탑 마당 트로피 (불빛 채우기 · 숫자 밀기 · 블록 퍼즐 · 사과 게임 · 수박 만들기): as assets 98's -- trophy_metal, trophy_plate, glow kept by -km"
+    },
+    "yard-v1/trophy_melon_low.glb": {
+      "meshes": 3,
+      "nodes": 6,
+      "reason": "H1 assets 180 기록의 탑 마당 트로피 (불빛 채우기 · 숫자 밀기 · 블록 퍼즐 · 사과 게임 · 수박 만들기): as assets 98's -- trophy_metal, trophy_plate, glow kept by -km"
+    },
     "yard-v1/trophy_reaction.glb": {
       "meshes": 3,
       "nodes": 6,

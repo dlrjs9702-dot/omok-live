@@ -7,9 +7,11 @@ const fs = require('node:fs'); const path = require('node:path');
 const R = require('../public/solo-ranking.js'); const Reflex = require('../lib/reflex'); const PuzzleDaily = require('../lib/puzzle-daily');
 const IDS = ['lightup', 'slide', 'blockpuzzle', 'apple10', 'watermelon'];
 
-test('H1 다섯: 기록의 탑 순위에 있고, 주간 트로피는 모델(180)이 오면 -- 그때까지 정산이 트로피를 건너뜀', () => {
-  for (const id of IDS) { assert.ok(R.BY_ID[id], id); assert.ok(R.BY_ID[id].levels.includes(R.BY_ID[id].board), id); assert.equal(R.TROPHY[id], undefined, `${id}: no trophy till its model`); }
-  assert.deepEqual(R.TROPHY_SOON, { lightup: 'lights', slide: 'slide', blockpuzzle: 'blocks', apple10: 'apple', watermelon: 'melon' });
+test('H1 다섯: 기록의 탑 순위에 있고, 주간 트로피(에셋 180)가 상징 · 칭호 · 마당 칸 · 모델까지 이어짐 -- 트로피 없는 게임이면 정산이 건너뜀', () => {
+  const SYM = { lightup: 'lights', slide: 'slide', blockpuzzle: 'blocks', apple10: 'apple', watermelon: 'melon' };
+  for (const id of IDS) { assert.ok(R.BY_ID[id], id); assert.ok(R.BY_ID[id].levels.includes(R.BY_ID[id].board), id); assert.equal(R.TROPHY[id], SYM[id], id); }
+  const F = require('../public/plaza/island-furniture.js'); const { REGISTRY } = require('../public/plaza/island-assets.js');
+  for (const [id, sym] of Object.entries(SYM)) { assert.ok(REGISTRY[`yard.trophy_${sym}`], sym); for (const metal of ['gold', 'silver', 'bronze']) assert.ok(F.good?.(R.trophyGood(sym, metal)) || JSON.stringify(F).includes(R.trophyGood(sym, metal)), `${sym} ${metal}`); assert.ok(fs.existsSync(path.join(__dirname, `../public/assets/island/yard-v1/trophy_${sym}.glb`)), sym); void id; }
   const server = fs.readFileSync(path.join(__dirname, '../server.js'), 'utf8');
   assert.match(server, /if \(SoloRanking\.TROPHY\[g\.id\]\) for \(const r of top\) await giveTrophy\(/);
 });

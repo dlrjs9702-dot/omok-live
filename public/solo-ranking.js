@@ -33,9 +33,8 @@
   // v1.10.251 the week's 1·2·3 a yard trophy (assets 98 yard_trophy_<sym>): each game its symbol; 「게임관의 별」 (three titles or
   // more in a week) the star, gold only
   const TROPHY = Object.freeze({ whack: 'mole', reaction: 'reaction', colorfind: 'color', numbers: 'numbers', rhythm: 'beat', stairs: 'sky', minesweeper: 'mines',
-    sudoku: 'sudoku', nonogram: 'nonogram', hashi: 'bridges', circuit: 'circuit', klondike: 'klondike', freecell: 'freecell', spider: 'spider' });
-  // (H1, 결정 82 A: assets 180 yard-v1/trophy_lights · slide · blocks · apple · melon -- added to TROPHY once in; till then a week's 1·2·3 there no trophy)
-  const TROPHY_SOON = Object.freeze({ lightup: 'lights', slide: 'slide', blockpuzzle: 'blocks', apple10: 'apple', watermelon: 'melon' });
+    sudoku: 'sudoku', nonogram: 'nonogram', hashi: 'bridges', circuit: 'circuit', klondike: 'klondike', freecell: 'freecell', spider: 'spider',
+    lightup: 'lights', slide: 'slide', blockpuzzle: 'blocks', apple10: 'apple', watermelon: 'melon' /* (H1 결정 82 A, assets 180) */ });
   const STAR = Object.freeze({ id: 'gamestar', title: '게임관의 별', sym: 'star' });
   const METALS = Object.freeze(['gold', 'silver', 'bronze']); const METAL_KO = Object.freeze({ gold: '금', silver: '은', bronze: '동' });
   const trophyGood = (sym, metal) => `yard_trophy_${sym}__${metal}`;
@@ -65,5 +64,5 @@
       .map((r, i) => ({ ...r, rank: i + 1 }));
   }
 
-  return Object.freeze({ GAMES, BY_ID, LEVEL_NAMES, levelName, format, rank, TROPHY, TROPHY_SOON, STAR, METALS, METAL_KO, trophyGood, weekLabel });
+  return Object.freeze({ GAMES, BY_ID, LEVEL_NAMES, levelName, format, rank, TROPHY, STAR, METALS, METAL_KO, trophyGood, weekLabel });
 }));
