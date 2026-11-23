@@ -13,6 +13,12 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.421 U7 첫째 — 폰 다듬기(검토 ui-review-20261121 P2 · P3 · P5 · P7 · D6)
+
+- 터치 화면: 가방 아래 단추 · 증권 · 벼룩 탭 한 줄 밀기, 기록의 탑 칩 끝 흐림, 작은 누름 대상 40px 이상, 폰 도감 목록 높이 52dvh(가방 아래 줄이 화면 밖으로 안 밀리게).
+- 노점(D6): 골라 팔기 목록에서 가게가 사는 것 먼저.
+- 시험: `island-ui-u7`, e2e dex-tabs · island-bag · island-stocks · island-contest · mobile-island.
+
 ## v1.10.420 U6 관리자 창 섬 종이(검토 ui-review-20261121 A3 · B16, 결정 43 A 1)
 
 - 관리자 창: 섬 종이 규칙에 들어감(카드 · 계정 칩 · 단추가 종이색, 고른 칩은 꿀색). 머리 제목 옆에 빨간 「관리자」 표시.
@@ -24,9 +30,3 @@
 - 글자: 섬 창 안 12px(.75rem) 아래 8곳을 .75rem으로.
 - 선: 비슷한 선 색들을 `--isle-line` 하나로.
 - 시험: `island-ui-tokens` U5 규칙.
-
-## v1.10.418 U4 닫기 하나 · 창 폭 셋(검토 ui-review-20261121 C2 · C3 · C4 · D3 · D4)
-
-- 닫기: 섬 창(대화 창 빼고) 머리에 ✕ 하나(폰 40px). 아래쪽 「닫기」 11곳 뺌(텃밭 · 손보기 · 증권 · 벼룩 · 테드 · 바 카운터 · 암호 · 주사위 · 용서장 · 택시 부르기 · 택시 목적지).
-- 창 폭: `openPlazaWindow(title, nodes, size)`가 's'(440) · 'm'(560) · 넓음 셋 중 하나. 승강기 's', 펫샵 · 가구점 · 잡화점 'm'.
-- 시험: `island-ui-u4`(닫기 규칙 · 아래 닫기 없음 · 창 폭), e2e는 `#plazaCloseBtn`으로 닫기.
