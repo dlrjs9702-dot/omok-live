@@ -58,6 +58,13 @@ test('164 둘째: 건널목 막대는 가장 가까운 건널목의 곧은 줄�
   assert.match(scene, /else if \(mySpace !== 'island'\) camYaw = yawGoal = me\.targetYaw - Math\.PI;/);
 });
 
+test('164 둘째 밤 빛: 가로등마다 밤에만 부드러운 빛 웅덩이(땅 높이), 분수 물결 테는 밤에 조금 밝게', () => {
+  assert.match(scene, /PROPS\.lamps\.forEach\(\(l, i\) => lampPools\.setMatrixAt\(i, new THREE\.Matrix4\(\)\.makeTranslation\(l\.x, heightAt\(l\.x, l\.z\) \+ 0\.06, l\.z\)\)\)/);
+  assert.match(scene, /lampPools\.visible = Boolean\(night\) && mySpace === 'island';/); assert.match(scene, /map: poolTex, transparent: true, opacity: 0\.32, depthWrite: false, blending: THREE\.AdditiveBlending/);
+  assert.match(scene, /\* \(night \? 1\.4 : 1\)\)/);
+  const at = scene.indexOf('const lampPools'); assert.ok(at > 0 && !scene.slice(scene.indexOf('const poolTex'), at).includes('textures.push'), 'no use of the later-declared textures list there');
+});
+
 test('164 ⑧ 손에 든 채집물: 곤충 등은 화면 쪽 · 날개 넓은 10종 0.26, 작은 물고기는 손가락 위', () => {
   assert.match(scene, /const insectHold = \(sp\) => \(\{ key: 'catch', at: \[-0\.0343, 0\.0939, -0\.03\], rot: \[1\.5707, 0\.35, -3\.1415\], size: INSECT_WIDE\.has\(sp\) \? 0\.26 : SHOW_MIN\.insect \}\);/);
   assert.equal((scene.match(/insectHold\((s\.species|p\.fish)\)/g) || []).length, 2); assert.doesNotMatch(scene, /at: \[0, 0, -0\.065\], size: SHOW_MIN\.insect/);

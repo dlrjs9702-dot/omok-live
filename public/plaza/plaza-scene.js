@@ -344,7 +344,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   let fountainWater = null; /* (1.10.423 164 ②: the renovated fountain's water -- { g, parts: { ripple, ripple_top, jet } } once in) */
   function stepFountainWater(t) { // (the ripple 1 -> 1.12 and its sheen in and out over 2 s, the top ripple half a beat behind; the jet up and down 3 cm)
     const P = fountainWater?.parts; if (!P || !fountainWater.g.parent || lessMotion?.matches) return; const k = (ph) => 0.5 - 0.5 * Math.cos((t / 2 + ph) * TAU);
-    for (const [o, ph] of [[P.ripple, 0], [P.ripple_top, 0.5]]) if (o) { const s = 1 + 0.12 * k(ph); o.scale.set(s, 1, s); o.traverse((m) => { if (!m.isMesh) return; const mm = m.material; if (mm && !Array.isArray(mm)) { mm.userData.o0 ??= mm.opacity; mm.opacity = mm.userData.o0 * (1 - 0.3 * k(ph)); } }); }
+    for (const [o, ph] of [[P.ripple, 0], [P.ripple_top, 0.5]]) if (o) { const s = 1 + 0.12 * k(ph); o.scale.set(s, 1, s); o.traverse((m) => { if (!m.isMesh) return; const mm = m.material; if (mm && !Array.isArray(mm)) { mm.userData.o0 ??= mm.opacity; mm.opacity = Math.min(1, mm.userData.o0 * (1 - 0.3 * k(ph)) * (night ? 1.4 : 1)); /* (at night its rim a little brighter -- 164 「밤 빛」) */ } }); }
     if (P.jet) P.jet.position.y = P.jet.userData.y0 + Math.sin(t * 4.8) * 0.03;
   }
   // v1.10.36 10월 할로윈 (IDEAS, 사용자 확정 2026-10-06): all October (Asia/Seoul) the island is at night -- the sky, the
@@ -660,6 +660,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     mesh(new THREE.CylinderGeometry(0.08, 0.11, 2.6, 10), mat(0x4d6b5c), 0, 1.3, 0, look);
     const bulb = mesh(new THREE.SphereGeometry(0.26, 16, 12), mat(0xfff3c2, { emissive: 0xffe08a, emissiveIntensity: 0.6 }), 0, 2.75, 0, look);
     for (const cell of propBatch('prop.lamp', lampSpots, look)) lamps.push(cell.procedural[look.children.indexOf(bulb)]); } // (the stand-in bulbs: lit at night, orange in October)
+  /* (1.10.423 다듬기 164 「밤 빛」: a soft pool of light on the ground under each lamp at night -- as the 관공서 yard's, one batch for all) */
+  const poolTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); const r = g.createRadialGradient(32, 32, 0, 32, 32, 32); r.addColorStop(0, '#ffffff'); r.addColorStop(0.45, '#8a8a8a'); r.addColorStop(1, '#000000'); g.fillStyle = r; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })(); /* (soft: bright under the lamp, gone at its edge; 64 px, one for the scene's life) */
+  const lampPools = new THREE.InstancedMesh(new THREE.CircleGeometry(2.8, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd9a0, map: poolTex, transparent: true, opacity: 0.32, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), Math.max(1, PROPS.lamps.length));
+  PROPS.lamps.forEach((l, i) => lampPools.setMatrixAt(i, new THREE.Matrix4().makeTranslation(l.x, heightAt(l.x, l.z) + 0.06, l.z))); lampPools.count = PROPS.lamps.length;
+  lampPools.computeBoundingSphere(); lampPools.visible = false; lampPools.renderOrder = 1; lampPools.castShadow = false; lampPools.receiveShadow = false; scene.add(lampPools);
   const flowerColors = [0xff9ec7, 0xffe27a, 0xffffff, 0xc4a5ff, 0xff8f8f];
   for (const bed of PROPS.beds) { // beds along the plaza rim, between the walks and channels
     solids.push({ ...bed, batch: true }); bedSpots.push({ x: bed.x, y: PH, z: bed.z, yaw: Math.atan2(PLAZA_C.x - bed.x, PLAZA_C.z - bed.z) }); // v1.10.20: facing the fountain (a planter model lies along the rim)
@@ -7020,7 +7025,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     }
     farCull(camera.position.x, camera.position.z);
     drops.forEach((d) => { const t = (ambientClock * 0.7 + d.userData.phase) % 1; const a = d.userData.phase * TAU; d.position.set(Math.cos(a) * t * 1.4, dropTop + Math.sin(t * Math.PI) * 0.9 - t * 1.6, Math.sin(a) * t * 1.4); }); stepFountainWater(ambientClock);
-    lamps.forEach((l, i) => { l.material.emissiveIntensity = (night ? 1.7 : 0.55) + Math.sin(ambientClock * 1.5 + i) * 0.05; }); shopGlow.value = night ? 1.7 : 0.55; beaconStep(clock); // (S2: 초승등대 at night)
+    lamps.forEach((l, i) => { l.material.emissiveIntensity = (night ? 1.7 : 0.55) + Math.sin(ambientClock * 1.5 + i) * 0.05; }); lampPools.visible = Boolean(night) && mySpace === 'island'; /* (1.10.423: their pools at night) */ shopGlow.value = night ? 1.7 : 0.55; beaconStep(clock); // (S2: 초승등대 at night)
     if (clock - halloweenCheckedAt > 5) { halloweenCheckedAt = clock; setIsland(halloweenOverride ?? (decorMode === 'halloween' ? true : decorMode === 'auto' ? isHalloween(Date.now() + serverOffset) : false), Date.now() + serverOffset); } // (A5: the administrator's decorations)
     decor.step(clock, camera, Boolean(lessMotion?.matches));
     yard.step(dt, me, animate); // v1.10.41 the mayor
