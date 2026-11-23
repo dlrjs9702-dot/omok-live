@@ -1580,7 +1580,7 @@ test('기념사진: 카운트다운·캡처 대기 취소, 재진입과 접속 �
 test('기념사진 2버튼: 앉은 채 즉시 촬영(자세 유지·카운트다운 없음), 포즈 촬영은 행동 뒤', async ({ browser, request }) => {
   test.setTimeout(120000);
   const a = await intoPlaza(browser, request, '즉시사진'); const { page } = a;
-  const seat = await page.evaluate(() => { const d = window.PlazaDebug(); const taken = d.takenSeats(); return d.seats.find((s) => !taken[s.id]); });
+  const seat = await page.evaluate(() => { const d = window.PlazaDebug(); const taken = d.takenSeats(); const note = d.doors['den:note']; return d.seats.find((s) => !taken[s.id] && (!note || Math.hypot(s.x - note.x, s.z - note.z) > 3)); }); /* (CI #570: the 도박장's 「접힌 쪽지」 lies before one bench a day -- that day's first seat took SPACE) */
   await page.evaluate(([x, z, yaw]) => window.PlazaWarp(x + Math.sin(yaw) * 1.2, z + Math.cos(yaw) * 1.2), [seat.x, seat.z, seat.yaw]);
   await expect(page.locator('#plazaHint')).toHaveText('SPACE · 앉기', { timeout: 10000 });
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');

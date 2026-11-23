@@ -102,8 +102,8 @@ test('전적관 창: 섬에서는 전적 카드·랭킹·다른 플레이어 조
   expect(await page.locator('#plazaDialog .storyShelf button').first().evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(255, 250, 240)');
   await shot(page, 'records-island');
   await card.locator('#rankingBtn').click(); await expect(page.locator('#rankingDialog')).toBeVisible();
-  const weeks = page.locator('#rankingDialog .rankingWeeks button'); // (the chosen one the island's brown, the other paper)
-  expect(await weeks.nth(0).evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(156, 95, 20)'); expect(await weeks.nth(1).evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(255, 250, 240)');
+  const weeks = page.locator('#rankingDialog .rankingWeeks button'); // (the chosen one the island's honey -- 1.10.419 U5: one selected colour, --isle-select; the other paper)
+  expect(await weeks.nth(0).evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(240, 220, 182)'); expect(await weeks.nth(1).evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(255, 250, 240)');
   expect(await page.locator('#rankingGame').evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(255, 253, 246)');
   await shot(page, 'records-ranking'); await page.locator('#rankingCloseBtn').click();
   await card.locator('#otherRecordsBtn').click(); await expect(page.locator('#recordsDialog')).toBeVisible();
