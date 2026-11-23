@@ -8,7 +8,8 @@ const T = require('../public/plaza/island-terrain.js'); require('../public/plaza
 const P = require('../public/plaza/isle2-props.js');
 const Tg = require('../lib/island-tigers');
 const D = T.dalmaru; const C = D?.NEW_ISLE?.camp;
-const ring = () => P.FENCE.filter((f) => /^fence_(palisade_tall|wicket)$/.test(P.FENCE_KINDS[f[3]]));
+const tall = () => P.FENCE.filter((f) => /^fence_(palisade_tall|wicket)$/.test(P.FENCE_KINDS[f[3]]));
+const ring = () => tall().filter((f) => Math.abs(Math.hypot(f[0] - C.x, f[1] - C.z) - 22.9) < 0.05); /* (결정 86: the camp's own -- the terminal yard's runs are the same palisade, test/terminal-yard) */
 
 test('S1 캠핑장 목책: 60칸 고리 22.9 m, 칸 사이 2.4 ± 0.05 m, 안쪽(+Z)이 가운데, 쪽문 넷은 들어오는 길 위', { skip: !D && '달마루섬 전용' }, () => {
   const R = ring(); assert.equal(R.length, 60); assert.equal(C.safe, 22.9); assert.equal(C.ring.r, 22.9);
@@ -30,7 +31,8 @@ test('S1 쪽문: 사람(몸 0.3)은 지나가고 호랑이(가슴 0.9씩)는 못
     { const [px, pz] = at(0, 0); assert.ok(!T.isle2Clear(px, pz, 0.9), 'a tiger\'s chest does not fit'); }
     /* (3 m out the tigers' -- unless a fence gate's own round reaches there: the west wicket 16.5 m from the road gate, its 16 m (검토 §3 「0.3 m」)) */
     const [ox, oz] = at(0, -3); const byGate = P.FENCE.some((f) => /^fence_gate/.test(P.FENCE_KINDS[f[3]]) && Math.hypot(f[0] - ox, f[1] - oz) < 16);
-    assert.equal(g.huntable(ox, oz), !byGate && T.onIsle2(ox, oz) && D.newIsleCoast(ox, oz) > 4, `${x},${z}: 3 m out -- no safe round outside a wicket`);
+    const inYard = Tg.inPoly(D.NEW_ISLE.yard, ox, oz); /* (결정 86: the two wickets toward the taxi terminal open into its fenced yard -- safe there) */
+    assert.equal(g.huntable(ox, oz), !byGate && !inYard && T.onIsle2(ox, oz) && D.newIsleCoast(ox, oz) > 4, `${x},${z}: 3 m out -- no safe round outside a wicket`);
     const [ix, iz] = at(0, 1.5); assert.equal(g.huntable(ix, iz), false, 'inside: safe');
   }
 });
@@ -44,7 +46,7 @@ test('S1 안전 반지름 한 곳: 서버 · 화면 모두 섬 자료의 safe(�
 });
 
 test('S1 목책 위에 다른 것 없음: 자연물 · 가로등은 비킴(가로등은 안 · 밖 1.6 m, 길 밖)', { skip: !D && '달마루섬 전용' }, () => {
-  const R = ring(); const rc = R.flatMap((f) => P.circlesAt(P.FENCE_KINDS[f[3]], f[0], f[1], f[2])); const own = new Set(rc.map((c) => `${c.x.toFixed(3)},${c.z.toFixed(3)}`));
+  const R = ring(); const rc = R.flatMap((f) => P.circlesAt(P.FENCE_KINDS[f[3]], f[0], f[1], f[2])); const own = new Set(tall().flatMap((f) => P.circlesAt(P.FENCE_KINDS[f[3]], f[0], f[1], f[2])).map((c) => `${c.x.toFixed(3)},${c.z.toFixed(3)}`)); /* (the yard's runs end at the ring's seams -- palisade too) */
   const others = [...T.natureSolids(), ...T.structureSolids(), ...T.villageSolids()].filter((o) => !own.has(`${o.x.toFixed(3)},${o.z.toFixed(3)}`));
   assert.deepEqual(others.filter((o) => rc.some((c) => Math.hypot(c.x - o.x, c.z - o.z) < c.r + (o.r || 0) + 0.2)).map((o) => [o.x, o.z]), []);
   for (const p of T.nature().lampSpots) { const d = Math.hypot(p.x - C.x, p.z - C.z); assert.ok(Math.abs(d - C.ring.r) >= 1.5, `lamp ${p.x},${p.z} at ${d}`); }

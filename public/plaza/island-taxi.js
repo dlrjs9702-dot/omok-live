@@ -105,8 +105,14 @@
   // (DROP m to the stop's right), facing back along the road -- so its door, on its right, is to the shelter; come in straight
   // over the last IN m; the drive is the road to there, its points within 10 m of the stop left out
   const DROP = 6.4; const IN = 6;
+  /* (사용자 결정 86, 검토 terminal-yard-20261123 §4-2: at 별마루섬 입구 the camp's palisade stands 4.2 ~ 4.5 m past the shelter -- the half circle round
+     its far side went through it (four pieces, 2 ~ 4 s). There the drop is in the yard's lane on the left going in (u0 m on from the stop, v0 m to
+     its left), and the turn a left U round the yard (radius R, its far point BACK m in) up into the place front first: the car 1.2 m and more off
+     every fence piece, 1.6 m off the shelter. The rider gets out on the yard's side) */
+  const YARD_TURN = { head: { u0: 1, R: 2.2 } };
   function dropOf(id) {
-    const s = stopOf(id); const x = s.x + Math.cos(s.yaw) * DROP; const z = s.z - Math.sin(s.yaw) * DROP;
+    const s = stopOf(id); const Y = YARD_TURN[id]; const u = Y ? Y.u0 : 0; const v = Y ? -2 * Y.R : DROP;
+    const x = s.x + Math.sin(s.yaw) * u + Math.cos(s.yaw) * v; const z = s.z + Math.cos(s.yaw) * u - Math.sin(s.yaw) * v;
     return { x, z, yaw: wrap(s.yaw + Math.PI), approach: [x + Math.sin(s.yaw) * IN, z + Math.cos(s.yaw) * IN] };
   }
   const driveOf = (from) => { const s = stopOf(STOPS[from].to); const d = dropOf(s.id); return [...roadOf(from).slice(0, -1).filter(([x, z]) => Math.hypot(x - s.x, z - s.z) > 10), d.approach, [d.x, d.z]]; };
@@ -427,8 +433,16 @@
   const PARK = 5000; const PARK_OUT = 4.5; /* (out as far as the place behind -- the half circle starts there: clear of 대청마당's tree at (16.3, -47.1)) */
   function parkPose(id, place, k) {
     const s = stopOf(id); const fx = Math.sin(s.yaw); const fz = Math.cos(s.yaw); const rx = Math.cos(s.yaw); const rz = -Math.sin(s.yaw);
-    const R = DROP / 2; const goal = place ? -BACK : 0; const L1 = PARK_OUT; const L2 = Math.PI * R; const L3 = goal + PARK_OUT; const d = (L1 + L2 + L3) * smooth(k);
-    let u; let v; let du; let dv;
+    const Y = YARD_TURN[id]; const goal = place ? -BACK : 0; let u; let v; let du; let dv;
+    if (Y) { /* (결정 86: on from the drop in the yard's lane, the left U round (-BACK, -R), along the places' line to its own) */
+      const R = Y.R; const L1 = Y.u0 + BACK; const L2 = Math.PI * R; const L3 = goal + BACK; const d = (L1 + L2 + L3) * smooth(k);
+      if (d <= L1) { u = Y.u0 - d; v = -2 * R; du = -1; dv = 0; }
+      else if (d <= L1 + L2) { const a = (d - L1) / R; const th = -Math.PI / 2 - a; u = -BACK + R * Math.cos(th); v = -R + R * Math.sin(th); du = Math.sin(th); dv = -Math.cos(th); }
+      else { u = -BACK + (d - L1 - L2); v = 0; du = 1; dv = 0; }
+      const dx = du * fx + dv * rx; const dz = du * fz + dv * rz;
+      return { phase: 'turn', x: s.x + u * fx + v * rx, z: s.z + u * fz + v * rz, yaw: Math.atan2(dx, dz), d: 0, pitch: 0, roll: 0, k };
+    }
+    const R = DROP / 2; const L1 = PARK_OUT; const L2 = Math.PI * R; const L3 = goal + PARK_OUT; const d = (L1 + L2 + L3) * smooth(k);
     if (d <= L1) { u = -d; v = DROP; du = -1; dv = 0; }
     else if (d <= L1 + L2) { const a = (d - L1) / R; u = -L1 - R * Math.sin(a); v = R + R * Math.cos(a); du = -Math.cos(a); dv = -Math.sin(a); }
     else { u = -L1 + (d - L1 - L2); v = 0; du = 1; dv = 0; }
