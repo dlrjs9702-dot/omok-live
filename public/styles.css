@@ -394,7 +394,7 @@ body.resultLossActive .cityControls{filter:saturate(.6) brightness(.62);box-shad
 .recordsDialog.myInfoDialog{width:min(94vw,980px);max-height:90vh}
 .myInfoSection{padding:12px 0;border-bottom:1px solid #263246}.myInfoSection:last-child{border-bottom:0;padding-bottom:0}.myInfoSectionHead{display:flex;align-items:center;justify-content:space-between;gap:8px}.myInfoSectionHead h3{font-size:1rem;margin:0 0 8px}.myInfoWallet{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px}.myInfoLabel{font-size:.76rem;color:#94a3b8;font-weight:800}.myInfoWallet .pointBalance{font-size:1.2rem;font-weight:900;color:#fde68a}.myInfoDialog .pointHistoryPanel{grid-column:1/-1;margin-top:2px;padding:10px 0 0;border-top:1px solid #263246}.myInfoSkinBody{margin-top:4px}
 .skinShopCard{min-width:0;display:grid}
-.skinShopCard .skinShopEnter{width:100%;padding:16px;font-size:1.1rem;font-weight:850;border-radius:14px}
+.skinShopCard .skinShopEnter{width:100%;padding:16px;font-size:1.1rem;font-weight:850;border-radius:12px}
 /* v1.7.30 skin shop: a large modal like the player lookup */
 .recordsDialog.skinShopDialog{width:min(94vw,980px);max-height:90vh}
 .skinShopDialog .recordsDialogHead{gap:12px}
@@ -1705,7 +1705,7 @@ body.touchIsland .islandChatGrip{width:28px;height:28px}.islandChatAlpha{display
 .questDone.still .questStamp{animation:none}
 
 /* v1.10.42 도감: found finds in colour, the rest as silhouettes */
-.islandDexCell { display: grid; justify-items: center; gap: 2px; padding: 6px 4px; border-radius: 10px; background: rgba(255, 255, 255, 0.06); font-size: 0.8rem; text-align: center; }
+.islandDexCell { display: grid; justify-items: center; gap: 2px; padding: 6px 4px; border-radius:12px; background: rgba(255, 255, 255, 0.06); font-size: 0.8rem; text-align: center; }
 .islandDexCell img { width: 56px; height: 56px; object-fit: contain; }
 .islandDexCell.unfound img { filter: brightness(0); opacity: 0.35; }
 .islandDexCell small { opacity: 0.7; min-height: 1em; }
@@ -1856,7 +1856,7 @@ body:not(.touchIsland) .plazaStage:has(#questTracker:not(.hidden)) .islandNoteLi
 .isle-tape{background:var(--isle-field);color:var(--isle-ink);border:1px solid var(--isle-line);border-radius:4px;box-shadow:0 8px 18px rgba(60,40,20,.3)}
 .isle-tape::before{content:"";position:absolute;left:50%;top:-8px;width:64px;height:16px;margin-left:-32px;background:rgba(242,181,68,.55);transform:rotate(3deg);pointer-events:none}
 .isle-tag{display:inline-block;padding:4px 14px;border-radius:999px;background:var(--talk-tag,var(--isle-tag));color:#fff;font-weight:800}
-.isle-choice{display:block;width:100%;min-height:44px;text-align:left;padding:8px 14px;border-radius:14px;border:1px solid var(--isle-line);background:var(--isle-card);color:var(--isle-ink);font-weight:700}
+.isle-choice{display:block;width:100%;min-height:44px;text-align:left;padding:8px 14px;border-radius:12px;border:1px solid var(--isle-line);background:var(--isle-card);color:var(--isle-ink);font-weight:700}
 @keyframes islePop{from{opacity:0;transform:translateY(6px) scale(.96)}to{opacity:1;transform:none}}
 @keyframes isleBlink{50%{opacity:.25}}
 .plazaDialog.talkMode{width:min(640px,calc(100vw - 32px));max-height:46vh;margin:auto auto max(18px,env(safe-area-inset-bottom));border-radius:22px;border:1px solid var(--isle-line);background:var(--isle-paper);color:var(--isle-ink);box-shadow:0 10px 28px rgba(74,56,40,.25);overflow:visible;padding:24px 22px 14px}
@@ -2820,8 +2820,8 @@ body.herosurvOpen { overflow: hidden; }
 .skinShopDialog.dressing>.recordsDialogHead h2::before{content:"🏪 "}
 /* item rows */
 .dressing .skinGrid{display:grid;grid-template-columns:1fr;gap:8px}
-.dressing .skinCard{display:grid;grid-template-columns:88px minmax(0,1fr) auto;grid-template-areas:"pic name buy" "pic meta buy";align-items:center;column-gap:12px;padding:8px 10px;border-radius:14px;position:relative;cursor:pointer}
-.dressing .skinCard>canvas{grid-area:pic;width:88px;height:44px;border-radius:10px}
+.dressing .skinCard{display:grid;grid-template-columns:88px minmax(0,1fr) auto;grid-template-areas:"pic name buy" "pic meta buy";align-items:center;column-gap:12px;padding:8px 10px;border-radius:12px;position:relative;cursor:pointer}
+.dressing .skinCard>canvas{grid-area:pic;width:88px;height:44px;border-radius:12px}
 /* 묶음 2-2 펫샵: a pet's name, my pets */
 .adoptCard .adoptName{width:100%;margin:6px 0}
 .myPets{display:grid;gap:6px}
@@ -2860,14 +2860,14 @@ body.plazaMode .plazaDialog.editMode .furnitureList .furniturePiece.selected{bac
 .dressing .skinCard.selected::before{content:"✓";position:absolute;left:-6px;top:-6px;width:20px;height:20px;border-radius:50%;background:#22c55e;color:#fff;font-size:.75rem;font-weight:900;display:grid;place-items:center}
 /* the preview stage */
 .skinTryOn.dressSide,.dressing>.skinTryOn{flex-direction:column;align-items:stretch;gap:6px;padding:8px}
-.dressStage{position:relative;border-radius:16px;overflow:hidden;background:linear-gradient(180deg,#cfe8ff 0%,#e7f4ff 52%,#bfe3a5 52%,#a7d58c 100%)}
+.dressStage{position:relative;border-radius:12px;overflow:hidden;background:linear-gradient(180deg,#cfe8ff 0%,#e7f4ff 52%,#bfe3a5 52%,#a7d58c 100%)}
 .dressStage .dressCanvas{display:block;width:100%;height:auto;aspect-ratio:5/4;max-height:52vh;touch-action:none;cursor:grab;background:transparent;position:relative;z-index:1}
 .dressStage .dressCanvas:active{cursor:grabbing}
 .dressPedestal{position:absolute;left:50%;bottom:13%;width:46%;height:12%;transform:translateX(-50%);border-radius:50%;background:radial-gradient(ellipse at 50% 40%,#e9d8b8,#c9a777 70%,#a5814f);box-shadow:0 6px 0 #8a6a3d}
 .dressChip{position:absolute;left:10px;top:10px;z-index:2;padding:4px 12px;border-radius:999px;background:#7c4f26;color:#fff;font-weight:900;font-size:.85rem}
 .dressChip::before{content:"👕 "}
 .dressNote{position:absolute;left:12px;top:40px;z-index:2;margin:0;max-width:46%;font-size:.75rem;color:#1e3a5f;text-shadow:0 1px 0 #fff}
-.dressSideTools{position:absolute;right:10px;top:10px;z-index:2;display:flex;flex-direction:column;gap:6px;padding:6px;border-radius:14px;background:rgba(255,255,255,.75)}
+.dressSideTools{position:absolute;right:10px;top:10px;z-index:2;display:flex;flex-direction:column;gap:6px;padding:6px;border-radius:12px;background:rgba(255,255,255,.75)}
 .dressTool{min-width:34px;min-height:34px;border-radius:50%;border:1px solid #d6c3a5;background:#fffaf1;color:#4a3324;font-weight:900;padding:0}
 .dressNav{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);z-index:2;display:flex;align-items:center;gap:8px}
 .dressDots{display:flex;gap:6px}
@@ -2882,13 +2882,13 @@ body.plazaMode .plazaDialog.editMode .furnitureList .furniturePiece.selected{bac
 .dressArrow{color:#7c4f26;font-weight:900}
 .skinTryOn .dressName{font-size:.95rem}
 /* detail strip and the bar */
-.dressDetail{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:center;padding:10px 12px;border-radius:14px;background:#1e293b;border:1px solid #334155}
+.dressDetail{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:center;padding:10px 12px;border-radius:12px;background:#1e293b;border:1px solid #334155}
 .dressDetail.hidden{display:none}
 .dressDetail strong{font-size:1rem}
 .dressDetail p{grid-column:1/-1;margin:0;font-size:.8rem;color:#94a3b8}
 .dressTags{display:flex;flex-wrap:wrap;gap:4px}
 .dressTags i{font-style:normal;font-size:.72rem;padding:2px 8px;border-radius:999px;background:#334155;color:#cbd5e1}
-.dressBar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;border-radius:14px;background:#111827;border:1px solid #334155}
+.dressBar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;border-radius:12px;background:#111827;border:1px solid #334155}
 .dressPoints{margin-right:auto;font-weight:900;color:#fde68a}
 .dressBar button{min-height:42px;padding:0 18px;border-radius:12px;border:0;font-weight:900;color:#fff}
 .dressBar .dressBuy{background:#16a34a}
@@ -2941,7 +2941,7 @@ body>.dressRoom{display:none} /* (bugs 10: the 성형외과·염색사 card wait
   .skinShopDialog .dressBar .dressClose{display:none}
   .skinShopDialog.dressing>.skinShopBody,.myInfoSection.dressing>.skinShopBody{max-height:none;overflow:visible}
   .skinShopDialog.dressing>.skinTryOn,.skinShopDialog.dressing>.dressDetail{margin:0 12px}
-  .skinShopDialog.dressing>.dressBar,.myInfoSection.dressing>.dressBar{position:sticky;bottom:0;margin:0;z-index:4;border-radius:14px 14px 0 0}
+  .skinShopDialog.dressing>.dressBar,.myInfoSection.dressing>.dressBar{position:sticky;bottom:0;margin:0;z-index:4;border-radius:12px 12px 0 0}
   .dressStage .dressCanvas{aspect-ratio:auto;height:34vh;max-height:none}
   .dressRoom{grid-template-columns:1fr}
   .dressRoom>.skinTryOn{grid-row:1;position:static}
@@ -2949,7 +2949,7 @@ body>.dressRoom{display:none} /* (bugs 10: the 성형외과·염색사 card wait
   .dressNote{display:none}
 }
 /* 3-1 스킨 선물: who it is for and a note, above the bar */
-.dressGiftForm{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;border-radius:14px;background:#1e293b;border:1px solid #db2777}
+.dressGiftForm{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;border-radius:12px;background:#1e293b;border:1px solid #db2777}
 .dressGiftForm.hidden{display:none}
 .dressGiftForm strong{flex:1 0 100%}
 .dressGiftForm select,.dressGiftForm input{flex:1 1 160px;min-width:0}
@@ -2963,7 +2963,7 @@ body>.dressRoom{display:none} /* (bugs 10: the 성형외과·염색사 card wait
 /* 창 2단계 (gamecenter-notes docs/dialogue-box-redesign-20261025.md 「섬 공통 부품으로 넓히기」): the island's windows on its
    common parts -- 게시판 a cork board in a wooden frame, each notice a paper pinned at a slight tilt; 출석 a stamp card; 우체통
    letters on lined paper; 안내 지도 a folded paper map. Text keeps its size and contrast (ink on paper) */
-.plazaDialog.boardMode{background:#b98a5a;border:10px solid #7a5232;border-radius:14px;box-shadow:inset 0 0 0 2px #5d3d22,0 12px 30px rgba(40,24,10,.4);
+.plazaDialog.boardMode{background:#b98a5a;border:10px solid #7a5232;border-radius:12px;box-shadow:inset 0 0 0 2px #5d3d22,0 12px 30px rgba(40,24,10,.4);
   background-image:radial-gradient(rgba(90,55,25,.35) 1px,transparent 1.5px),radial-gradient(rgba(255,230,190,.25) 1px,transparent 1.5px);background-size:7px 7px,11px 11px;background-position:0 0,3px 5px}
 .plazaDialog.boardMode .recordsDialogHead{background:#7a5232;color:#fff6e3;border:0}
 .plazaDialog.boardMode .plazaDialogBody{background:transparent}
@@ -3025,7 +3025,7 @@ body>.dressRoom{display:none} /* (bugs 10: the 성형외과·염색사 card wait
 /* (1.10.370 전체 지도: +/− and 전체 보기 for a PC without a wheel, 내 위치 back on me) */
 .islandMapTools{display:none}
 .plazaDialog.mapMode .islandMapTools{display:flex;gap:6px;position:absolute;left:14px;bottom:14px;z-index:2}
-.plazaDialog.mapMode .islandMapTools button{min-width:40px;min-height:36px;padding:0 10px;border-radius:10px;border:1px solid var(--isle-line,#c9b48a);background:var(--isle-card);color:var(--isle-ink,#3d2f22);font-weight:800;font-size:15px;cursor:pointer}
+.plazaDialog.mapMode .islandMapTools button{min-width:40px;min-height:36px;padding:0 10px;border-radius:12px;border:1px solid var(--isle-line,#c9b48a);background:var(--isle-card);color:var(--isle-ink,#3d2f22);font-weight:800;font-size:15px;cursor:pointer}
 .plazaDialog.mapMode .islandMapTools button:focus-visible{outline:3px solid #2f6fc0;outline-offset:2px}
 @media (pointer:coarse){.plazaDialog.mapMode .islandMapTools button{min-height:44px;min-width:44px}}
 /* (1.10.370: the minimap opens the 전체 지도 -- a tap on a phone, a click on a PC) */
@@ -4037,3 +4037,15 @@ body.plazaMode .isle-sheet .taxiDests .taxiDest[aria-checked="true"]{background:
 @media (pointer:coarse){.islandBagFoot{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.islandBagFoot>*{flex:0 0 auto}.stocksTabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.stocksTabs>*{flex:0 0 auto}.recordTowerChips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);mask-image:linear-gradient(90deg,#000 88%,transparent)}.bagTab,#islandBagDialog .islandDexTab,#islandBagDialog .islandBagFoot button,.stocksTabs button,.recordTowerChip{min-height:40px}#islandBagDialog>.recordsDialogHead>button:last-child{min-width:40px;min-height:40px}#islandBagDialog .islandDexGrid{max-height:min(52dvh,560px)}}
 /* 1.10.423 다듬기 164 D (폰 행사 공지): on a narrow phone the 대회 띠 one short line ending before the minimap's middle (its place name and middle always seen) -- the rest "…" */
 @media (max-width:640px){body.touchIsland .islandTopRow .contestBar{margin:2px auto 0 0;max-width:calc(100% - 140px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+
+/* 1.10.426 U8 (검토 ui-review · stamp-overflow §3 #2 #3 #4): a bag slot's little menu on the first column from the slot's left edge, on the last to its right (in the window); on a PC (a mouse) the bag's kind tabs and the record tower's game chips wrap to a second line -- a phone keeps its one sliding row */
+#islandBagDialog.bagPouch .bagMenu.atStart{left:0;transform:none}#islandBagDialog.bagPouch .bagMenu.atStart::after{left:22px}#islandBagDialog.bagPouch .bagMenu.atEnd{left:auto;right:0;transform:none}#islandBagDialog.bagPouch .bagMenu.atEnd::after{left:auto;right:22px}
+@media (pointer:fine){.islandBagTabs{flex-wrap:wrap;overflow-x:visible}.recordTowerGames{flex-wrap:wrap;overflow-x:visible}}
+/* 1.10.426 U8 (검토 stamp-overflow §3, phone bag photo): on a touch screen the bag one column no taller than the screen -- its slots (or the dex) take what is left and scroll, so the quick-slot row and the foot stay inside the pouch's waves (they spilled under its bottom edge) */
+@media (pointer:coarse){#islandBagDialog.bagPouch[open]{display:flex;flex-direction:column;max-height:calc(100dvh - 40px)}#islandBagDialog.bagPouch[open]>*{flex:0 0 auto}#islandBagDialog.bagPouch[open]>.islandBagGrid{flex:1 1 auto;min-height:120px;max-height:none}}
+/* 1.10.426 U8 (검토 ui-review D5 · A9): on the island the dress shop's points once (its head) and one close (its head ✕) -- the foot's 닫기 and points gone; the filter chips one row, the rest behind 「더 보기」 */
+body.plazaMode .dressBar .dressClose,body.plazaMode .skinShopDialog .dressBar .dressPoints{display:none}
+body.plazaMode .skinFilterBar.chipsFolded .skinChipsMore{display:none}
+/* 1.10.426 U8 (검토 ui-review C9 · C10): points on the island one way -- the bag's coin pill (its point.svg, its honey paper) for the dress shop's and the donation's heads and 내 정보's wallet; an empty list's line centred in the soft ink (the dark boards keep theirs) */
+body.plazaMode :is(#skinShopBalance,#donationBalance,#pointBalanceText):not(:empty){display:inline-block;padding:4px 12px 4px 30px;border-radius:999px;background:url("/assets/items/point.svg") 8px 50%/16px 16px no-repeat #f2e3c4;color:var(--isle-ink)!important;font-size:.85rem;font-weight:800;line-height:1.35;text-shadow:none}
+body.plazaMode .isle-sheet:not(.boardMode):not(#donationDialog) :is(.emptyState,.noticeEmpty,.rankingEmpty,.chatEmpty,.climbRankEmpty,.recordTowerEmpty){color:var(--isle-soft);text-align:center;padding:16px 8px;font-size:.9rem;font-weight:700}

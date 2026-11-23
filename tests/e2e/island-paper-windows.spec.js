@@ -26,7 +26,7 @@ test('섬 창 종이: ☰ 창·반려동물·이름 짓기·접속 종료가 종
     const partsWorst = Math.min(99, ...parts.map((e) => { const s = getComputedStyle(e); return ratio(s.color, opaque(s.backgroundColor) ? s.backgroundColor : bg); }));
     const NAVY = ['rgb(15, 23, 42)', 'rgb(17, 24, 39)', 'rgb(30, 41, 59)', 'rgb(51, 65, 85)'];
     const navy = [...d.querySelectorAll('*:not(input[type="checkbox"]):not(input[type="radio"])')].filter((e) => e.offsetParent && NAVY.includes(getComputedStyle(e).backgroundColor)).map((e) => e.id || e.className || e.tagName); /* (a checkbox the browser draws -- its accent colour, not its background) */
-    return { bg, worst: Math.min(...words.map((e) => ratio(getComputedStyle(e).color, bg))), partsWorst, navy, close: close ? { name: close.textContent.trim(), mark: getComputedStyle(close, '::after').content } : null };
+    return { bg, over: d.scrollWidth - d.clientWidth /* (1.10.426 U8, 검토 stamp-overflow §3: no window wider than itself -- a sideways scroll) */, worst: Math.min(...words.map((e) => ratio(getComputedStyle(e).color, bg))), partsWorst, navy, close: close ? { name: close.textContent.trim(), mark: getComputedStyle(close, '::after').content } : null };
   }, sel);
   const paper = 'rgb(255, 246, 227)';
   const closeAll = () => page.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
@@ -40,7 +40,7 @@ test('섬 창 종이: ☰ 창·반려동물·이름 짓기·접속 종료가 종
     await expect(page.locator(sel)).toBeVisible();
     const l = await look(sel);
     expect(l.bg, sel).toBe(paper); expect(l.worst, sel).toBeGreaterThanOrEqual(4.5);
-    expect(l.partsWorst, `${sel} buttons · fields`).toBeGreaterThanOrEqual(4.5); expect(l.navy, `${sel} navy`).toEqual([]); /* (1.10.417 U3) */
+    expect(l.partsWorst, `${sel} buttons · fields`).toBeGreaterThanOrEqual(4.5); expect(l.navy, `${sel} navy`).toEqual([]); /* (1.10.417 U3) */ expect(l.over, `${sel} sideways`).toBeLessThanOrEqual(0);
     if (sel !== '#logoutDialog') expect(l.close, sel).toEqual({ name: '닫기', mark: '"✕"' });
   }
   await closeAll();

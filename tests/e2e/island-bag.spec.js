@@ -29,7 +29,7 @@ test('가방 개편: 동그라미 칸·이름 줄·말풍선 메뉴, 내 순서(
      and words; kept when the bag opens again; 가구: the list of pieces not put down; a phone's row slides sideways */
   const tabs = page.locator('#islandBagTabs .bagTab'); await expect(tabs).toHaveCount(10); await expect(tabs.first()).toHaveText('전체4');
   await expect(page.locator('.bagTab[data-tab="fish"] i')).toHaveText('1'); await expect(page.locator('.bagTab[data-tab="tool"] i')).toHaveText('1'); await expect(page.locator('.bagTab[data-tab="ore"]')).toHaveClass(/none/);
-  expect(await page.evaluate(() => getComputedStyle(document.getElementById('islandBagTabs')).overflowX)).toBe('auto');
+  { const [ox, wrap, fine] = await page.evaluate(() => { const s = getComputedStyle(document.getElementById('islandBagTabs')); return [s.overflowX, s.flexWrap, matchMedia('(pointer:fine)').matches]; }); expect([ox, wrap]).toEqual(fine ? ['visible', 'wrap'] : ['auto', 'nowrap']); } /* (1.10.426 U8 #3: a mouse's row wraps -- a touch screen's slides) */
   await page.locator('.bagTab[data-tab="fish"]').click(); await expect(page.locator('.islandBagSlot:not([hidden])')).toHaveCount(1); await expect(page.locator('.islandBagSlot:not([hidden])')).toHaveAttribute('data-item', 'fish_goby');
   await page.locator('.islandBagSlot[data-item="fish_goby"]').click(); await expect(page.locator('#islandBagInfo .bagDetailKind')).toHaveText('물고기'); await expect(page.locator('#islandBagInfo .bagDetailWords')).not.toBeEmpty();
   await tab(); await expect(bag).toBeHidden(); await tab(); await expect(bag).toBeVisible(); await expect(page.locator('.bagTab.on')).toHaveAttribute('data-tab', 'fish'); await expect(page.locator('.islandBagSlot:not([hidden])')).toHaveCount(1);
