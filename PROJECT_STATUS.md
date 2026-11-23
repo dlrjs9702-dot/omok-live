@@ -13,6 +13,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.423 다듬기 164(에셋 164 · 결정 79 A · 80 A) + 출석 도장 폭
+
+- 에셋 164 다섯 파일 교체, 분수 물(밤 ×1.4), 개울 돌 24개(둑 돌 막힘 원), 채석장 먼지 · 캘 바위 금빛 고리, 택시 지붕 표시등, 수족관 벽 물고기 색, 방 들어갈 때 카메라 뒤.
+- 밤 빛: 가로등 아래 둥근 빛 웅덩이(InstancedMesh, 방사형 텍스처), 분수 테두리.
+- 굽은 길 횡단보도: 가장 가까운 건널목 자기 방향으로 줄무늬(`crossFrames`, 셰이더 `uCross`).
+- 결정 80 A: 야영장 옛 가운데 묶음(불 · 벤치 · 의자) 뺌. 폰 대회 띠 한 줄, 마루 대기 자리 1.25 m 앞.
+- 출석 도장 칸 `minmax(0,1fr)` — 큰 도장 달에도 창이 옆으로 안 넓어짐.
+- 시험: `polish-164`, e2e attendance-card · island-assets.
+
 ## v1.10.422 U7 둘째 — 첫 방문 · 위쪽 가운데(검토 ui-review-20261121 D1 · D2)
 
 - D1: 첫 방문 창은 한 번에 하나(`whenNoWindow`) — 새 사람은 조작 안내를 건너뛰고, 섬 안내도 열린 창이 닫힌 뒤.
@@ -24,8 +33,3 @@
 - 터치 화면: 가방 아래 단추 · 증권 · 벼룩 탭 한 줄 밀기, 기록의 탑 칩 끝 흐림, 작은 누름 대상 40px 이상, 폰 도감 목록 높이 52dvh(가방 아래 줄이 화면 밖으로 안 밀리게).
 - 노점(D6): 골라 팔기 목록에서 가게가 사는 것 먼저.
 - 시험: `island-ui-u7`, e2e dex-tabs · island-bag · island-stocks · island-contest · mobile-island.
-
-## v1.10.420 U6 관리자 창 섬 종이(검토 ui-review-20261121 A3 · B16, 결정 43 A 1)
-
-- 관리자 창: 섬 종이 규칙에 들어감(카드 · 계정 칩 · 단추가 종이색, 고른 칩은 꿀색). 머리 제목 옆에 빨간 「관리자」 표시.
-- 시험: admin-issue-log · admin-point-grant · island-paper-windows e2e.
