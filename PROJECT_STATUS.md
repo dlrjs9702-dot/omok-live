@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.427 아이언맨 펫 날기(에셋 181, 사용자 「다리, 팔에서 불꽃 효과를 넣고 날아오게 해」)
+
+- 불꽃 넷: 손은 LowerArm → Hand 파랑(안쪽 밝게), 발은 LowerLeg → Foot 주황 — 날 때 뒤로, 떠 있을 때 아래로; 속도로 길이, 깜빡임, 40 m 밖은 안 그림.
+- 몸: 속도로 기울기(느리면 −25° · 초속 12 m에서 +15°), 굽이에서 20°까지 기움, 위아래 6 cm(1.3초); 초속 1.5 m 아래면 Hover.
+- 에셋 181: FlyRepulsor 다시(머리 들고 손바닥 · 발바닥 뒤), Hover 새로(sha256 확인).
+- 시험: `ironman-181`, e2e island-pets(Hover → 날기).
+
 ## v1.10.426 U8 남은 화면 정리(검토 ui-review-20261121 A9 · C6 · C8 · C9 · C10 · D5 · P4, stamp-overflow §3, 결정 83 A)
 
 - 가방: 칸 메뉴 첫 열 · 끝 열에서 창 안(atStart · atEnd), PC(pointer:fine)는 종류 탭 · 기록의 탑 칩 줄바꿈, 폰은 가방 한 세로 줄(빠른 칸이 화면 안).
@@ -26,10 +33,3 @@
 - 점수 퍼즐 묶음: 숫자 밀기(크기 · 걸린 시간) · 블록 퍼즐 · 사과 게임 · 수박 만들기(점수전만) — 판은 서버가 열고, 사람이 낼 수 있는 기록만 받음.
 - 기록의 탑 19게임: 칭호 불빛 화가 · 숫자 조각가 · 블록 장인 · 사과 농부 · 수박 농부, 주간 트로피(에셋 180 열 개, sha256 확인) 마당 · 가구 이름.
 - 시험: `h1-games`, reflex · puzzle-daily · solo-ranking 서버, e2e reflex · hanpan-h1 · solo-quest.
-
-## v1.10.424 달무리 사목 ①(한판마당 자료)
-
-- 서버 `lib/games/orbit4.js`: 바깥 · 안쪽 고리, 구슬마다 반시계 한 칸 돌림, 돌기 전 상대 구슬 밀기(선택), 줄은 돈 뒤에만 · 둘 다 이으면 무승부, 판이 차면 다섯 번 더 돌림, 구슬 각 8개.
-- 화면: 밤하늘 판(고리 · 돌림 화살표, 달 · 별 구슬 또는 사목 칩 꾸미기), 밀기는 상대 구슬 → 옆 칸(터치는 칸을 두 번).
-- 게임관 카드 · 방 목록 · 규칙 · 안내 · 소리 · 최근 수, 미션 · 업적(74) · 자리 이름 달 / 별.
-- 시험: `orbit4`(8), e2e orbit4 · achievements.
