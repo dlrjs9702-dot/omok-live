@@ -17,7 +17,7 @@ test('택시 정류장: 표지 → 택시 부르기 → 빈 차가 와서 섬 �
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
   const dialog = page.locator('#plazaDialog'); await expect(dialog.locator('#taxiCallBtn')).toBeVisible({ timeout: 15000 });
   await dialog.locator('#taxiCallBtn').click(); await expect(dialog.locator('.taxiStatus')).toContainText('택시 오는 중', { timeout: 10000 });
-  await dialog.locator('#taxiCloseBtn').click(); await expect(dialog).toBeHidden();
+  await dialog.locator('#plazaCloseBtn').click(); await expect(dialog).toBeHidden(); /* (1.10.418 U4: the head's ✕ only) */
   // the car at the curb
   await expect.poll(() => page.evaluate(([x, z]) => (window.PlazaDebug().taxiParked?.() || []).some((c) => Math.hypot(c.x - x, c.z - z) < 1), [X.curbOf('dock').x, X.curbOf('dock').z]), { timeout: 30000 }).toBe(true);
   await page.locator('#plazaStage').focus(); await page.keyboard.press('Space');
@@ -25,6 +25,6 @@ test('택시 정류장: 표지 → 택시 부르기 → 빈 차가 와서 섬 �
   await expect(dialog.locator('.taxiDest').last()).toHaveText(`${X.LOOP_LABEL} · ${X.fareByRoad('dock', 'dock').toLocaleString('ko-KR')}P`);
   await expect(dialog.locator('#taxiDest-museum')).toContainText(`${X.fareByRoad('dock', 'museum').toLocaleString('ko-KR')}P`);
   await dialog.locator('#taxiDest-museum').click(); await expect(dialog.locator('.taxiLine')).toHaveText('박물관·잔치마루까지 갈까요?'); await expect(dialog.locator('#taxiRideBtn')).toHaveText('박물관·잔치마루행 타기 · 500P'); await expect(dialog.locator('#taxiDest-museum')).toHaveAttribute('aria-checked', 'true'); /* (1.10.398: where on the button, the picked one ticked) */
-  await dialog.locator('#taxiCloseBtn').click();
+  await dialog.locator('#plazaCloseBtn').click();
   await expectNoScriptError(page); await a.context.close();
 });

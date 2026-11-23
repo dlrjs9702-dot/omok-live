@@ -62,7 +62,7 @@ test('섬 증권거래소: 문으로 들어가 보드 SPACE → 시세 30종 →
     await shot(page, 'exchange-mine');
     await page.locator('.stocksCard').getByRole('button', { name: '이번 주 순위' }).click(); await expect(page.locator('.stocksCard .stocksRank.mine').first()).toBeVisible();
     await expect(page.locator('.stocksCard .stocksRank.mine').first()).toContainText(/[▲▼–] [\d,]+P/); /* (1.10.351 ⑥: the points beside) */
-    await page.locator('.stocksCard').getByRole('button', { name: '닫기' }).click();
+    await page.locator('#plazaCloseBtn').click(); /* (1.10.418 U4: the head's ✕ only) */
     // 테드 창
     await page.evaluate(([lx, lz]) => { const w = window.IslandExchange.world(lx, lz); window.PlazaDebug().teleport(w.x, w.z); }, [EX.TALK.lx, EX.TALK.lz - 0.2]);
     await expect.poll(() => spaceOn(page, 'exchange:clerk', isMobile), { timeout: 20000 }).toBe(true);
