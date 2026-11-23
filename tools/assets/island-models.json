@@ -15853,6 +15853,12 @@
       "precompressed": true
     },
     {
+      "out": "characters/motions/WebSki.glb",
+      "src": "webski182:01. High/motions/WebSki.glb",
+      "sha256": "1b40981e58f92195d82f9cf2fd069bcfee84d1dc361ff03e4d9b5498b6c078df",
+      "precompressed": true
+    },
+    {
       "out": "characters/motions/Sprint.glb",
       "src": "petbike161:01. High/motions/Sprint.glb",
       "sha256": "5100d7d71a6c0c2765613208f4f00cbfa46ee947b31ec694fdb9a7412cf50cd6",
@@ -16026,6 +16032,7 @@
     "office176": "176. Game Island camp office 2026-11-22",
     "morak177": "177. Game Island camp keeper Morak 2026-11-22",
     "trophies180": "180. Game Island solo game trophies 2026-11-23",
-    "ironman181": "181. Game Island Iron Man flight 2026-11-23"
+    "ironman181": "181. Game Island Iron Man flight 2026-11-23",
+    "webski182": "182. Game Island Spider-Man web ski 2026-11-23"
   }
 }

@@ -3333,7 +3333,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       dispose() { c.gone = true; disposeCharacter(k); } };
     return c;
   }
-  const PET_POSE = { Sit: 'sitIdle', BasketSit: 'basketSit', BasketSitPaw: 'basketSitPaw', WebSwing: 'webSwing', KiteHang: 'kiteHang', Glide: 'glide', Fly: 'fly', FlyRepulsor: 'flyRepulsor', Hover: 'hover', Sprint: 'sprint' };
+  const PET_POSE = { Sit: 'sitIdle', BasketSit: 'basketSit', BasketSitPaw: 'basketSitPaw', WebSwing: 'webSwing', KiteHang: 'kiteHang', WebSki: 'webSki', Glide: 'glide', Fly: 'fly', FlyRepulsor: 'flyRepulsor', Hover: 'hover', Sprint: 'sprint' };
   // 1.10.387 펫 태우기 (사용자 결정 26·33·34, assets 161 README §2~4): walking as ever; running or riding each kind its own way -- the small ones
   // (8 transformations and the bird, 메타몽 running) on the owner's head, 메타몽 riding and the quick four (dog, cat, fox, rabbit -- the old
   // puppy and kitten too) in the bike's crate or running alongside, the big five following and back beside the owner when left behind,
@@ -3358,15 +3358,18 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // the rail -- not centred front to back) and 169b (the small eight on the cushion, chins 4.5 cm over the crate's rim))
   const PET_SEAT = { tf_kuromi: [0, 0.087, 0], tf_hellokitty: [0, 0.085, 0], tf_mymelody: [0, 0.087, 0], tf_cinnamoroll: [0, 0.084, 0], tf_pompompurin: [0, 0.08, 0], tf_pochacco: [0, 0.066, 0], tf_pikachu: [0, 0.087, 0], 'tf_animal-hamster': [0, 0.064, 0],
     'tf_animal-dog': [0, 0.018, 0], 'tf_animal-cat': [0, 0.018, 0], 'tf_animal-fox': [0, 0.017, -0.078], 'tf_animal-rabbit': [0, 0.015, 0], puppy: [0, 0.023, 0], kitten: [0, 0.022, 0], ditto: [0, 0.004, 0] };
-  const PET_CLIP = { basket: 'BasketSit', run: 'Run', web: 'WebSwing', kite: 'KiteHang', glide: 'Glide', fly: 'Fly', flyR: 'FlyRepulsor', sprint: 'Sprint', birdFly: 'Fly' };
+  const PET_CLIP = { basket: 'BasketSit', run: 'Run', web: 'WebSwing', kite: 'WebSki', glide: 'Glide', fly: 'Fly', flyR: 'FlyRepulsor', sprint: 'Sprint', birdFly: 'Fly' };
   const PET_KIND_CLIP = { 'tf_animal-cat:basket': 'BasketSitPaw' }; // (169: the cat's own crate pose)
   const PET_AIR = { web: 1.9, glide: 1.35, fly: 1.4, flyR: 1.4, birdFly: 1.05 }; // (README §2 영웅 자리: the origin's height over the ground; 169b the bird beside the head)
-  const KITE_AT = [0, 1.55, 2.1]; const WEB_UP = 1.7; const BIG_BACK = 6;
-  /* (1.10.400 결정 56, notes asset-eyes-2 덧붙임 「펫」: the kite a little aside of the rear wheel's line, its string from the owner's hand; Batman
-     gliding farther behind (his ears met the back of the head), his cape spread while he glides (1.10.401 assets 169: morph cape_spread, High and Low);
-     1.10.401 결정 61: the bird beside the bike at its pace) */
-  const KITE_SIDE = 0.55; const GLIDE_BACK = 1.9; const BIRD_SIDE = 0.9; const BIRD_BACK = 0.1; const CAPE_FADE = 0.25;
-  const handOf = (c) => { let h = null; c.assetRoot?.traverse((o) => { if (!h && o.isBone && /^Hand\.?R$/.test(o.name)) h = o; }); return h; };
+  const WEB_UP = 1.7; const BIG_BACK = 6;
+  /* (assets 182, 사용자 결정 85 A, notes docs/pet-bike-heroes-20261123.md §2-3 A: Spider-Man towed on the ground, both hands on a 1.9 m web from
+     the bike's rear ring (BIKE.hook) -- WEB_FLAT the rope's run over the ground (the ring 0.34 m over his hands); WEB_HOLD his hands' grip in his
+     own frame, model metres (his root is scaled); side to side on a straight, banked into a turn; under 1 m/s he stands, the web slack) */
+  const WEB_LEN = 1.9; const WEB_HOLD = [0, 0.7293, 0]; const WEB_FLAT = Math.sqrt(WEB_LEN ** 2 - (0.65 - 0.7293 * 0.42) ** 2); const WEB_NEAR = 0.8;
+  const WEB_SWAY = 0.4; const WEB_SWAY_S = 2.6; const WEB_STILL = 1; const WEB_SAG = 0.1; const WEB_BANK = 12 * Math.PI / 180; const webMid = new THREE.Vector3(); const webEnd = new THREE.Vector3();
+  /* (1.10.400 결정 56, notes asset-eyes-2 덧붙임 「펫」: Batman gliding farther behind (his ears met the back of the head), his cape spread while he
+     glides (1.10.401 assets 169: morph cape_spread, High and Low); 1.10.401 결정 61: the bird beside the bike at its pace) */
+  const GLIDE_BACK = 1.9; const BIRD_SIDE = 0.9; const BIRD_BACK = 0.1; const CAPE_FADE = 0.25;
   function capeSpread(p, on, dt) { // (eased like a clip's fade; every mesh with the morph -- High and Low both)
     const w = Math.max(0, Math.min(1, (p.cape || 0) + (on ? 1 : -1) * (dt / CAPE_FADE))); if (w === p.cape) return; p.cape = w;
     p.c.root.traverse((o) => { const i = o.morphTargetDictionary?.cape_spread; if (i !== undefined) o.morphTargetInfluences[i] = w; });
@@ -3414,15 +3417,16 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     root.position.y += FLY_BOB * Math.sin((now / 1000) * 2 * Math.PI / FLY_BOB_S);
     p.flying = true; petJets(p, true, p.hover ? 0 : k);
   }
-  function flyEnd(p) { if (!p.flying) return; p.flying = false; p.tilt = p.bank = 0; p.flyYaw = null; p.c.root.rotation.x = p.c.root.rotation.z = 0; petJets(p, false); }
+  function flyEnd(p) { if (!p.flying && !p.bank) return; /* (Spider-Man's bank too, off the web) */ p.flying = false; p.tilt = p.bank = 0; p.flyYaw = null; p.c.root.rotation.x = p.c.root.rotation.z = 0; petJets(p, false); }
   const PET_NIGHT = 0.45; // (night: a pet's own colours lifted a little -- a dark muzzle had swallowed eyes and nose)
   const petV = new THREE.Vector3(); const petV2 = new THREE.Vector3(); const upY = new THREE.Vector3(0, 1, 0);
-  // a white line (the web, the kite's tow) from a to b, made once a pet
-  function petLine(p, a, b) {
-    if (!p.line) { p.line = mesh(new THREE.CylinderGeometry(0.006, 0.006, 1, 5), mat(0xffffff, { roughness: 0.6 }), 0, 0, 0, scene); p.line.castShadow = false; }
-    const len = a.distanceTo(b); p.line.position.copy(a).add(b).multiplyScalar(0.5); p.line.scale.set(1, Math.max(0.01, len), 1);
-    p.line.quaternion.setFromUnitVectors(upY, petV2.copy(b).sub(a).normalize()); p.line.visible = true;
+  // a white line (the web) from a to b, made once a pet (key 'line2': the slack web's second half)
+  function petLine(p, a, b, key = 'line') {
+    if (!p[key]) { p[key] = mesh(new THREE.CylinderGeometry(0.006, 0.006, 1, 5), mat(0xffffff, { roughness: 0.6 }), 0, 0, 0, scene); p[key].castShadow = false; }
+    const l = p[key]; const len = a.distanceTo(b); l.position.copy(a).add(b).multiplyScalar(0.5); l.scale.set(1, Math.max(0.01, len), 1);
+    l.quaternion.setFromUnitVectors(upY, petV2.copy(b).sub(a).normalize()); l.visible = true;
   }
+  const petLinesOff = (p) => { if (p.line) p.line.visible = false; if (p.line2) p.line2.visible = false; };
   function petHolder(kind, coat = null) { // (play: the clip to show, crossfaded once the model is in; dispose: away)
     if (kind.startsWith('tf_')) return transformPet(kind.slice(3));
     const c = { root: new THREE.Group(), mixer: null, actions: {}, want: 'Idle', now: null, gone: false,
@@ -3439,7 +3443,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       // (펫 깜빡임: another's pet through a moment of none -- a server just up -- while they are still here: kept 3 s, then gone)
       if (!w && key !== 'me' && others.has(key) && now - (p.goneAt ||= now) < 3000) { want.set(key, p.want); continue; }
       p.goneAt = 0;
-      if (!w || w.kind !== p.kind || (w.name || null) !== p.name || (w.coat || null) !== p.coat) { p.c.dispose(); for (const m of p.nightMats || []) m.dispose(); if (p.line) { p.line.removeFromParent(); p.line.geometry?.dispose(); } if (p.jets) { p.jets.removeFromParent(); for (const im of p.jets.children) { im.material.dispose(); im.dispose(); } } pets.delete(key); } else p.want = w; /* (1.10.395 Codex 381~390 #15: a nameless pet's '' and null the same -- not made again every frame; its own line's geometry freed) */
+      if (!w || w.kind !== p.kind || (w.name || null) !== p.name || (w.coat || null) !== p.coat) { p.c.dispose(); for (const m of p.nightMats || []) m.dispose(); for (const l of [p.line, p.line2]) if (l) { l.removeFromParent(); l.geometry?.dispose(); } if (p.jets) { p.jets.removeFromParent(); for (const im of p.jets.children) { im.material.dispose(); im.dispose(); } } pets.delete(key); } else p.want = w; /* (1.10.395 Codex 381~390 #15: a nameless pet's '' and null the same -- not made again every frame; its own line's geometry freed) */
     }
     for (const [key, w] of want) {
       const owner = key === 'me' ? me : others.get(key)?.c; if (!w || !owner?.root) continue;
@@ -3466,17 +3470,30 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (w.kind === 'tf_batman') capeSpread(p, role === 'glide', dt);
       const r = p.c.root.position; const lift = (o) => Math.max(owner.root.position.y - 0.05, heightAt(o.x, o.z));
       const seat = (k) => { const s = PET_SEAT[`${w.kind}:${k}`] || PET_SEAT[w.kind] || [0, 0, 0]; const a = yaw + Math.PI; return [s[0] * Math.cos(a) + s[2] * Math.sin(a), s[1], -s[0] * Math.sin(a) + s[2] * Math.cos(a)]; }; /* (its own frame turned to the world) */
-      if (role === 'basket' || role === 'kite') { // (riding in or behind its owner's bike: placed there, facing as they do)
-        { owner.bike.group.updateWorldMatrix(true, false); const s = role === 'basket' ? seat('basket') : [0, 0, 0];
-          let hand = null; if (role === 'kite') { if (p.handOf !== owner.assetRoot) { p.handOf = owner.assetRoot; p.hand = handOf(owner); } hand = p.hand?.parent ? p.hand.getWorldPosition(petV2) : null; } /* (the string's end in the right hand; the kite out on that hand's side) */
-          const side = hand ? Math.sign(owner.bike.group.worldToLocal(petV.copy(hand)).x || 1) * KITE_SIDE : KITE_SIDE;
-          owner.bike.group.localToWorld(role === 'basket' ? petV.set(...BIKE.basket) : petV.set(KITE_AT[0] + side, KITE_AT[1], KITE_AT[2])); r.set(petV.x + s[0], petV.y + s[1], petV.z + s[2]);
-          if (role === 'kite') { if (hand) petV.copy(hand); else owner.bike.group.localToWorld(petV.set(...BIKE.hook)); petLine(p, petV, r); } }
+      if (role === 'basket') { // (riding in its owner's bike: placed there, facing as they do)
+        owner.bike.group.updateWorldMatrix(true, false); const s = seat('basket');
+        owner.bike.group.localToWorld(petV.set(...BIKE.basket)); r.set(petV.x + s[0], petV.y + s[1], petV.z + s[2]);
         p.c.root.rotation.y = yaw + Math.PI + (p.c.yawOffset || 0); p.c.play(PET_KIND_CLIP[`${w.kind}:${role}`] || PET_CLIP[role]); p.c.step?.(dt);
-        if (role !== 'kite' && p.line) p.line.visible = false;
+        petLinesOff(p); continue;
+      }
+      if (role === 'kite') { // (182: towed like a cart -- kept WEB_FLAT from the ring, so a turn swings him out; on the ground, facing the ring)
+        const b = owner.bike.group; b.updateWorldMatrix(true, false); const hook = b.localToWorld(petV.set(...BIKE.hook));
+        if (was !== 'kite' || !p.tow || Math.hypot(p.tow.x - hook.x, p.tow.z - hook.z) > WEB_FLAT + 3) p.tow = { x: hook.x - fx * WEB_FLAT, z: hook.z - fz * WEB_FLAT };
+        let dx = p.tow.x - hook.x; let dz = p.tow.z - hook.z; const dd = Math.hypot(dx, dz) || 1;
+        if (dd > WEB_FLAT || dd < WEB_NEAR) { const k = (dd > WEB_FLAT ? WEB_FLAT : WEB_NEAR) / dd; dx *= k; dz *= k; p.tow.x = hook.x + dx; p.tow.z = hook.z + dz; } /* (pulled once the web is taut; never under the bike) */
+        const turn = p.kiteYaw == null || dt <= 0 ? 0 : Math.atan2(Math.sin(yaw - p.kiteYaw), Math.cos(yaw - p.kiteYaw)) / dt; p.kiteYaw = yaw;
+        const going = (p.speed || 0) >= WEB_STILL; const straight = going ? Math.max(0, 1 - Math.abs(turn) / 0.6) : 0; const e = 1 - Math.exp(-dt * 3);
+        p.sway = (p.sway || 0) + (straight * WEB_SWAY * Math.sin((now / 1000) * 2 * Math.PI / WEB_SWAY_S) - (p.sway || 0)) * e;
+        const len = Math.hypot(dx, dz) || 1; r.x = p.tow.x - (dz / len) * p.sway; r.z = p.tow.z + (dx / len) * p.sway; r.y = lift(r);
+        p.c.root.rotation.y = Math.atan2(-(hook.x - r.x), -(hook.z - r.z)) + (p.c.yawOffset || 0);
+        const bank = going ? Math.max(-WEB_BANK, Math.min(WEB_BANK, -turn * 0.25)) : 0; p.bank = (p.bank || 0) + (bank - (p.bank || 0)) * e;
+        p.c.root.rotation.order = 'YXZ'; p.c.root.rotation.z = p.bank; p.c.play(going ? PET_CLIP.kite : 'Idle'); p.c.step?.(dt);
+        p.c.root.updateWorldMatrix(false, false); const hand = p.c.root.localToWorld(petV2.set(...WEB_HOLD));
+        if (going) { petLine(p, hook, hand); if (p.line2) p.line2.visible = false; }
+        else { webEnd.copy(hand); webMid.copy(hook).add(webEnd).multiplyScalar(0.5); webMid.y -= WEB_SAG; petLine(p, hook, webMid); petLine(p, webMid, webEnd, 'line2'); } /* (standing: the web slack, its middle 10 cm down) */
         continue;
       }
-      if (p.line && role !== 'web') p.line.visible = false;
+      if (p.line2) p.line2.visible = false; if (p.line && role !== 'web') p.line.visible = false;
       const bird = role === 'birdFly'; const back = bird ? BIRD_BACK : role === 'glide' ? GLIDE_BACK : role === 'run' || role === 'sprint' ? 1.3 : 0.9; const out = bird ? BIRD_SIDE : 0.6;
       const tx = owner.root.position.x - fx * back + fz * out; const tz = owner.root.position.z - fz * back - fx * out;
       const dx = tx - r.x; const dz = tz - r.z; const d = Math.hypot(dx, dz);
