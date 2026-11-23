@@ -2986,7 +2986,7 @@ body>.dressRoom{display:none} /* (bugs 10: the 성형외과·염색사 card wait
 /* 1.10.348 4b 「오늘 알림」: a part each, apart */
 .todayNotice{display:grid;gap:12px}.todayNoticePart{display:grid;gap:4px;justify-items:start}.todayNoticePart p{margin:0}.todayNoticeRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .stampHead{display:flex;justify-content:space-between;align-items:baseline}.stampHead strong{font-size:1.05rem}.stampCount{color:var(--isle-soft);font-weight:700}
-.stampGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.stampGrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
 .stampWeekday{text-align:center;font-size:.75rem;color:var(--isle-soft);font-weight:700}
 .stampDay{position:relative;aspect-ratio:1;border-radius:50%;border:2px dashed var(--isle-line);display:grid;place-items:center;background:#fffaf0}
 .stampDay.later{opacity:.5}.stampDay.today{border-style:solid;border-color:#c98a1e}
@@ -4035,3 +4035,5 @@ body.plazaMode .isle-sheet .taxiDests .taxiDest[aria-checked="true"]{background:
 .taxiDests .taxiDest{justify-content:flex-start}
 /* 1.10.421 U7 (ui-review P2 · P3 · P5 · P7): on a touch screen -- the bag's foot buttons and the stock / flea tabs one row that slides (no second line over the edge), the record tower's chips fading at their end (more there), and the small targets 40 px and up */
 @media (pointer:coarse){.islandBagFoot{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.islandBagFoot>*{flex:0 0 auto}.stocksTabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.stocksTabs>*{flex:0 0 auto}.recordTowerChips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);mask-image:linear-gradient(90deg,#000 88%,transparent)}.bagTab,#islandBagDialog .islandDexTab,#islandBagDialog .islandBagFoot button,.stocksTabs button,.recordTowerChip{min-height:40px}#islandBagDialog>.recordsDialogHead>button:last-child{min-width:40px;min-height:40px}#islandBagDialog .islandDexGrid{max-height:min(52dvh,560px)}}
+/* 1.10.423 다듬기 164 D (폰 행사 공지): on a narrow phone the 대회 띠 one short line ending before the minimap's middle (its place name and middle always seen) -- the rest "…" */
+@media (max-width:640px){body.touchIsland .islandTopRow .contestBar{margin:2px auto 0 0;max-width:calc(100% - 140px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}

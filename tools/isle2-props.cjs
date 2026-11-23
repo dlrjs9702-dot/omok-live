@@ -70,9 +70,9 @@ const SIGN_TRAIL = (() => {
 const CAVE = { x: 363, z: 176, yaw: 0.942 };
 const caveSolids = SRC.caveSolids;
 
-// ---- the camp (136): the fire in its middle, two benches facing it, three stools round it ----
-const C = I.camp; const CAMP = [[C.x, C.z, 0, 0]];
-for (const [ang, kind, d] of [[0.3, 1, 2.6], [Math.PI + 0.3, 1, 2.6], [1.9, 2, 2.3], [4.2, 2, 2.3], [5.3, 2, 2.4]]) { const x = C.x + Math.cos(ang) * d; const z = C.z + Math.sin(ang) * d; const yaw = Math.atan2(-(C.x - x), -(C.z - z)); CAMP.push([r2(x), r2(z), r3(yaw), kind]); } /* (each one's -Z, the way a seat faces, toward the fire) */
+// ---- the camp (136): its old middle set (a fire, two benches, three stools) -- gone in 1.10.423 (사용자 결정 80 A: 164's hearth set the camp's fire,
+//      the middle left open ground); its kinds kept (their models, the stand-ins' sizes) ----
+const C = I.camp; const CAMP = [];
 const CAMP_KINDS = ['campfire', 'log_bench', 'log_stool'];
 /* ---- 1.10.413 S1 the camp's tall palisade (assets 174, 사용자 결정 72 · 검토 safe-zones-visible §2-1): a ring round the camp, the pieces' middles
    camp.ring.r out, +Z (their inside) to the camp; a people's wicket (1.2 m, tigers 1.5 ~ 1.8 m across) on each walk that crosses it -- the middle of
@@ -177,7 +177,13 @@ CIRCLES.lookout_tower = [[[-3.4, 3.4], [2.2, 3.4]], [[-3.4, 3.4], [-3.4, -3.4]],
   .filter((c, i, all) => all.findIndex((d) => Math.hypot(d[0] - c[0], d[1] - c[1]) < 0.05) === i);
 BOXES.lookout_tower = [6.8, 6.2, 6.8, 0];
 
-const data = { FENCE: [...FENCE, ...CAMP_FENCE, ...LOOKOUT_FENCE], CAMP2, TOWER, CORNERS, SIGN, SIGN_RESERVE, SIGN_TRAIL, CAVE, CAMP, ROCK, SWAMPS, SWAMP_OUTLINES, REEDS, DECO };
+/* ---- 1.10.423 다듬기 164 ④ the creek's stones (assets 164 04. Specifications/placements.json, 24): both banks every 9-15 m, a flat one mid-stream every
+   30 m; the model's origin its water line (y: IslandTerrain.creekWaterY there); a bank stone's circle r (scaled) blocks -- the mid ones none.
+   [x, z, yaw, kind of CREEK_KINDS, scale, r] ---- */
+const CREEK_KINDS = ['creek_stone_a', 'creek_stone_b', 'creek_stone_c'];
+const CREEK_STONES = [[359.96, 175.08, -2.313, 1, 1.17, 0.48], [361.23, 173.33, -2.389, 1, 0.97, 0.4], [360.43, 174.44, -2.399, 2, 1.16, 0], [351.35, 169.07, -2.456, 1, 0.96, 0.4], [352.81, 167.06, -2.045, 1, 0.98, 0.4], [344.72, 161.18, -2.115, 0, 0.92, 0.33], [341.76, 161.85, -1.847, 0, 0.88, 0.32], [335.86, 158.01, -1.89, 2, 0.89, 0], [335.62, 156.12, -1.814, 1, 1.13, 0.47], [331.36, 157.04, -1.996, 1, 1.08, 0.45], [323.74, 150.84, -2.329, 0, 1.16, 0.42], [321.36, 152.47, -1.793, 0, 1.02, 0.37], [314.94, 146.14, -1.897, 0, 0.86, 0.31], [311.57, 146.78, -2.174, 0, 1.13, 0.41], [309.55, 144.37, -2.457, 2, 1.19, 0], [306.96, 140.97, -2.054, 0, 1.01, 0.36], [302.3, 140.86, -1.836, 0, 1.06, 0.38], [297.21, 134.37, -2.731, 1, 0.98, 0.4], [294.53, 134.94, -2.178, 1, 1.07, 0.44], [286.97, 124.11, -2.032, 1, 1.1, 0.45], [286.23, 124.85, -2.328, 2, 0.95, 0], [284.93, 125.44, -2.24, 1, 0.9, 0.37], [277.81, 118.49, -2.574, 1, 1.1, 0.45], [279.01, 116.58, -2.722, 1, 1.09, 0.45]];
+
+const data = { FENCE: [...FENCE, ...CAMP_FENCE, ...LOOKOUT_FENCE], CAMP2, TOWER, CREEK_STONES, CORNERS, SIGN, SIGN_RESERVE, SIGN_TRAIL, CAVE, CAMP, ROCK, SWAMPS, SWAMP_OUTLINES, REEDS, DECO };
 const text = `// 1.10.375 N2a-1 별마루섬's still pieces -- MADE by tools/isle2-props.cjs (do not edit: run it again). The fence round the island (${FENCE.length} pieces of
 // 2.4 m, [x, z, yaw, kind of FENCE_KINDS]; the gate where the walk from 별마루다리 crosses it), its corner posts, 157's spring cave, the camp's
 // fire / benches / stools, 우레's rock, the swamps (their outlines in the world: a bike inside is slowed) with reeds and 152c's pieces. CIRCLES
@@ -188,7 +194,7 @@ const text = `// 1.10.375 N2a-1 별마루섬's still pieces -- MADE by tools/isl
   else root.Isle2Props = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, () => {
   'use strict';
-  const FENCE_KINDS = ${JSON.stringify(KINDS)}; const CAMP_KINDS = ${JSON.stringify(CAMP_KINDS)}; const CAMP2_KINDS = ${JSON.stringify(CAMP2_KINDS)}; const SWAMP_KINDS = ${JSON.stringify(SWAMP_KINDS)}; const REED_KINDS = ${JSON.stringify(REED_KINDS)}; const DECO_KINDS = ${JSON.stringify(DECO_KINDS)};
+  const FENCE_KINDS = ${JSON.stringify(KINDS)}; const CAMP_KINDS = ${JSON.stringify(CAMP_KINDS)}; const CAMP2_KINDS = ${JSON.stringify(CAMP2_KINDS)}; const CREEK_KINDS = ${JSON.stringify(CREEK_KINDS)}; const SWAMP_KINDS = ${JSON.stringify(SWAMP_KINDS)}; const REED_KINDS = ${JSON.stringify(REED_KINDS)}; const DECO_KINDS = ${JSON.stringify(DECO_KINDS)};
   const DATA = ${JSON.stringify(data)};
   const CIRCLES = ${JSON.stringify(CIRCLES)};
   const BOXES = ${JSON.stringify(BOXES)}; const CAVE_BOXES = ${JSON.stringify(CAVE_BOXES)};
@@ -202,6 +208,7 @@ const text = `// 1.10.375 N2a-1 별마루섬's still pieces -- MADE by tools/isl
     for (const [x, z, yaw, k] of DATA.CAMP) all.push(...circlesAt(CAMP_KINDS[k], x, z, yaw));
     for (const [x, z, yaw, k] of DATA.CAMP2 || []) all.push(...circlesAt(CAMP2_KINDS[k], x, z, yaw));
     if (DATA.TOWER) all.push(...circlesAt('lookout_tower', DATA.TOWER[0], DATA.TOWER[1], DATA.TOWER[2]).map((c) => ({ ...c, tower: true }))); /* (1.10.416 S4: its guard rails) */
+    for (const [x, z, , , , r] of DATA.CREEK_STONES || []) if (r > 0) all.push({ x, z, r }); /* (1.10.423 164 ④: a bank stone's own round) */
     if (DATA.ROCK) all.push(...circlesAt('tiger_rock', DATA.ROCK[0], DATA.ROCK[1], DATA.ROCK[2]));
     if (DATA.SIGN) all.push(...circlesAt('sign_tiger', DATA.SIGN[0], DATA.SIGN[1], DATA.SIGN[2]));
     if (DATA.SIGN_RESERVE) all.push(...circlesAt('sign_reserve', DATA.SIGN_RESERVE[0], DATA.SIGN_RESERVE[1], DATA.SIGN_RESERVE[2]));
@@ -213,7 +220,7 @@ const text = `// 1.10.375 N2a-1 별마루섬's still pieces -- MADE by tools/isl
   // in a swamp (a bike there slowed): inside any outline
   const inPoly = (x, z, p) => { let inside = false; for (let i = 0, j = p.length - 1; i < p.length; j = i, i += 1) { const [xi, zi] = p[i]; const [xj, zj] = p[j]; if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside; } return inside; };
   const inSwamp = (x, z) => DATA.SWAMPS.some(([sx, sz], i) => Math.hypot(x - sx, z - sz) < 7 && inPoly(x, z, DATA.SWAMP_OUTLINES[i]));
-  return Object.freeze({ ...DATA, FENCE_KINDS, CAMP_KINDS, CAMP2_KINDS, SWAMP_KINDS, REED_KINDS, DECO_KINDS, CIRCLES, BOXES, CAVE_BOXES, circlesAt, solids, inSwamp });
+  return Object.freeze({ ...DATA, FENCE_KINDS, CAMP_KINDS, CAMP2_KINDS, CREEK_KINDS, SWAMP_KINDS, REED_KINDS, DECO_KINDS, CIRCLES, BOXES, CAVE_BOXES, circlesAt, solids, inSwamp });
 });
 `;
 if (process.argv.includes('--check')) { const now = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8').replace(/\r\n/g, '\n') : ''; if (now !== text) { console.error('isle2-props.js is stale: run node tools/isle2-props.cjs'); process.exit(1); } console.log('isle2-props ok'); }

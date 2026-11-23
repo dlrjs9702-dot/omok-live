@@ -31,6 +31,7 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
       rec.doors = []; rec.wheels = []; rec.lights = []; if (!entry) return;
       h.traverse((o) => { if (o.name === 'door_L') rec.doors.push({ o, side: -1, yaw0: o.rotation.y }); /* (the bench's side: only that door opens, 0 -> -70°) */ if (/wheel/i.test(o.name) && !/mesh/i.test(o.name)) rec.wheels.push(o); if (o.material && /glow/.test(o.material.name || '')) rec.lights.push(o.material); });
     });
+    const sign = new THREE.Group(); h.add(sign); assets.attach('taxi.roof_sign', sign, new THREE.Group()); /* (1.10.423 다듬기 164 ⑦: the roof's 택시 mark -- in the car file's own frame) */
     return rec;
   }
   // a car where a ride's pose says: on the ground (the bridge's arch too), its lean, its doors open while one gets in or out

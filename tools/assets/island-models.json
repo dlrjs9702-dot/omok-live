@@ -4880,6 +4880,70 @@
       "precompressed": true
     },
     {
+      "out": "projects-v1/fountain_water.glb",
+      "src": "polish164:01. High/projects-v1/fountain_water.glb",
+      "sha256": "9832d3515f06af5d35d107f0f6f0164770d4cc80a6092203090d9ba3bde91802",
+      "lowSrc": "polish164:02. Low/projects-v1/fountain_water_low.glb",
+      "lowSha256": "7b87892846c937b7797208ce6ca822e0f8dcf308aa5c17e08ebd4a3f33e682c2",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/creek_stone_a.glb",
+      "src": "polish164:01. High/byeolmaru-v1/creek_stone_a.glb",
+      "sha256": "2fe4b206fd9b3f1bc8bce222cb3ccb825f05383ddca49b4b5f4c33a62653cde9",
+      "lowSrc": "polish164:02. Low/byeolmaru-v1/creek_stone_a_low.glb",
+      "lowSha256": "87f4257a60b8ce03a0f975f281c243e86b9414a70d6cbba4ae726e8b8e432154",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/creek_stone_b.glb",
+      "src": "polish164:01. High/byeolmaru-v1/creek_stone_b.glb",
+      "sha256": "b15f507a4dc40f836db67cab37a91d9ff5449e64422521e985f465c9bd90af6d",
+      "lowSrc": "polish164:02. Low/byeolmaru-v1/creek_stone_b_low.glb",
+      "lowSha256": "f8f78e2008dd9224b50407f2a75aa27e96acc8fc5c19ea757ce13d5ec14a4885",
+      "precompressed": true
+    },
+    {
+      "out": "byeolmaru-v1/creek_stone_c.glb",
+      "src": "polish164:01. High/byeolmaru-v1/creek_stone_c.glb",
+      "sha256": "af45d49a513df2145d3172ce3b7fe7fd9488122f180a1f466097f8b235ce3d2e",
+      "lowSrc": "polish164:02. Low/byeolmaru-v1/creek_stone_c_low.glb",
+      "lowSha256": "d4f0163878d6c4cacb4f2dad4465d31bd2c83f909cfda0704c9b593214c2a042",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v1/quarry_skirt_a.glb",
+      "src": "polish164:01. High/quarry-v1/quarry_skirt_a.glb",
+      "sha256": "e22e29cc0b15f319bc51d3d980e4b40075693e7c740126612fff3dc19cf7325a",
+      "lowSrc": "polish164:02. Low/quarry-v1/quarry_skirt_a_low.glb",
+      "lowSha256": "afc082610ecd0e43bb75f00cad75c37e955a7af6a27b2ca6def7771740c2dd13",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v1/quarry_skirt_b.glb",
+      "src": "polish164:01. High/quarry-v1/quarry_skirt_b.glb",
+      "sha256": "4c10c2fe265768a22cf9c934d3d7b157eb0907ca1e7f2db07d414ba68f6ab488",
+      "lowSrc": "polish164:02. Low/quarry-v1/quarry_skirt_b_low.glb",
+      "lowSha256": "1e1eec910656c78758d876f3b2355a200a672b79b0c4acdc5a598b0ac3cb87cc",
+      "precompressed": true
+    },
+    {
+      "out": "quarry-v1/quarry_skirt_c.glb",
+      "src": "polish164:01. High/quarry-v1/quarry_skirt_c.glb",
+      "sha256": "b3281280704e8d7c67a410a1472158497a0de11514cb80dbadd713f8b6305fb1",
+      "lowSrc": "polish164:02. Low/quarry-v1/quarry_skirt_c_low.glb",
+      "lowSha256": "731a51e7392457a5c379b164c0d84c859947e7a2d6f4494beaba07fc54f40bac",
+      "precompressed": true
+    },
+    {
+      "out": "taxi-v1/taxi_roof_sign.glb",
+      "src": "polish164:01. High/taxi-v1/taxi_roof_sign.glb",
+      "sha256": "8b8b62ccfacb3a0eafb8dac83d72f6512139c4e1155ec6d615ea47b66fe29471",
+      "lowSrc": "polish164:02. Low/taxi-v1/taxi_roof_sign_low.glb",
+      "lowSha256": "8b8b62ccfacb3a0eafb8dac83d72f6512139c4e1155ec6d615ea47b66fe29471",
+      "precompressed": true
+    },
+    {
       "out": "characters/npc_walker_morak_work.glb",
       "src": "morak177:01. High/npc_walker_morak_work.glb",
       "sha256": "72707ee2fc0b3a03ac0819dabb65e65306c77e74c476f0c3435e4b185cc240cb",
@@ -5151,10 +5215,10 @@
     },
     {
       "out": "plaza-v1/plaza_medallion.glb",
-      "src": "flicker150:01. High/plaza-v1/plaza_medallion.glb",
-      "sha256": "d994b4446f7c78f95a9f0f669987a6770b13b53c696cbdfe229bd8a12bd92bac",
-      "lowSrc": "flicker150:02. Low/plaza-v1/plaza_medallion_low.glb",
-      "lowSha256": "19e1635299b68fa5c7ae36096d72ded5f616a6886084601a6b1bbdb485bbd7f9",
+      "src": "polish164:01. High/plaza-v1/plaza_medallion.glb",
+      "sha256": "96d2bdca5f4b7d1303adf5bd26877220c2d0cdacfff2d9f52f8b2954dda93a0f",
+      "lowSrc": "polish164:02. Low/plaza-v1/plaza_medallion_low.glb",
+      "lowSha256": "97bacd348a051dac092b5acf0e3836b35f760ad177b1b90f451e109155db17fb",
       "precompressed": true
     },
     {
@@ -5215,26 +5279,26 @@
     },
     {
       "out": "furniture-v1/furn_aquarium_wall__stone.glb",
-      "src": "flicker150:01. High/furniture-v1/furn_aquarium_wall__stone.glb",
-      "sha256": "322bc87407372bb929e8e9e853c552d693bcf4e00d0138d1f07f059a55e2443e",
-      "lowSrc": "flicker150:02. Low/furniture-v1/furn_aquarium_wall__stone_low.glb",
-      "lowSha256": "e2e65d4a7a3a0ff93d27e4c505f8bfc52b60e5e8956146093c689e7a3b64086f",
+      "src": "polish164:01. High/furniture-v1/furn_aquarium_wall__stone.glb",
+      "sha256": "0799a0da263dfd338b2825817411e63957c083b1854c6696ce69c4aabc672f3d",
+      "lowSrc": "polish164:02. Low/furniture-v1/furn_aquarium_wall__stone_low.glb",
+      "lowSha256": "eb44025c9ed59cbd03b152d2413b49ad39b8f8b126fce0ff5a6c0ecc7dc731d0",
       "precompressed": true
     },
     {
       "out": "furniture-v1/furn_aquarium_wall__oak.glb",
-      "src": "flicker150:01. High/furniture-v1/furn_aquarium_wall__oak.glb",
-      "sha256": "f1921eec31240cc607275ad1d75a0422a60103874cf1abaa74e71d02f19e7fe3",
-      "lowSrc": "flicker150:02. Low/furniture-v1/furn_aquarium_wall__oak_low.glb",
-      "lowSha256": "e3ff30c29a89c2c941300ffa7a01279d3e5e4ee12e2d245f031bdbea1da223c0",
+      "src": "polish164:01. High/furniture-v1/furn_aquarium_wall__oak.glb",
+      "sha256": "a6aacf06ca6547f6a056b47f0dfdeb7644573579603fa31dab2d7adc73129e3e",
+      "lowSrc": "polish164:02. Low/furniture-v1/furn_aquarium_wall__oak_low.glb",
+      "lowSha256": "94240ac1e67fe49889601ae947924414adbf33735d8f1483ef83733a1c720d90",
       "precompressed": true
     },
     {
       "out": "furniture-v1/furn_aquarium_wall__white.glb",
-      "src": "flicker150:01. High/furniture-v1/furn_aquarium_wall__white.glb",
-      "sha256": "618fa284981405d42d55ac1197306705b6c099ba77432efe74483f2789341537",
-      "lowSrc": "flicker150:02. Low/furniture-v1/furn_aquarium_wall__white_low.glb",
-      "lowSha256": "903d642acfaf305e07081be35213146202e57c902d3fb31f38524248238d2919",
+      "src": "polish164:01. High/furniture-v1/furn_aquarium_wall__white.glb",
+      "sha256": "af65f275141ba7fa3d593a52d8cb052105ac94b880f08944764432058cb31ee0",
+      "lowSrc": "polish164:02. Low/furniture-v1/furn_aquarium_wall__white_low.glb",
+      "lowSha256": "4c3aca6a472c509083c4f287eb082a7eb345b83fa8b5b81735c59d4f6da4b4d2",
       "precompressed": true
     },
     {
@@ -8008,10 +8072,10 @@
     },
     {
       "out": "characters/npc_walker_maru_work.glb",
-      "src": "walker121:01. High/npc_walker_maru_work.glb",
-      "sha256": "186d5f87e5f863db028e954fda42275920fa7216c61347aef6f89d602cf14bd9",
-      "lowSrc": "walker121:02. Low/npc_walker_maru_work_low.glb",
-      "lowSha256": "fb0a25ff284ad5922b18e6a00668372c0450cad717c83dec3dbf03c3ff7195ca",
+      "src": "polish164:01. High/characters/npc_walker_maru_work.glb",
+      "sha256": "96957f40075d7dc467338cea0cc5652996998b30f3e9f9a7d524438d5f4b4487",
+      "lowSrc": "polish164:02. Low/characters/npc_walker_maru_work_low.glb",
+      "lowSha256": "0e58e11004a0b10b4788e2e960c950bab9fea7249322782066e6adc2a9764cea",
       "precompressed": true
     },
     {
