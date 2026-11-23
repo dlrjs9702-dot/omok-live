@@ -8401,6 +8401,15 @@
     chips('tier', '등급', SKIN_TIER_ORDER.filter((t) => skins.some((s) => s.tier === t)).map((t) => [t, skins.find((s) => s.tier === t).tierLabel]));
     chips('series', '시리즈', SKIN_SERIES.filter(([k]) => skins.some((s) => seriesOf(s) === k)));
     if (own) chips('own', '보유', [['missing', '안 산 것'], ['owned', '산 것']]);
+    // 1.10.426 U8 (검토 ui-review D5): one row of chips -- the rest behind 「더 보기」 (open while one of theirs is chosen, or once asked); the island's
+    // windows only (the lobby's as they were)
+    const groups = [...bar.querySelectorAll('.skinChips')];
+    if (groups.length > 1 && document.body.classList.contains('plazaMode')) {
+      const open = f.more || groups.slice(1).some((g) => g.querySelector('.skinChip.selected:not([data-value=""])'));
+      for (const g of groups.slice(1)) g.classList.add('skinChipsMore'); bar.classList.toggle('chipsFolded', !open);
+      const more = document.createElement('button'); more.type = 'button'; more.className = 'ghost tiny skinChip skinChipsToggle'; more.textContent = open ? '접기' : '더 보기'; more.setAttribute('aria-expanded', String(open));
+      more.addEventListener('click', () => { f.more = bar.classList.contains('chipsFolded'); const shut = !f.more; /* (from how it is now: open, shut, open again) */ bar.classList.toggle('chipsFolded', shut); more.textContent = shut ? '더 보기' : '접기'; more.setAttribute('aria-expanded', String(!shut)); }); groups[0].append(more);
+    }
     return bar;
   }
   function slotTabsOf(skins, current, { all = false } = {}) { // character skins: a tab per 부위 (and 전체 in 내 정보)
