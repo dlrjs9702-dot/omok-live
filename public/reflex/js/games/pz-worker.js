@@ -3,7 +3,8 @@ import { generate as sudoku } from './sudoku-core.js';
 import { randomPuzzle as nonogram } from './nonogram-core.js';
 import { generate as hashi } from './hashi-core.js';
 import { generate as circuit } from './circuit-core.js';
-const MAKE = { sudoku, nonogram, hashi, circuit };
+import { generate as lightup } from './lightup-core.js'; // (H1 불빛 채우기)
+const MAKE = { sudoku, nonogram, hashi, circuit, lightup };
 self.onmessage = (e) => {
   const { id, kind, seed, level } = e.data;
   try { self.postMessage({ id, puzzle: MAKE[kind](seed, level) }); } catch (err) { self.postMessage({ id, error: String(err) }); }

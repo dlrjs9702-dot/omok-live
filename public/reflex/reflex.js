@@ -36,6 +36,7 @@ import sudoku from './js/games/sudoku.js';
 import nonogram from './js/games/nonogram.js';
 import hashi from './js/games/hashi.js';
 import circuit from './js/games/circuit.js';
+import lightup from './js/games/lightup.js'; // (H1 불빛 채우기)
 import klondike from './js/games/klondike.js';
 import freecell from './js/games/freecell.js';
 import spider from './js/games/spider.js';
@@ -47,7 +48,7 @@ import mines from './js/games/mines.js';
 
 const SETS = {
   reflex: { title: '순발력 게임', games: [whack, reaction, colorfind, numbers, rhythm, stairs], info: '/api/solo/reflex' },
-  puzzle: { title: '퍼즐', games: [sudoku, nonogram, hashi, circuit], info: '/api/solo/puzzle' },
+  puzzle: { title: '퍼즐', games: [sudoku, nonogram, hashi, circuit, lightup], info: '/api/solo/puzzle' },
   cards: { title: '카드 게임', games: [klondike, freecell, spider], info: '/api/solo/cards' },
   ai: { title: 'AI 대전', games: [gomoku, connect4, reversi], info: null }, // practice: no server
   // v1.10.249 G4: 지뢰찾기 -- its board on the server (/api/solo/minesweeper), which keeps the record when it is cleared

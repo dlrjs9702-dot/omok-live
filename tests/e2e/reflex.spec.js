@@ -131,6 +131,25 @@ test('하늘 계단: 두 버튼으로 35계단 → 헛디딤 → 결과·최고 
 
 // v1.10.69 퍼즐: 싱글게임 → 「퍼즐」 → 스도쿠 오늘의 문제를 키보드(방향키·숫자)로 실제로 풀면 서버가 그날 정답과 맞춰 본다.
 // 몇 초 만에 푼 판이라 포인트는 없고(사람이 못 푸는 시간), 기록은 남는다.
+// H1 불빛 채우기 (한판마당 자료 2 07): today's easy puzzle opened from the 퍼즐 cards, the server's answer bulbs pressed on the board (the game's
+// own down/up, at each cell's middle), the clear kept by the server once
+test('퍼즐: 불빛 채우기 오늘의 문제를 풀면 서버가 정답 확인·기록', async ({ browser, request }) => {
+  test.setTimeout(120000);
+  const PuzzleDaily = require('../../lib/puzzle-daily'); const { kstDate } = require('../../lib/point-store');
+  const sol = await PuzzleDaily.answer('lightup', 'easy', kstDate(Date.now()));
+  const a = await shopper(browser, request, '불빛손'); const { page, token } = a;
+  await page.locator('[data-game-mode="single"]').click(); await page.locator('#soloPuzzleBtn').click();
+  await page.locator('.reflexCard', { hasText: '불빛 채우기' }).click();
+  await expect(page.locator('.reflexModes .reflexLevel[aria-checked="true"]')).toHaveText('오늘의 문제');
+  await page.locator('.reflexGo').click(); await expect(page.locator('#hud')).toBeVisible();
+  await expect.poll(() => page.evaluate(async () => (await import('/reflex/js/games/lightup.js')).default._s?.ready === true), { timeout: 15000 }).toBe(true);
+  await page.waitForTimeout(300);
+  await page.evaluate(async (sol) => { const g = (await import('/reflex/js/games/lightup.js')).default; const s = g._s; sol.forEach((v, i) => { if (v !== 1) return; const x = s.ox + ((i % s.P.w) + 0.5) * s.cell; const y = s.oy + (Math.floor(i / s.P.w) + 0.5) * s.cell; g.down(x, y, 1); g.up(x, y, 1); }); }, sol);
+  await expect(page.locator('#reflexResult')).toBeVisible({ timeout: 10000 });
+  await expect.poll(async () => (await get(request, '/api/solo/puzzle', token)).data.records.lightup?.easy?.clears ?? 0, { timeout: 10000 }).toBe(1);
+  await expectNoScriptError(page); await a.context.close();
+});
+
 test('퍼즐: 스도쿠 오늘의 문제를 키보드로 풀면 서버가 정답 확인·기록', async ({ browser, request }) => {
   test.setTimeout(120000);
   const PuzzleDaily = require('../../lib/puzzle-daily');
@@ -140,7 +159,7 @@ test('퍼즐: 스도쿠 오늘의 문제를 키보드로 풀면 서버가 정답
   const { page, token } = a;
   await page.locator('[data-game-mode="single"]').click();
   await page.locator('#soloPuzzleBtn').click();
-  await expect(page.locator('.reflexCard strong')).toHaveText(['스도쿠', '네모로직', '다리 잇기', '회로 연결']);
+  await expect(page.locator('.reflexCard strong')).toHaveText(['스도쿠', '네모로직', '다리 잇기', '회로 연결', '불빛 채우기' /* (H1) */]);
   await page.locator('.reflexCard', { hasText: '스도쿠' }).click();
   await expect(page.locator('.reflexModes .reflexLevel[aria-checked="true"]')).toHaveText('오늘의 문제');
   await expect(page.locator('.reflexLevels:not(.reflexModes) .reflexLevel').first()).toHaveText('쉬움');

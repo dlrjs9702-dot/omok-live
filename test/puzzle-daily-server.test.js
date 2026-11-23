@@ -32,7 +32,7 @@ test('오늘의 문제 API: 처음 맞힌 한 번만 기록(G-포인트: 포인�
   const balance = async () => (await req('/api/points', sa)).data.balance;
   const info = (await req('/api/solo/puzzle', sa)).data;
   assert.equal(info.points, undefined);
-  assert.deepEqual(Object.keys(info.records), ['sudoku', 'nonogram', 'hashi', 'circuit']);
+  assert.deepEqual(Object.keys(info.records), ['sudoku', 'nonogram', 'hashi', 'circuit', 'lightup' /* (H1 불빛 채우기) */]);
   const other = await server.enter(await server.issue('다른퍼즐러'));
   assert.match(info.uid, /^[0-9a-f]{16}$/); // each account's own progress in the browser (Codex review)
   assert.notEqual((await req('/api/solo/puzzle', other)).data.uid, info.uid);

@@ -84,6 +84,8 @@
       intro: '섬의 숫자만큼 다리를 놓아 모두 이으세요', how: how('섬을 누른 뒤 이을 섬을 누르면 다리가 놓여요', '다리는 가로·세로로만, 엇갈리지 않게', '모든 섬이 하나로 이어지면 완성') },
     { id: 'circuit', name: '회로 연결', cats: ['puzzle'], players: '혼자', colors: ['#a21caf', '#701a75'], art: 'circuit', set: 'puzzle',
       intro: '칸을 돌려 모든 칸에 전기가 흐르게', how: how('칸을 누르면 90도씩 돌아갑니다', '전원과 이어진 칸에 불이 들어와요', '모든 칸에 불이 들어오면 완성') },
+    { id: 'lightup', name: '불빛 채우기', cats: ['puzzle'], players: '혼자', colors: ['#b45309', '#78350f'], art: 'lightup', set: 'puzzle', /* (H1 한판마당 자료 2 07) */
+      intro: '벽 숫자에 맞게 전구를 놓아 모든 칸을 밝히기', how: how('흰 칸을 누르면 전구를 놓아요, 전구는 벽에 막힐 때까지 가로·세로를 비춰요', '전구끼리 서로 비추면 안 되고, 벽 숫자는 그 벽에 붙은 전구 수예요', '모든 흰 칸이 밝아지면 완성') },
     { id: 'mines', name: '지뢰찾기', cats: ['puzzle', 'solo'], players: '혼자', colors: ['#475569', '#334155'], art: 'mines', set: 'mines',
       intro: '숫자를 단서로 지뢰를 피해 칸을 여세요', how: how('칸의 숫자는 주변 8칸의 지뢰 수예요', '지뢰라고 생각되면 깃발을 꽂습니다', '지뢰 아닌 칸을 모두 열면 성공') },
     { id: 'klondike', name: '카드놀이', cats: ['solo'], players: '혼자', colors: ['#15803d', '#14532d'], art: 'klondike', set: 'cards',
