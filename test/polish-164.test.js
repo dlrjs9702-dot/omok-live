@@ -41,6 +41,14 @@ test('164 ⑤ 채석장 돌가루 · ⑦ 택시 지붕 표식', () => {
   assert.match(taxi, /const sign = new THREE\.Group\(\); h\.add\(sign\); assets\.attach\('taxi\.roof_sign', sign, new THREE\.Group\(\)\);/);
 });
 
+test('164 D: 폰 대회 띠 한 줄 · 마루 자리 길 쪽 · 캘 수 있는 돌 하나 금테 · 벽 수조 물고기 조금 밝게', () => {
+  const css = fs.readFileSync(path.join(ROOT, 'public/styles.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.ok(css.includes('@media (max-width:640px){body.touchIsland .islandTopRow .contestBar{margin:2px auto 0 0;max-width:calc(100% - 140px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}'));
+  assert.match(fs.readFileSync(path.join(ROOT, 'public/plaza/island-townhall.js'), 'utf8'), /const aside = at\(-gx - 0\.95, Y\.z1 \+ 2\.1\);/);
+  assert.match(scene, /const q = m && m\[1\] !== 'wall' \? quarryRocks\.get\(m\[1\]\) : null; const on = Boolean\(q\?\.h && q\.stage === 'full'\);/); assert.match(scene, /function stepTargetRing\(\) \{\s*stepQuarryRing\(\);/);
+  assert.match(scene, /const litFish = shape === 'aquarium_wall' \?/); assert.match(scene, /c\.color\.multiplyScalar\(1\.3\)/);
+});
+
 test('164 ⑧ 손에 든 채집물: 곤충 등은 화면 쪽 · 날개 넓은 10종 0.26, 작은 물고기는 손가락 위', () => {
   assert.match(scene, /const insectHold = \(sp\) => \(\{ key: 'catch', at: \[-0\.0343, 0\.0939, -0\.03\], rot: \[1\.5707, 0\.35, -3\.1415\], size: INSECT_WIDE\.has\(sp\) \? 0\.26 : SHOW_MIN\.insect \}\);/);
   assert.equal((scene.match(/insectHold\((s\.species|p\.fish)\)/g) || []).length, 2); assert.doesNotMatch(scene, /at: \[0, 0, -0\.065\], size: SHOW_MIN\.insect/);

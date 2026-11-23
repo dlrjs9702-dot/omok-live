@@ -5065,7 +5065,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const fitTank = (entry) => { if (!entry) return; fr.scale.setScalar(1); fr.updateWorldMatrix(true, true); const box = new THREE.Box3().setFromObject(fr); const ws = fr.getWorldScale(new THREE.Vector3()).x || 1; const size = box.getSize(new THREE.Vector3()).divideScalar(ws);
         const h = Math.max(size.y, 1e-3); const len = Math.max(size.x, size.z, 1e-3); const roomH = T.max[1] - T.min[1]; const roomL = T.max[0] - T.min[0];
         fr.scale.setScalar(Math.min(base, (0.8 * roomH) / h, (0.8 * roomL) / len)); };
-      fr.scale.setScalar(base); assets.attach(`fish.${fish.itemId.slice(5)}`, fr, fb, fitTank); /* (the scale first: a model already loaded calls fitTank at once) */
+      /* (1.10.423 다듬기 164: in the deep wall tank the fish a little lit -- their backs and tails read; their own copies, no light added) */
+      const litFish = shape === 'aquarium_wall' ? (entry) => { fitTank(entry); if (!entry) return; fr.traverse((o) => { if (!o.isMesh || o.userData.litFish) return; o.userData.litFish = true; o.material = [].concat(o.material).map((m) => { if (!m?.color) return m; const c = m.clone(); c.color.multiplyScalar(1.3); textures.push(c); return c; }); /* (their colour x1.3 -- picture or vertex colours alike; disposed with the scene's own) */ if (o.material.length === 1) o.material = o.material[0]; }); } : fitTank;
+      fr.scale.setScalar(base); assets.attach(`fish.${fish.itemId.slice(5)}`, fr, fb, litFish); /* (the scale first: a model already loaded calls fitTank at once) */
       const bottom = HOME.BOTTOM.has(fish.itemId); fr.position.copy(tuna ? tunaTo(T, null) : swimTo(T, bottom)); v.swim.push({ root: fr, T, bottom, tuna, to: tuna ? tunaTo(T, fr.position) : swimTo(T, bottom), speed: 0.12 + Math.random() * 0.12, phase: Math.random() * 6 });
     }
     if (T && !T.insects && !ghost) for (let k = 0; k < 4; k += 1) { const b = mesh(new THREE.SphereGeometry(0.025, 6, 4), mat(0xeaf6ff, { transparent: true, opacity: 0.6 }), T.min[0] * 0.6, T.min[1] + Math.random() * (T.max[1] - T.min[1]), 0, root); b.castShadow = false; v.bubbles.push(b); }
@@ -5894,7 +5896,15 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // among several -- not for what stands where I am (a swing, the train) or a note only
   const targetRing = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.47, 40), new THREE.MeshBasicMaterial({ color: 0xfff6dc, transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide }));
   targetRing.rotation.x = -Math.PI / 2; targetRing.visible = false; scene.add(targetRing);
+  // (1.10.423 다듬기 164: the one rock SPACE would mine now -- a clear gold ring round its foot; none on a mined one, none elsewhere)
+  const quarryRing = new THREE.Mesh(new THREE.RingGeometry(1, 1.08, 48), new THREE.MeshBasicMaterial({ color: 0xffcf5a, transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide }));
+  quarryRing.rotation.x = -Math.PI / 2; quarryRing.visible = false; scene.add(quarryRing);
+  function stepQuarryRing() {
+    const m = near && !photoMode ? /^quarry:([^:]+):/.exec(near) : null; const q = m && m[1] !== 'wall' ? quarryRocks.get(m[1]) : null; const on = Boolean(q?.h && q.stage === 'full');
+    quarryRing.visible = on; if (on) { quarryRing.scale.setScalar(Math.max(0.8, (QY.SOLIDS[q.r.kind]?.box?.[0] || 2) * 0.62)); quarryRing.position.set(q.r.x, heightAt(q.r.x, q.r.z) + 0.05, q.r.z); }
+  }
   function stepTargetRing() {
+    stepQuarryRing();
     const t = near && fpNow() && !talkView && !photoMode ? doorOf(near) : null; const p = me.root.position;
     targetRing.visible = Boolean(t && !t.plain && Math.hypot(t.x - p.x, t.z - p.z) > 0.6); if (targetRing.visible) targetRing.position.set(t.x, Math.max(heightAt(t.x, t.z), p.y) + 0.04, t.z);
   }

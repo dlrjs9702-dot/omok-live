@@ -124,7 +124,7 @@ totalEmissiveRadiance *= vColor.rgb * vColor.rgb * marbleMask;
   const gate = at(0, Y.z1); const out = at(0, Y.z1 + 1.4);
   // v1.10.45: he steps forward out of the gate, then aside along the outside of the wall (going straight to a spot inside
   // he walked through the gate pillar and the wall); back the same way
-  const mid = at(-0.9, Y.z1 + 0.85); const aside = at(-gx - 0.95, Y.z1 + 0.85);
+  const mid = at(-0.9, Y.z1 + 0.85); const aside = at(-gx - 0.95, Y.z1 + 2.1); /* (1.10.423 다듬기 164: 1.25 m more towards the road -- his outline clear of the gate's stone pillar) */
   const spec = { shirt: 0x1f2a44, hair: 0x2b2b2b, skin: 0xffdcbc };
   const mayor = makeCharacter(spec); mayor.animNames = { idle: 'GuardIdle' }; mayor.noTuck = true;
   mayor.root.position.set(gate.x, heightAt(gate.x, gate.z), gate.z); mayor.root.rotation.y = ry; scene.add(mayor.root);
