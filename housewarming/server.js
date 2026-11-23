@@ -41,6 +41,7 @@ function newState() {
     items: seeds.map(([category,name,quantity]) => ({id:crypto.randomUUID(),category,name,quantity,owner:"",done:false}))
   };
 }
+let redisClient = null;
 let state;
 try { state = JSON.parse(fs.readFileSync(STORE,"utf8")); }
 catch (_) { state = newState(); }
@@ -53,6 +54,7 @@ function bounded(value, max=120){return String(value==null?"":value).slice(0,max
 function commit(){
   state.version += 1;
   state.savedAt = new Date().toISOString();
+  if (redisClient) redisClient.set("housewarming:20261123:state", JSON.stringify(state)).catch(err => console.warn("Redis write:",err.message));
   try { fs.writeFileSync(STORE+".tmp",JSON.stringify(state),"utf8"); fs.renameSync(STORE+".tmp",STORE); }
   catch(err){console.warn("Ephemeral write failed:",err.message);}
   for(const res of clients){try {res.write("data: change\n\n");} catch(_) {clients.delete(res);} }
@@ -137,4 +139,19 @@ const server = http.createServer(async(req,res)=>{
     return send(res,404,{error:"not found"});
   }catch(err){console.error(err);return send(res,500,{error:"처리 중 문제가 발생했습니다."});}
 });
-server.listen(PORT,"0.0.0.0",()=>console.log("Housewarming site on",PORT));
+async function boot(){
+  if(process.env.REDIS_URL){
+    try{
+      const {createClient}=require("redis");
+      const client=createClient({url:process.env.REDIS_URL,socket:{connectTimeout:6000}});
+      client.on("error",err=>console.warn("Redis connection:",err.message));
+      await client.connect();
+      redisClient=client;
+      const stored=await client.get("housewarming:20261123:state");
+      if(stored){state=JSON.parse(stored);console.log("Loaded shared checklist from Redis");}
+      else console.log("Starting fresh shared checklist");
+    }catch(err){console.warn("Shared cache unavailable; using local backup:",err.message);}
+  }
+  server.listen(PORT,"0.0.0.0",()=>console.log("Housewarming site on",PORT));
+}
+boot().catch(err=>{console.error(err);process.exit(1);});
