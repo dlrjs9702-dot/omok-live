@@ -73,6 +73,17 @@ test('판이 다 차면 5번 더 돌리고, 끝까지 없으면 무승부 · 한
     assert.ok(n <= 16); assert.ok(['finished', 'draw'].includes(r.status)); }
 });
 
+test('화면 연결: 게임관 카드 · 방 고르기 · 규칙 고르기 · 판 그리기 · 누르기 · 소리 · 최근 행동', () => {
+  const fs = require('node:fs'); const path = require('node:path'); const read = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
+  const app = read('public/app.js'); const html = read('public/index.html');
+  assert.match(app, /if \(state\?\.gameType === 'orbit4'\) return drawOrbit4Board\(\);/); assert.match(app, /if \(state\?\.gameType === 'orbit4'\) \{ orbitTap\(p, ev\.pointerType === 'touch'\); return; \}/);
+  assert.match(app, /if \(touch && !\(orbitPick && orbitPick\.x === p\.x && orbitPick\.y === p\.y\)\) \{ orbitPick = \{ x: p\.x, y: p\.y \}; drawBoard\(\); return; \}/, 'a touch taps the cell twice (결정 59-6 A)');
+  assert.match(app, /roomAction\('move', \{ x: p\.x, y: p\.y, \.\.\.\(push \? \{ push \} : \{\}\) \}\);/);
+  assert.ok(html.includes('<option value="orbit4">달무리 사목</option>') && html.includes('data-game="orbit4"'));
+  const cat = require('../public/gamehall-catalog.js'); const card = (cat.GAMES || globalThis.GamehallCatalog?.GAMES).find((g) => g.id === 'orbit4'); assert.equal(card.room, 'orbit4'); assert.equal(card.how.length, 3);
+  assert.match(read('public/room-sound.js'), /'connect4', 'orbit4', 'dots'/); assert.match(read('public/recent-action.js'), /case 'orbit4':/);
+});
+
 test('게임 목록에 들어감 · 공개 상태', () => {
   assert.equal(hasGame('orbit4'), true); assert.equal(getGame('orbit4').name, '달무리 사목');
   const g = fresh(); const p = O.publicState(g); assert.deepEqual(p.left, { black: 8, white: 8 }); assert.equal(p.legalMoves.length, 16); assert.equal(p.size, 4);

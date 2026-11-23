@@ -78,10 +78,10 @@
   // (G-게임별 v187) when a move's sounds fall, in ms after it comes in -- the board's own motion (app.js drawOmokBoard 300 ms
   // set-down, drawConnect4Board 260 + 70 per row fall, drawOthelloBoard 260 ms drop and each flip edge-on at 200 + 66 + 110 n):
   // [[ms, kind, arg]]; reduced motion draws it at once, so one sound at once
-  const STONES = new Set(['omok', 'omok2v2', 'othello', 'connect4', 'dots']);
+  const STONES = new Set(['omok', 'omok2v2', 'othello', 'connect4', 'orbit4', 'dots']); /* (달무리 사목: the bead set down, at once -- then the rings turn) */
   function landPlan(game, last, reduced = false) {
     if (!STONES.has(game)) return [[0, 'card']];
-    if (reduced || !last || game === 'dots') return [[0, 'stone']];
+    if (reduced || !last || game === 'dots' || game === 'orbit4') return [[0, 'stone']];
     if (game === 'connect4') return [[240 + 70 * (Number(last.y) || 0), 'stone']];
     if (game === 'othello') return [[240, 'stone'], ...(last.flippedCells || []).map((_, i) => [266 + 110 * i, 'flip', i])];
     return [[260, 'stone']];

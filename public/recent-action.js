@@ -27,6 +27,8 @@
         return m ? `${actorName(m.color)}이 두어 ${m.flipped || 0}개를 뒤집었습니다` : '';
       case 'connect4':
         return m ? `${actorName(m.color)}이 ${m.x + 1}열에 넣었습니다` : '';
+      case 'orbit4': // (달무리 사목: a push first if there was one, then the bead, then the turn)
+        return m ? `${actorName(m.color)}이 ${m.push ? '상대 구슬을 밀고 ' : ''}${m.y + 1}줄 ${m.x + 1}칸에 놓았습니다 · 판이 ${m.turns > 1 ? `${m.turns}번` : '한 번'} 돌았습니다` : '';
       case 'dots':
         return m ? `${actorName(m.color)}이 선을 그었습니다${m.claimed?.length ? ` · 상자 ${m.claimed.length}개 완성` : ''}` : '';
       case 'baseball':
