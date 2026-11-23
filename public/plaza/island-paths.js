@@ -152,5 +152,15 @@
     for (let j = 0; j < res; j += 1) for (let i = 0; i < res; i += 1) { const k = j * res + i; if (out[k * 3 + 1] && !keep(x0 + (i + 0.5) * cell, z0 + (j + 0.5) * cell)) { out[k * 3 + 1] = 0; out[k * 3 + 2] = 0; } }
     return out;
   }
-  return { EDGE_RANGE, ALONG_PERIOD, TIER, ROAD_RANGE, buildPathField, junctionsOf, buildJunctionField, paintedWalks, buildPathMaps, buildRoadMap };
+  /* (1.10.423 다듬기 164 「역 앞 횡단보도」: a 건널목's bars straight from walk to walk -- not bent along a turning road: each crossing's foot on its
+     road and that road's right there [x, z, nx, nz]; the ground's shader measures the bars across the nearest one's straight line) */
+  function crossFrames(X) {
+    const out = [];
+    for (const c of X?.CROSSINGS || []) {
+      let b = null; for (const route of X.ROADS || [X.ROUTE]) for (let i = 1; i < route.length; i += 1) { const p = route[i - 1]; const q = route[i]; const dx = q[0] - p[0]; const dz = q[1] - p[1]; const L = Math.hypot(dx, dz); if (!L) continue; const t = Math.max(0, Math.min(1, ((c.x - p[0]) * dx + (c.z - p[1]) * dz) / (L * L))); const fx = p[0] + dx * t; const fz = p[1] + dz * t; const d = Math.hypot(c.x - fx, c.z - fz); if (!b || d < b.d) b = { d, x: fx, z: fz, nx: dz / L, nz: -dx / L }; }
+      if (b) out.push([b.x, b.z, b.nx, b.nz]);
+    }
+    return out;
+  }
+  return { EDGE_RANGE, ALONG_PERIOD, TIER, ROAD_RANGE, buildPathField, junctionsOf, buildJunctionField, paintedWalks, buildPathMaps, buildRoadMap, crossFrames };
 }));

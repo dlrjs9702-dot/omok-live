@@ -5680,7 +5680,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       const rooms = { townhall: room, store, fashion, furniture, petshop, home: homeRoomV, jail, museum, exchange, den };
       for (const [space, r] of Object.entries(rooms)) { const g = r?.group; if (!g) continue; if (space === mySpace) { if (!g.parent) scene.add(g); } else if (g.parent === scene) scene.remove(g); }
     }
-    keys.clear(); me.root.position.set(x, spaceFloor(x, z), z); me.targetYaw = mySpace !== 'island' ? Math.PI : me.root.rotation.y; if (mySpace !== 'island' && fpNow()) { camYaw = yawGoal = me.targetYaw - Math.PI; camPitch = pitchGoal = 0; } /* (V1: in the first, in through the door looking into the room) */
+    keys.clear(); me.root.position.set(x, spaceFloor(x, z), z); me.targetYaw = mySpace !== 'island' ? Math.PI : me.root.rotation.y; if (mySpace !== 'island' && fpNow()) { camYaw = yawGoal = me.targetYaw - Math.PI; camPitch = pitchGoal = 0; } /* (V1: in the first, in through the door looking into the room) */ else if (mySpace !== 'island') camYaw = yawGoal = me.targetYaw - Math.PI; /* (1.10.423 다듬기 164: the third too -- behind me looking in, me and the first counter in one picture; a phone's view kept its outside turn: the door frame, a wall, the black) */
     if (mySpace !== 'island') me.root.rotation.y = Math.PI;
     placeCamera(true); return true;
   }

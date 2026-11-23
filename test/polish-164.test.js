@@ -49,6 +49,15 @@ test('164 D: 폰 대회 띠 한 줄 · 마루 자리 길 쪽 · 캘 수 있는 �
   assert.match(scene, /const litFish = shape === 'aquarium_wall' \?/); assert.match(scene, /c\.color\.multiplyScalar\(1\.3\)/);
 });
 
+test('164 둘째: 건널목 막대는 가장 가까운 건널목의 곧은 줄로 · 방에 들어가면 3인칭도 안쪽을 봄', () => {
+  const X = require('../public/plaza/island-taxi.js'); const Pth = require('../public/plaza/island-paths.js'); const F = Pth.crossFrames(X);
+  assert.equal(F.length, X.CROSSINGS.length); for (const [, , nx, nz] of F) assert.ok(Math.abs(Math.hypot(nx, nz) - 1) < 1e-9);
+  const isl = fs.readFileSync(path.join(ROOT, 'public/plaza/island.js'), 'utf8');
+  assert.match(isl, /uniform vec4 uCross\[' \+ CROSS_N \+ '\];/, 'inside the quoted declarations: joined, not a ${} left in the GLSL'); assert.doesNotMatch(isl, /'[^'\n]*uCross\[\$\{CROSS_N\}\][^'\n]*'/);
+  assert.match(isl, /for \(int i = 0; i < \$\{CROSS_N\}; i\+\+\) \{ vec2 cd = vGroundXZ - uCross\[i\]\.xy;/); assert.match(isl, /abs\(fract\(across \/ 0\.9\) - 0\.5\)/); assert.match(isl, /uCross: \{ value: CROSS_V \}/);
+  assert.match(scene, /else if \(mySpace !== 'island'\) camYaw = yawGoal = me\.targetYaw - Math\.PI;/);
+});
+
 test('164 ⑧ 손에 든 채집물: 곤충 등은 화면 쪽 · 날개 넓은 10종 0.26, 작은 물고기는 손가락 위', () => {
   assert.match(scene, /const insectHold = \(sp\) => \(\{ key: 'catch', at: \[-0\.0343, 0\.0939, -0\.03\], rot: \[1\.5707, 0\.35, -3\.1415\], size: INSECT_WIDE\.has\(sp\) \? 0\.26 : SHOW_MIN\.insect \}\);/);
   assert.equal((scene.match(/insectHold\((s\.species|p\.fish)\)/g) || []).length, 2); assert.doesNotMatch(scene, /at: \[0, 0, -0\.065\], size: SHOW_MIN\.insect/);
