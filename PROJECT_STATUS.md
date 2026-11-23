@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.429 택시 종점 마당 목책(사용자 결정 86 · 87 A, 검토 terminal-yard-20261123)
+
+- 높은 목책 15칸(14 + 부두 길 쪽문 1)으로 섬 바깥 목책과 캠핑장 목책을 이음, 이음 두 곳에 통나무 끝 기둥(코드, 막는 원 0.3 m).
+- NEW_ISLE.yard 다각형을 서버 safeAt · 화면 tigers-view에: 마당 안 쫓길 곳 0 · 호랑이 땅 0. SAFES를 지금 반지름 22.9 · 11.9로.
+- 종점 차 길: 이 종점만 손님을 마당 쪽 차선에 내리고, 왼쪽으로 크게 돌아(반지름 2.2 m) 앞으로 자리에 — 캠핑장 목책을 뚫던 반원 대신, 울타리와 1.19 m 넘게 · 쉼터와 1.6 m.
+- 시험: `terminal-yard`, camp-s1(캠핑장 고리만), e2e dalmaru-walk · 택시 정류장 · 택시 양보 · 호랑이.
+
 ## v1.10.428 스파이더맨 펫 끌려오기(에셋 182 WebSki, 사용자 결정 85 A)
 
 - 자전거 뒤 고리에서 1.9 m 거미줄 → 두 손 잡는 점: 줄이 팽팽할 때만 끌려와 굽이에서 바깥으로 쏠림, 땅 높이 · 고리를 봄, 곧은 길 좌우 0.4 m(2.6초), 굽이에서 살짝 기움.
@@ -25,10 +32,3 @@
 - 몸: 속도로 기울기(느리면 −25° · 초속 12 m에서 +15°), 굽이에서 20°까지 기움, 위아래 6 cm(1.3초); 초속 1.5 m 아래면 Hover.
 - 에셋 181: FlyRepulsor 다시(머리 들고 손바닥 · 발바닥 뒤), Hover 새로(sha256 확인).
 - 시험: `ironman-181`, e2e island-pets(Hover → 날기).
-
-## v1.10.426 U8 남은 화면 정리(검토 ui-review-20261121 A9 · C6 · C8 · C9 · C10 · D5 · P4, stamp-overflow §3, 결정 83 A)
-
-- 가방: 칸 메뉴 첫 열 · 끝 열에서 창 안(atStart · atEnd), PC(pointer:fine)는 종류 탭 · 기록의 탑 칩 줄바꿈, 폰은 가방 한 세로 줄(빠른 칸이 화면 안).
-- 옷가게(D5 · A9): 섬에서 아래 닫기 · 포인트 숨김, 거르기 칩 한 줄 + 「더 보기」.
-- 포인트 알약(C9), 빈 목록 글(C10), 창 모서리 12px(C8), 섬 창 옆 스크롤 없음.
-- 시험: `island-ui-u8`, e2e island-paper-windows · island-bag.
