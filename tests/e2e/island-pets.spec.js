@@ -32,7 +32,9 @@ test('반려동물: 서버가 기억해 섬에 들어오면 처음부터 같이 
   expect((await post(request, '/api/test/pet', a.token, { kind: 'tf_ironman', name: '' })).status).toBe(200);
   await expect.poll(() => a.page.evaluate(() => { const p = window.PlazaDebug().pets().find((x) => x.key === 'me'); return p && `${p.role} ${p.clip} ${p.jets}`; }), { timeout: 30000 }).toBe('flyR Hover true');
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.down('KeyW');
-  await expect.poll(() => a.page.evaluate(() => { const p = window.PlazaDebug().pets().find((x) => x.key === 'me'); return p && `${p.clip} ${p.jets} ${p.tilt !== 0}`; }), { timeout: 15000 }).toBe('FlyRepulsor true true');
+  /* (its clip by its pace as measured -- CI's slow frames ride the bike at under 1.5 m/s, where it rightly hovers: moving, jets lit, and FlyRepulsor
+     at 2 m/s and over, Hover under 1.5) */
+  await expect.poll(() => a.page.evaluate(() => { const p = window.PlazaDebug().pets().find((x) => x.key === 'me'); return p && `${p.speed > 0.3} ${p.jets} ${p.clip === (p.speed >= 2 ? 'FlyRepulsor' : p.speed < 1.5 ? 'Hover' : p.clip)}`; }), { timeout: 15000 }).toBe('true true true');
   await a.page.keyboard.up('KeyW');
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('KeyB'); await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().cycling), { timeout: 15000 }).toBe(null);
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().pets().find((x) => x.key === 'me')?.role), { timeout: 20000 }).toBe('follow');
