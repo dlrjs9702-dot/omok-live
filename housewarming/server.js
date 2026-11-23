@@ -8,7 +8,7 @@ const { URL } = require("node:url");
 const PORT = Number(process.env.PORT || 3000);
 const SECRET = process.env.SHARE_TOKEN || "";
 const STORE = process.env.DATA_PATH || "/tmp/housewarming-20261123-state.json";
-const OWNERS = ["공희운", "이창민", "이건", "김우성"];
+const OWNERS = ["공희훈", "이창민", "이건", "김우성"];
 const MEATS = ["삼겹살", "목살", "항정살"];
 const clients = new Set();
 const seeds = [
@@ -49,7 +49,8 @@ function send(res, code, obj) {
   res.writeHead(code, {"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"});
   res.end(JSON.stringify(obj));
 }
-function validOwner(value){ return value==="" || OWNERS.includes(value); }
+function normalizeOwner(value){return value === "공희운" ? "공희훈" : value;}
+function validOwner(value){ return value==="" || OWNERS.includes(normalizeOwner(value)); }
 function bounded(value, max=120){return String(value==null?"":value).slice(0,max).trim();}
 function commit(){
   state.version += 1;
@@ -94,7 +95,7 @@ const server = http.createServer(async(req,res)=>{
     if(req.method==="POST" && url.pathname==="/api/items"){
       const body=await readBody(req), name=bounded(body.name,100);
       if(!name) return send(res,400,{error:"준비물 이름을 입력해 주세요."});
-      const item={id:crypto.randomUUID(),category:bounded(body.category||"기타",40),name,quantity:bounded(body.quantity,40),owner:validOwner(body.owner)?body.owner:"",done:false};
+      const item={id:crypto.randomUUID(),category:bounded(body.category||"기타",40),name,quantity:bounded(body.quantity,40),owner:validOwner(body.owner)?normalizeOwner(body.owner):"",done:false};
       state.items.push(item); commit(); return send(res,201,{item});
     }
     const itemMatch=url.pathname.match(/^\/api\/items\/([0-9a-f-]+)$/);
@@ -108,7 +109,7 @@ const server = http.createServer(async(req,res)=>{
         for(const f of ["category","name","quantity","owner","done"]){
           if(!(f in body))continue;
           if(f==="done")state.items[i].done=!!body.done;
-          else state.items[i][f]=bounded(body[f],f==="name"?100:40);
+          else state.items[i][f]=f==="owner"?normalizeOwner(body[f]):bounded(body[f],f==="name"?100:40);
         }
         if(!state.items[i].name) return send(res,400,{error:"이름을 입력해 주세요."});
         commit(); return send(res,200,{item:state.items[i]});
@@ -119,7 +120,7 @@ const server = http.createServer(async(req,res)=>{
       const name=decodeURIComponent(meatMatch[1]), body=await readBody(req);
       if(!MEATS.includes(name))return send(res,404,{error:"고기 종류를 확인해 주세요."});
       if("grams" in body){const n=Number(body.grams);if(!Number.isInteger(n)||n<0||n>20000)return send(res,400,{error:"수량은 0~20,000g 사이여야 합니다."});state.meats[name].grams=n;}
-      if("owner" in body){if(!validOwner(body.owner))return send(res,400,{error:"담당자가 올바르지 않습니다."});state.meats[name].owner=body.owner;}
+      if("owner" in body){if(!validOwner(body.owner))return send(res,400,{error:"담당자가 올바르지 않습니다."});state.meats[name].owner=normalizeOwner(body.owner);}
       if("done" in body)state.meats[name].done=!!body.done;
       commit();return send(res,200,{meat:state.meats[name]});
     }
@@ -130,10 +131,10 @@ const server = http.createServer(async(req,res)=>{
       const items=b.items.filter(x=>x && typeof x.name==="string" && x.name.trim()).map(x=>({
         id:typeof x.id==="string" && /^[0-9a-f-]{36}$/.test(x.id)?x.id:crypto.randomUUID(),
         category:bounded(x.category,40),name:bounded(x.name,100),quantity:bounded(x.quantity,40),
-        owner:validOwner(x.owner)?x.owner:"",done:!!x.done
+        owner:validOwner(x.owner)?normalizeOwner(x.owner):"",done:!!x.done
       }));
       const meats={};
-      for(const name of MEATS){const x=b.meats[name]||{};meats[name]={grams:Number.isInteger(x.grams)?Math.max(0,Math.min(x.grams,20000)):0,owner:validOwner(x.owner)?x.owner:"",done:!!x.done};}
+      for(const name of MEATS){const x=b.meats[name]||{};meats[name]={grams:Number.isInteger(x.grams)?Math.max(0,Math.min(x.grams,20000)):0,owner:validOwner(x.owner)?normalizeOwner(x.owner):"",done:!!x.done};}
       state.items=items;state.meats=meats;commit();return send(res,200,{ok:true});
     }
     return send(res,404,{error:"not found"});
@@ -151,6 +152,21 @@ async function boot(){
       if(stored){state=JSON.parse(stored);console.log("Loaded shared checklist from Redis");}
       else console.log("Starting fresh shared checklist");
     }catch(err){console.warn("Shared cache unavailable; using local backup:",err.message);}
+  }
+  // Preserve already-assigned items when the owner's name is corrected.
+  let migrated = false;
+  for(const item of state.items || []){
+    if(item.owner === "공희운"){item.owner="공희훈";migrated=true;}
+  }
+  for(const meat of MEATS){
+    if(state.meats?.[meat]?.owner === "공희운"){state.meats[meat].owner="공희훈";migrated=true;}
+  }
+  if(migrated){
+    state.version=(state.version||0)+1;
+    state.savedAt=new Date().toISOString();
+    if(redisClient) await redisClient.set("housewarming:20261123:state",JSON.stringify(state));
+    try{fs.writeFileSync(STORE,JSON.stringify(state),"utf8");}catch(_){}
+    console.log("Corrected owner name in stored assignments");
   }
   server.listen(PORT,"0.0.0.0",()=>console.log("Housewarming site on",PORT));
 }
