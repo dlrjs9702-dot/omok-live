@@ -21,6 +21,10 @@ test('결정 86 마당 목책: 15칸(높은 목책 14 + 부두 길 쪽문 1), �
   /* (every piece's two ends: no tiger's chest (0.9) fits between it and its neighbour -- in a run, and at the four joins to standing fences) */
   const ends = (f) => [[f[0] - Math.cos(f[2]) * 1.2, f[1] + Math.sin(f[2]) * 1.2], [f[0] + Math.cos(f[2]) * 1.2, f[1] - Math.sin(f[2]) * 1.2]];
   for (const f of ps) for (const [ex, ez] of ends(f)) assert.ok(!T.isle2Clear(ex, ez, 0.9), `${f[0]},${f[1]}: a tiger at its end`);
+  /* (사용자 결정 87 A: a stout end post where each run meets the low outer fence -- drawn (a code box the palisade's height) and blocking) */
+  assert.deepEqual(P.YARD_POSTS, [[224.98, 243.33], [230.19, 217.49]]); assert.deepEqual(P.BOXES.yard_post, [0.56, 3.6, 0.56, 0]);
+  for (const [x, z] of P.YARD_POSTS) assert.ok(P.solids().some((c) => Math.hypot(c.x - x, c.z - z) < 1e-6 && c.r === 0.3), `${x},${z}: its round`);
+  assert.match(fs.readFileSync(path.join(__dirname, '../public/plaza/island.js'), 'utf8'), /instanced\(box\('yard_post', 0x4f3826\), natureMat, P2\.YARD_POSTS/);
 });
 
 test('결정 86 마당 안전: 서버 · 화면이 같은 다각형 -- 마당 안 쫓길 곳 0 · 호랑이 땅 0, 목책 밖은 그대로', { skip: !I && '달마루섬 전용' }, () => {
@@ -53,7 +57,7 @@ test('결정 86 종점 차 길: 자리 0 · 1, 손님 태우고 와서 · 빈 �
 
 test('결정 86 마당 목책 위에 다른 것 없음(줄 위 자연물 비킴)', { skip: !I && '달마루섬 전용' }, () => {
   const rc = yardPieces().flatMap((f) => P.circlesAt(P.FENCE_KINDS[f[3]], f[0], f[1], f[2]));
-  const own = new Set(P.FENCE.filter((f) => /^fence_/.test(P.FENCE_KINDS[f[3]])).flatMap((f) => P.circlesAt(P.FENCE_KINDS[f[3]], f[0], f[1], f[2])).map((c) => `${c.x.toFixed(3)},${c.z.toFixed(3)}`));
+  const own = new Set([...P.FENCE.filter((f) => /^fence_/.test(P.FENCE_KINDS[f[3]])).flatMap((f) => P.circlesAt(P.FENCE_KINDS[f[3]], f[0], f[1], f[2])), ...P.YARD_POSTS.flatMap(([x, z]) => P.circlesAt('yard_post', x, z, 0))].map((c) => `${c.x.toFixed(3)},${c.z.toFixed(3)}`));
   const others = [...T.natureSolids(), ...T.structureSolids(), ...T.villageSolids()].filter((o) => !own.has(`${o.x.toFixed(3)},${o.z.toFixed(3)}`));
   assert.deepEqual(others.filter((o) => rc.some((c) => Math.hypot(c.x - o.x, c.z - o.z) < c.r + (o.r || 0) + 0.2)).map((o) => [o.x, o.z]), []);
 });

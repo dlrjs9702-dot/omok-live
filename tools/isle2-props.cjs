@@ -110,6 +110,9 @@ const LOOKOUT_FENCE = ringFence(I.peak, I.peak.ring.r, I.peak.ring.n, 9, 10);
 const YARD_FENCE = [[226.2, 243.29, 3.18, 7], [228.65, 243.19, 3.18, 7], [231.09, 243.09, 3.18, 7], [233.54, 243, 3.18, 7], [235.99, 242.9, 3.18, 7],
   [249.16, 227.97, -1.06, 7], [248, 225.86, -1.06, 7], [246.83, 223.75, -1.06, 7],
   [245.1, 222.33, -0.31, 7], [242.81, 221.58, -0.31, 8], [240.51, 220.84, -0.31, 7], [238.22, 220.09, -0.31, 7], [235.92, 219.35, -0.31, 7], [233.63, 218.6, -0.31, 7], [231.33, 217.86, -0.31, 7]];
+/* (사용자 결정 87 A: where a run meets the island's low outer fence (north-west, south-west) -- the tall palisade's 3.5 m against its 1.4 ~ 1.6 -- a
+   stout end post, the palisade's height and colour (a code box, no asset)) */
+const YARD_POSTS = [[224.98, 243.33], [230.19, 217.49]];
 
 // ---- 우레's rock (152b): below the lookout, seen from the walk -- 4~9 m off it, flat, nothing on it ----
 /* (from the walks and the ground alone -- nature() keeps its trees off these pieces (isle2Props.near), so nothing here may read it back) */
@@ -153,13 +156,13 @@ const CIRCLES = {
   fence_gate_road: [[-4.5, 0, 0.2], [-2.9, 0, 0.2], [2.9, 0, 0.2], [4.5, 0, 0.2], [-5.9, 0, 0.22], [-5.55, 0, 0.22], [-5.2, 0, 0.22], [-4.85, 0, 0.22], [4.85, 0, 0.22], [5.2, 0, 0.22], [5.55, 0, 0.22], [5.9, 0, 0.22]], /* (assets 171 gate-solids.json: posts and wings -- leaves and wickets block nothing) */
   fence_stonewall_tall: [[-0.9, 0, 0.33], [-0.45, 0, 0.33], [0, 0, 0.33], [0.45, 0, 0.33], [1.2, 0, 0.45]], fence_wicket_stone: [[-0.735, -0.2, 0.135], [-0.735, 0.2, 0.135], [0.735, -0.2, 0.135], [0.735, 0.2, 0.135], [1.2, 0, 0.45]], /* (assets 175: the wall and its pillar at +x; the wicket's stone jambs -- 1.2 m between) */
   fence_palisade_tall: segCircles(0.22), fence_wicket: [[-0.8, 0, 0.2], [0.8, 0, 0.2], [-1.05, 0, 0.22], [1.05, 0, 0.22]], /* (assets 174: as fence_segment; the wicket's posts and wings -- 1.2 m between, its leaf blocks nothing) */
-  fence_corner: [[0, 0, 0.2]], sign_tiger: [[-0.85, 0, 0.15], [0.85, 0, 0.15]], sign_reserve: [[-0.66, 0.12, 0.17], [0.66, 0.12, 0.17]], sign_trail: [[0, 0.15, 0.18]] /* (136 README's solids) */, tiger_rock: [[-0.5, 0, 0.95], [0.5, 0, 0.95]], swamp_stones: [[0, -0.4, 0.66], [0, 0.4, 0.66]],
+  fence_corner: [[0, 0, 0.2]], yard_post: [[0, 0, 0.3]] /* (결정 87) */, sign_tiger: [[-0.85, 0, 0.15], [0.85, 0, 0.15]], sign_reserve: [[-0.66, 0.12, 0.17], [0.66, 0.12, 0.17]], sign_trail: [[0, 0.15, 0.18]] /* (136 README's solids) */, tiger_rock: [[-0.5, 0, 0.95], [0.5, 0, 0.95]], swamp_stones: [[0, -0.4, 0.66], [0, 0.4, 0.66]],
   campfire: [[0, 0, 0.6]], log_bench: [[-0.45, 0.05, 0.22], [0.45, 0.05, 0.22]], log_stool: [[0, 0, 0.25]],
   spring_cave: [...caveSolids.rock, ...caveSolids.water],
 };
 const BOXES = {
   fence_segment: [2.5, 1.6, 0.5, 0], fence_palisade_b: [2.5, 1.6, 0.8, 0], fence_palisade_e: [2.5, 1.5, 0.95, 0.15], fence_stonewall: [2.5, 1.4, 0.6, 0.03], fence_gate: null, fence_gate_wide: null, fence_gate_road: null, fence_palisade_tall: [2.5, 3.5, 0.5, 0], fence_wicket: null /* (assets 174: open in the middle -- drawn as the gates') */, fence_stonewall_tall: null, fence_wicket_stone: null /* (assets 175: the pillar off the middle -- both drawn with the gates) */,
-  fence_corner: [0.42, 2.08, 0.42, 0], sign_tiger: [1.9, 2.33, 0.2, 0], tiger_rock: [3.0, 0.98, 2.0, 0], swamp_stones: [1.34, 0.53, 1.77, 0], campfire: [1.22, 0.36, 1.22, 0], log_bench: [1.62, 0.48, 0.46, 0.05], log_stool: [0.52, 0.42, 0.52, 0],
+  fence_corner: [0.42, 2.08, 0.42, 0], yard_post: [0.56, 3.6, 0.56, 0], sign_tiger: [1.9, 2.33, 0.2, 0], tiger_rock: [3.0, 0.98, 2.0, 0], swamp_stones: [1.34, 0.53, 1.77, 0], campfire: [1.22, 0.36, 1.22, 0], log_bench: [1.62, 0.48, 0.46, 0.05], log_stool: [0.52, 0.42, 0.52, 0],
 };
 const CAVE_BOXES = caveSolids.rockBoxes;
 /* ---- 1.10.414 S2 the camp inside (사용자 결정 72 · 73, 검토 safe-zones-visible §2-2's places): 176's office, its -Z (door, 「관리소」) to the fire; 164's
@@ -189,7 +192,7 @@ BOXES.lookout_tower = [6.8, 6.2, 6.8, 0];
 const CREEK_KINDS = ['creek_stone_a', 'creek_stone_b', 'creek_stone_c'];
 const CREEK_STONES = [[359.96, 175.08, -2.313, 1, 1.17, 0.48], [361.23, 173.33, -2.389, 1, 0.97, 0.4], [360.43, 174.44, -2.399, 2, 1.16, 0], [351.35, 169.07, -2.456, 1, 0.96, 0.4], [352.81, 167.06, -2.045, 1, 0.98, 0.4], [344.72, 161.18, -2.115, 0, 0.92, 0.33], [341.76, 161.85, -1.847, 0, 0.88, 0.32], [335.86, 158.01, -1.89, 2, 0.89, 0], [335.62, 156.12, -1.814, 1, 1.13, 0.47], [331.36, 157.04, -1.996, 1, 1.08, 0.45], [323.74, 150.84, -2.329, 0, 1.16, 0.42], [321.36, 152.47, -1.793, 0, 1.02, 0.37], [314.94, 146.14, -1.897, 0, 0.86, 0.31], [311.57, 146.78, -2.174, 0, 1.13, 0.41], [309.55, 144.37, -2.457, 2, 1.19, 0], [306.96, 140.97, -2.054, 0, 1.01, 0.36], [302.3, 140.86, -1.836, 0, 1.06, 0.38], [297.21, 134.37, -2.731, 1, 0.98, 0.4], [294.53, 134.94, -2.178, 1, 1.07, 0.44], [286.97, 124.11, -2.032, 1, 1.1, 0.45], [286.23, 124.85, -2.328, 2, 0.95, 0], [284.93, 125.44, -2.24, 1, 0.9, 0.37], [277.81, 118.49, -2.574, 1, 1.1, 0.45], [279.01, 116.58, -2.722, 1, 1.09, 0.45]];
 
-const data = { FENCE: [...FENCE, ...CAMP_FENCE, ...LOOKOUT_FENCE, ...YARD_FENCE], CAMP2, TOWER, CREEK_STONES, CORNERS, SIGN, SIGN_RESERVE, SIGN_TRAIL, CAVE, CAMP, ROCK, SWAMPS, SWAMP_OUTLINES, REEDS, DECO };
+const data = { FENCE: [...FENCE, ...CAMP_FENCE, ...LOOKOUT_FENCE, ...YARD_FENCE], YARD_POSTS, CAMP2, TOWER, CREEK_STONES, CORNERS, SIGN, SIGN_RESERVE, SIGN_TRAIL, CAVE, CAMP, ROCK, SWAMPS, SWAMP_OUTLINES, REEDS, DECO };
 const text = `// 1.10.375 N2a-1 별마루섬's still pieces -- MADE by tools/isle2-props.cjs (do not edit: run it again). The fence round the island (${FENCE.length} pieces of
 // 2.4 m, [x, z, yaw, kind of FENCE_KINDS]; the gate where the walk from 별마루다리 crosses it), its corner posts, 157's spring cave, the camp's
 // fire / benches / stools, 우레's rock, the swamps (their outlines in the world: a bike inside is slowed) with reeds and 152c's pieces. CIRCLES
@@ -211,6 +214,7 @@ const text = `// 1.10.375 N2a-1 별마루섬's still pieces -- MADE by tools/isl
     if (all) return all; all = [];
     for (const [x, z, yaw, k] of DATA.FENCE) all.push(...circlesAt(FENCE_KINDS[k], x, z, yaw).map((c) => (/^fence_wicket/.test(FENCE_KINDS[k]) ? { ...c, wicket: true } : c))); /* (1.10.414: a wicket's -- dalmaru-walk's 1 m reach grid goes through its 1.2 m) */
     for (const [x, z] of DATA.CORNERS) all.push(...circlesAt('fence_corner', x, z, 0));
+    for (const [x, z] of DATA.YARD_POSTS || []) all.push(...circlesAt('yard_post', x, z, 0)); /* (결정 87) */
     for (const [x, z, yaw, k] of DATA.CAMP) all.push(...circlesAt(CAMP_KINDS[k], x, z, yaw));
     for (const [x, z, yaw, k] of DATA.CAMP2 || []) all.push(...circlesAt(CAMP2_KINDS[k], x, z, yaw));
     if (DATA.TOWER) all.push(...circlesAt('lookout_tower', DATA.TOWER[0], DATA.TOWER[1], DATA.TOWER[2]).map((c) => ({ ...c, tower: true }))); /* (1.10.416 S4: its guard rails) */
