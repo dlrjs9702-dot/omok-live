@@ -1056,7 +1056,9 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
       instanced(geo, natureMat, rows(P2.FENCE, kind, k), onGround, { cell: 60, target: [`byeolmaru.${kind}`] });
     });
     instanced(box('fence_corner', WOOD), natureMat, P2.CORNERS.map(([x, z]) => ({ x, z, isle2: true })), onGround, { cell: 60, target: ['byeolmaru.fence_corner'] });
-    if (P2.YARD_POSTS) instanced(box('yard_post', 0x4f3826), natureMat, P2.YARD_POSTS.map(([x, z]) => ({ x, z, isle2: true })), onGround, { cell: 60 }); /* (결정 87: the terminal yard's end posts -- where its tall palisade meets the low outer fence) */
+    /* (결정 87: the terminal yard's end posts -- where its tall palisade meets the low outer fence; 총괄: a stout round log like the palisade's, its
+       point on top and one lashing band -- a flat box read as a black board) */
+    if (P2.YARD_POSTS) instanced(mergeColored([part(new THREE.CylinderGeometry(0.25, 0.27, 3.5, 12), WOOD, 0, 1.75, 0), part(new THREE.ConeGeometry(0.25, 0.45, 12), WOOD, 0, 3.725, 0), part(new THREE.CylinderGeometry(0.28, 0.28, 0.14, 12), 0xb8a06a, 0, 2.5, 0)]), natureMat, P2.YARD_POSTS.map(([x, z]) => ({ x, z, isle2: true })), onGround, { cell: 60 });
     P2.CAMP_KINDS.forEach((kind, k) => instanced(box(kind, kind === 'campfire' ? 0x6f5a48 : WOOD), natureMat, rows(P2.CAMP, kind, k), onGround, { cell: 60, target: [`newisle.${kind}`] }));
     if (P2.ROCK) instanced(box('tiger_rock', STONE), natureMat, [{ x: P2.ROCK[0], z: P2.ROCK[1], yaw: P2.ROCK[2], isle2: true }], onGround, { cell: 60, target: ['byeolmaru.tiger_rock'] });
     if (P2.SIGN) instanced(box('sign_tiger', 0xc9a26b), natureMat, [{ x: P2.SIGN[0], z: P2.SIGN[1], yaw: P2.SIGN[2], isle2: true }], onGround, { cell: 60, target: ['byeolmaru.sign_tiger'] }); /* (호랑이 출몰 -- outside the gate, beside the walk) */

@@ -24,7 +24,7 @@ test('결정 86 마당 목책: 15칸(높은 목책 14 + 부두 길 쪽문 1), �
   /* (사용자 결정 87 A: a stout end post where each run meets the low outer fence -- drawn (a code box the palisade's height) and blocking) */
   assert.deepEqual(P.YARD_POSTS, [[224.98, 243.33], [230.19, 217.49]]); assert.deepEqual(P.BOXES.yard_post, [0.56, 3.6, 0.56, 0]);
   for (const [x, z] of P.YARD_POSTS) assert.ok(P.solids().some((c) => Math.hypot(c.x - x, c.z - z) < 1e-6 && c.r === 0.3), `${x},${z}: its round`);
-  assert.match(fs.readFileSync(path.join(__dirname, '../public/plaza/island.js'), 'utf8'), /instanced\(box\('yard_post', 0x4f3826\), natureMat, P2\.YARD_POSTS/);
+  assert.match(fs.readFileSync(path.join(__dirname, '../public/plaza/island.js'), 'utf8'), /instanced\(mergeColored\(\[part\(new THREE\.CylinderGeometry\(0\.25, 0\.27, 3\.5, 12\), WOOD.*ConeGeometry.*\]\), natureMat, P2\.YARD_POSTS/); /* (a round log, pointed, banded) */
 });
 
 test('결정 86 마당 안전: 서버 · 화면이 같은 다각형 -- 마당 안 쫓길 곳 0 · 호랑이 땅 0, 목책 밖은 그대로', { skip: !I && '달마루섬 전용' }, () => {
