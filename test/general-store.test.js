@@ -31,12 +31,14 @@ async function behaves(store) {
   assert.equal((await store.islandUse({ userId: u, requestId: 'use-0000001', itemId: 'bait' })).already, true);
   assert.equal((await store.islandBag(u)).items.find((e) => e.itemId === 'bait').qty, 1);
   assert.equal((await store.islandUse({ userId: u, requestId: 'use-0000002', itemId: 'firework' })).reason, 'missing');
-  for (let k = 0; k < 15; k += 1) await buy(`fill-00000${String(k).padStart(2, '0')}`, Items.GOODS[k + 1], 1, 1);
+  /* (1.10.430 인벤토리 2차: the 기타 room's 10 filled -- the same thing still stacks, a new one does not fit, another kind has its own room) */
+  const etc = Items.GOODS.filter((id) => Items.sectionOf(id) === 'etc'); assert.ok(etc.length > Items.SECTIONS.etc);
+  for (let k = 0; k < Items.SECTIONS.etc; k += 1) await buy(`fill-00000${String(k).padStart(2, '0')}`, etc[k], 1, 1);
   assert.equal((await buy('buy-0000009', 'balloon', 1, 300)).applied, true, '같은 물건은 쌓임');
   const balance = (await store.getAccount(u)).balance;
-  assert.equal((await store.islandBuy({ userId: u, requestId: 'buy-0000010', itemId: 'badge', qty: 1, unit: 1000 })).applied, true);
-  assert.equal((await store.islandBuy({ userId: u, requestId: 'buy-0000011', itemId: 'frame', qty: 1, unit: 2000 })).applied, true);
-  assert.equal((await store.getAccount(u)).balance, balance - 3000);
+  assert.equal((await store.islandBuy({ userId: u, requestId: 'buy-0000010', itemId: etc[Items.SECTIONS.etc], qty: 1, unit: 1000 })).reason, 'full', '기타 칸이 차면 새 물건은 못 받음');
+  assert.equal((await store.islandBuy({ userId: u, requestId: 'buy-0000011', itemId: 'seed_carrot', qty: 1, unit: 2000 })).applied, true, '다른 종류(재료)는 제 칸');
+  assert.equal((await store.getAccount(u)).balance, balance - 2000);
   // 선물: a wrap used, one of the thing to the other bag; none without a wrap; not to oneself
   const v = 'guest:00000000-0000-4000-8000-0000000000e2'; await store.ensureAccount(v);
   const gift = (requestId, itemId = 'bread') => store.islandGift({ userId: u, to: v, itemId, requestId });

@@ -35,11 +35,12 @@ for (const mode of ['JSON', 'PostgreSQL']) test(`${mode}: 다중스택 지급/�
   assert.equal(caught.filter(r => r.applied).length, 1);
   for (const reply of caught) assert.deepEqual(reply.dex, { entry: 'fish_octopus', count: 1, first: true });
   assert.equal((await store.dexOf(userId)).fish_octopus.count, 1);
-  await store.islandGive({ userId, claimId: 'integrity-wallet-full-001', itemId: 'wallet', qty: 15 });
+  /* (1.10.430 인벤토리 2차: the herb's own room -- 채집물, 10 -- filled with berries) */
+  for (let k = 0; k < 10; k += 1) await store.islandGive({ userId, claimId: `integrity-berry-full-${String(k).padStart(3, '0')}`, itemId: 'berry', qty: 99 });
   const herb = { userId, claimId: 'integrity-full-herb-001', itemId: 'herb', dexEntry: 'herb' };
   assert.equal((await store.islandGive(herb)).reason, 'full');
   assert.equal((await store.dexOf(userId)).herb, undefined, 'full bag cannot increment the dex');
-  await store.islandSell({ userId, requestId: 'integrity-free-slot-001', place: 'merchant', fish: true }, Date.now()); /* (v1.10.291: fish at the 노점) */
+  await store.islandSell({ userId, requestId: 'integrity-free-slot-001', place: 'merchant' }, Date.now()); /* (the berries sold: their room free) */
   assert.equal((await store.islandGive(herb)).applied, true, 'rejected claim remains retryable');
   assert.equal((await store.dexOf(userId)).herb.count, 1);
   if (database) {

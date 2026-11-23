@@ -46,14 +46,15 @@ test('옛 묶음 나누기: 가방에 자리 있으면 한 칸씩, 크기 그대
 
 test('옛 묶음 나누기: 가방이 모자라면 물고기 통으로, 통도 차면 남는 것만 겹쳐 둠 -- 잃는 물고기 없음, 칸 수 넘지 않음', () => {
   const old = [{ entryId: 'a', itemId: fish, qty: 5, meta: { sizes: [30, 25, 20, 15, 10] } }, { entryId: 'b', itemId: otherFish, qty: 4, meta: { sizes: [9, 8, 7, 6], bought: true } }, { entryId: 'r', itemId: 'fishing_rod', qty: 1 }];
-  // the bag 4 (rod + 3 free), the fish box 2 free: 9 fish -- 3 + ... a slot kept for each rest
-  const cap = { bag: 4, fish: 2, insect: 0 };
+  // (1.10.430 인벤토리 2차: the fish room 4 -- the rod in its own; two stacks take 2, so 2 more: the first stack's two biggest out, its rest
+  // and the second stack kept as stacks)
+  const cap = { tool: 8, fish: 4, boxes: { fish: 0 } };
   const out = I.splitFish(old, cap);
   assert.equal(count(out.entries, fish) + count(out.entries, otherFish), 9, '모두 그대로');
   assert.deepEqual(sizes(out.entries, fish), [30, 25, 20, 15, 10]); assert.deepEqual(sizes(out.entries, otherFish), [9, 8, 7, 6]);
-  assert.ok(out.entries.filter((e) => !I.inBox(e)).length <= cap.bag, '가방 칸 넘지 않음'); assert.ok(out.entries.filter((e) => I.inBox(e) === 'fish').length <= cap.fish, '통 칸 넘지 않음');
-  assert.ok(out.toBox > 0 && out.left > 0); assert.equal(out.split + out.toBox + out.left, 9);
-  assert.ok(out.entries.filter((e) => I.inBox(e) === 'fish' && e.itemId === otherFish).every((e) => e.meta.bought), '산 것 표시 그대로');
+  assert.ok(I.usedIn(out.entries, 'fish') <= cap.fish, '물고기 칸 넘지 않음'); assert.equal(count(out.entries, 'fishing_rod'), 1);
+  assert.ok(out.left > 0); assert.equal(out.split + out.left, 9);
+  assert.ok(out.entries.filter((e) => e.itemId === otherFish).every((e) => e.meta.bought), '산 것 표시 그대로');
   assert.equal(new Set(out.entries.map((e) => e.entryId)).size, out.entries.length);
   assert.equal(I.splitFish(out.entries, cap), null, '자리가 없으면 다시 해도 그대로');
   // when room comes (the box grows): the rest goes on
