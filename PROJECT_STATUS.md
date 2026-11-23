@@ -13,6 +13,12 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.428 스파이더맨 펫 끌려오기(에셋 182 WebSki, 사용자 결정 85 A)
+
+- 자전거 뒤 고리에서 1.9 m 거미줄 → 두 손 잡는 점: 줄이 팽팽할 때만 끌려와 굽이에서 바깥으로 쏠림, 땅 높이 · 고리를 봄, 곧은 길 좌우 0.4 m(2.6초), 굽이에서 살짝 기움.
+- 초속 1 m 아래면 서서(Idle) 줄 가운데가 10 cm 처짐. 옛 「연」 자리(자전거 틀 고정)는 없앰.
+- 시험: `spiderman-182`, e2e island-pets(섬 → 끌려오기, 잰 속도에 맞는 클립).
+
 ## v1.10.427 아이언맨 펫 날기(에셋 181, 사용자 「다리, 팔에서 불꽃 효과를 넣고 날아오게 해」)
 
 - 불꽃 넷: 손은 LowerArm → Hand 파랑(안쪽 밝게), 발은 LowerLeg → Foot 주황 — 날 때 뒤로, 떠 있을 때 아래로; 속도로 길이, 깜빡임, 40 m 밖은 안 그림.
@@ -26,10 +32,3 @@
 - 옷가게(D5 · A9): 섬에서 아래 닫기 · 포인트 숨김, 거르기 칩 한 줄 + 「더 보기」.
 - 포인트 알약(C9), 빈 목록 글(C10), 창 모서리 12px(C8), 섬 창 옆 스크롤 없음.
 - 시험: `island-ui-u8`, e2e island-paper-windows · island-bag.
-
-## v1.10.425 H1 한판마당 혼자 퍼즐(사용자 결정 82 A, 에셋 180)
-
-- 불빛 채우기: 오늘의 퍼즐(서버가 답을 만들어 확인, 퍼즐 워커), 퍼즐 카드 · 게임관 카드.
-- 점수 퍼즐 묶음: 숫자 밀기(크기 · 걸린 시간) · 블록 퍼즐 · 사과 게임 · 수박 만들기(점수전만) — 판은 서버가 열고, 사람이 낼 수 있는 기록만 받음.
-- 기록의 탑 19게임: 칭호 불빛 화가 · 숫자 조각가 · 블록 장인 · 사과 농부 · 수박 농부, 주간 트로피(에셋 180 열 개, sha256 확인) 마당 · 가구 이름.
-- 시험: `h1-games`, reflex · puzzle-daily · solo-ranking 서버, e2e reflex · hanpan-h1 · solo-quest.

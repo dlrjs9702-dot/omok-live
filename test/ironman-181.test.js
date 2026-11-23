@@ -13,7 +13,7 @@ test('181: FlyRepulsor 다시 · Hover 새로 (sha256 고정)', () => {
   assert.equal(by['characters/motions/FlyRepulsor.glb'].sha256, '6dbea8791fbd0ad8c237d6291ff49e84ced008dedfc228f0c5d59e5661785d99');
   assert.equal(by['characters/motions/Hover.glb'].sha256, 'bd1ad7803a1909b425cca6630e43a5912dc4a010a8af09d5a689c69cd8e3e224');
   assert.match(by['characters/motions/Hover.glb'].src, /^ironman181:01\. High\/motions\/Hover\.glb$/);
-  assert.match(assets, /'Hover'\]; \/\/ \(assets 181/); assert.match(assets, /hover: 'Hover'/);
+  assert.match(assets, /'Hover',? ?\]?;? ?\/\/ \(assets 181/); assert.match(assets, /hover: 'Hover'/);
 });
 
 test('181: 불꽃 넷(손 LowerArm→Hand 파랑, 발 LowerLeg→Foot 주황), 느리면 Hover, 속도로 기울기', () => {

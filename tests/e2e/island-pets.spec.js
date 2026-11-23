@@ -35,6 +35,14 @@ test('반려동물: 서버가 기억해 섬에 들어오면 처음부터 같이 
   /* (its clip by its pace as measured -- CI's slow frames ride the bike at under 1.5 m/s, where it rightly hovers: moving, jets lit, and FlyRepulsor
      at 2 m/s and over, Hover under 1.5) */
   await expect.poll(() => a.page.evaluate(() => { const p = window.PlazaDebug().pets().find((x) => x.key === 'me'); return p && `${p.speed > 0.3} ${p.jets} ${p.clip === (p.speed >= 2 ? 'FlyRepulsor' : p.speed < 1.5 ? 'Hover' : p.clip)}`; }), { timeout: 15000 }).toBe('true true true');
+  /* (assets 182, 결정 85 A: Spider-Man towed on the ground on his web from the bike's rear ring -- about 2.7 m behind the rider, his feet on the
+     ground, WebSki while going (1 m/s and over, as measured -- CI's slow frames), stopped he stands) */
+  await a.page.keyboard.up('KeyW');
+  expect((await post(request, '/api/test/pet', a.token, { kind: 'tf_spiderman', name: '' })).status).toBe(200);
+  const web = () => a.page.evaluate(() => { const d = window.PlazaDebug(); const p = d.pets().find((x) => x.key === 'me'); return p && `${p.role} ${p.clip === ((p.speed || 0) >= 1 ? 'WebSki' : 'Idle')} ${p.line} ${Math.abs(p.y - window.IslandTerrain.heightAt(p.x, p.z)) < 0.15} ${Math.abs(Math.hypot(p.x - d.x, p.z - d.z) - 2.65) < 0.6}`; });
+  await expect.poll(async () => `${await web()} ${(await a.page.evaluate(() => window.PlazaDebug().pets().find((x) => x.key === 'me')?.speed)) < 0.3}`, { timeout: 30000 }).toBe('kite true true true true true');
+  await a.page.locator('#plazaStage').focus(); await a.page.keyboard.down('KeyW');
+  await expect.poll(async () => `${await web()} ${(await a.page.evaluate(() => window.PlazaDebug().pets().find((x) => x.key === 'me')?.speed)) > 0.3}`, { timeout: 15000 }).toBe('kite true true true true true');
   await a.page.keyboard.up('KeyW');
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('KeyB'); await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().cycling), { timeout: 15000 }).toBe(null);
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().pets().find((x) => x.key === 'me')?.role), { timeout: 20000 }).toBe('follow');
