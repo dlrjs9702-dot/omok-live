@@ -104,6 +104,12 @@ const CAMP_FENCE = ringFence(C, C.ring.r, C.ring.n, 7, 8);
 /* ---- 1.10.415 S3 the lookout's stone-walled yard (assets 175, 사용자 결정 72 4 A · 검토 §2-3): 31 pieces round the peak, their middles peak.ring.r out,
    a stone wicket where the trail crosses it (two); kinds 9 · 10 ---- */
 const LOOKOUT_FENCE = ringFence(I.peak, I.peak.ring.r, I.peak.ring.n, 9, 10);
+/* ---- 사용자 결정 86 the taxi terminal's yard (notes docs/terminal-yard-20261123.md §2, 검토): the island's outer fence joined to the camp's palisade
+   by three runs of the camp's tall palisade (kinds 7 · 8, no new asset) -- north 5 pieces, south-east 3 + 7 with a people's wicket where the walk to
+   the dock (and the trail off it) crosses; every end at a seam between two standing pieces; +Z (their inside) to the yard ---- */
+const YARD_FENCE = [[226.2, 243.29, 3.18, 7], [228.65, 243.19, 3.18, 7], [231.09, 243.09, 3.18, 7], [233.54, 243, 3.18, 7], [235.99, 242.9, 3.18, 7],
+  [249.16, 227.97, -1.06, 7], [248, 225.86, -1.06, 7], [246.83, 223.75, -1.06, 7],
+  [245.1, 222.33, -0.31, 7], [242.81, 221.58, -0.31, 8], [240.51, 220.84, -0.31, 7], [238.22, 220.09, -0.31, 7], [235.92, 219.35, -0.31, 7], [233.63, 218.6, -0.31, 7], [231.33, 217.86, -0.31, 7]];
 
 // ---- 우레's rock (152b): below the lookout, seen from the walk -- 4~9 m off it, flat, nothing on it ----
 /* (from the walks and the ground alone -- nature() keeps its trees off these pieces (isle2Props.near), so nothing here may read it back) */
@@ -183,7 +189,7 @@ BOXES.lookout_tower = [6.8, 6.2, 6.8, 0];
 const CREEK_KINDS = ['creek_stone_a', 'creek_stone_b', 'creek_stone_c'];
 const CREEK_STONES = [[359.96, 175.08, -2.313, 1, 1.17, 0.48], [361.23, 173.33, -2.389, 1, 0.97, 0.4], [360.43, 174.44, -2.399, 2, 1.16, 0], [351.35, 169.07, -2.456, 1, 0.96, 0.4], [352.81, 167.06, -2.045, 1, 0.98, 0.4], [344.72, 161.18, -2.115, 0, 0.92, 0.33], [341.76, 161.85, -1.847, 0, 0.88, 0.32], [335.86, 158.01, -1.89, 2, 0.89, 0], [335.62, 156.12, -1.814, 1, 1.13, 0.47], [331.36, 157.04, -1.996, 1, 1.08, 0.45], [323.74, 150.84, -2.329, 0, 1.16, 0.42], [321.36, 152.47, -1.793, 0, 1.02, 0.37], [314.94, 146.14, -1.897, 0, 0.86, 0.31], [311.57, 146.78, -2.174, 0, 1.13, 0.41], [309.55, 144.37, -2.457, 2, 1.19, 0], [306.96, 140.97, -2.054, 0, 1.01, 0.36], [302.3, 140.86, -1.836, 0, 1.06, 0.38], [297.21, 134.37, -2.731, 1, 0.98, 0.4], [294.53, 134.94, -2.178, 1, 1.07, 0.44], [286.97, 124.11, -2.032, 1, 1.1, 0.45], [286.23, 124.85, -2.328, 2, 0.95, 0], [284.93, 125.44, -2.24, 1, 0.9, 0.37], [277.81, 118.49, -2.574, 1, 1.1, 0.45], [279.01, 116.58, -2.722, 1, 1.09, 0.45]];
 
-const data = { FENCE: [...FENCE, ...CAMP_FENCE, ...LOOKOUT_FENCE], CAMP2, TOWER, CREEK_STONES, CORNERS, SIGN, SIGN_RESERVE, SIGN_TRAIL, CAVE, CAMP, ROCK, SWAMPS, SWAMP_OUTLINES, REEDS, DECO };
+const data = { FENCE: [...FENCE, ...CAMP_FENCE, ...LOOKOUT_FENCE, ...YARD_FENCE], CAMP2, TOWER, CREEK_STONES, CORNERS, SIGN, SIGN_RESERVE, SIGN_TRAIL, CAVE, CAMP, ROCK, SWAMPS, SWAMP_OUTLINES, REEDS, DECO };
 const text = `// 1.10.375 N2a-1 별마루섬's still pieces -- MADE by tools/isle2-props.cjs (do not edit: run it again). The fence round the island (${FENCE.length} pieces of
 // 2.4 m, [x, z, yaw, kind of FENCE_KINDS]; the gate where the walk from 별마루다리 crosses it), its corner posts, 157's spring cave, the camp's
 // fire / benches / stools, 우레's rock, the swamps (their outlines in the world: a bike inside is slowed) with reeds and 152c's pieces. CIRCLES

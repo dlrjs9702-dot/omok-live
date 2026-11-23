@@ -24,7 +24,8 @@ const angleTo = (a, b) => { let d = b - a; while (d > Math.PI) d -= Math.PI * 2;
 export function createTigerView({ scene, assets, heightAt, serverNow, lowFiles = () => false, T = globalThis.IslandTerrain }) {
   const shown = new Map(); /* id -> { c, s (server state), x, z, yaw } */ let list = []; let warnState = null; let sharedNormal = false;
   const I = T?.dalmaru?.NEW_ISLE; const camp = I?.camp; const peak = I?.peak;
-  const safeAt = (x, z) => Boolean(I) && (Math.hypot(x - camp.x, z - camp.z) < (camp.safe ?? camp.r + 2) || Math.hypot(x - peak.x, z - peak.z) < (peak.safe ?? 14)); /* (1.10.413 S1: the island's `safe`, as the server) */
+  const inYard = (x, z) => { const P = I?.yard; if (!P) return false; let a = false; for (let i = 0, j = P.length - 1; i < P.length; j = i, i += 1) { const [xi, zi] = P[i]; const [xj, zj] = P[j]; if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) a = !a; } return a; }; /* (결정 86: the taxi terminal's fenced yard, as the server's inPoly) */
+  const safeAt = (x, z) => Boolean(I) && (Math.hypot(x - camp.x, z - camp.z) < (camp.safe ?? camp.r + 2) || Math.hypot(x - peak.x, z - peak.z) < (peak.safe ?? 14) || inYard(x, z)); /* (1.10.413 S1: the island's `safe`, as the server) */
   const near = (me) => Boolean(I) && Math.hypot(me.x - I.x, me.z - I.z) < I.r + 120;
   function holder(id) {
     const def = DEFS[id]; const c = { root: new THREE.Group(), mixer: null, actions: {}, want: 'Idle', now: null, gone: false, low: lowFiles(), pauseHidden: true /* (383 Codex #18: no mixer work while hidden) */,
