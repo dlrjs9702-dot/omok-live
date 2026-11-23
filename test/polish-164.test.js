@@ -58,6 +58,11 @@ test('164 둘째: 건널목 막대는 가장 가까운 건널목의 곧은 줄�
   assert.match(scene, /else if \(mySpace !== 'island'\) camYaw = yawGoal = me\.targetYaw - Math\.PI;/);
 });
 
+test('출석 도장 격자: 칸은 minmax(0,1fr) -- 큰 도장(7일 개근)이 있어도 창을 넘지 않음', () => {
+  const css = fs.readFileSync(path.join(ROOT, 'public/styles.css'), 'utf8');
+  assert.ok(css.includes('.stampGrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}')); assert.doesNotMatch(css, /\.stampGrid\{[^}]*repeat\(7,1fr\)/);
+});
+
 test('164 둘째 밤 빛: 가로등마다 밤에만 부드러운 빛 웅덩이(땅 높이), 분수 물결 테는 밤에 조금 밝게', () => {
   assert.match(scene, /PROPS\.lamps\.forEach\(\(l, i\) => lampPools\.setMatrixAt\(i, new THREE\.Matrix4\(\)\.makeTranslation\(l\.x, heightAt\(l\.x, l\.z\) \+ 0\.06, l\.z\)\)\)/);
   assert.match(scene, /lampPools\.visible = Boolean\(night\) && mySpace === 'island';/); assert.match(scene, /map: poolTex, transparent: true, opacity: 0\.32, depthWrite: false, blending: THREE\.AdditiveBlending/);
