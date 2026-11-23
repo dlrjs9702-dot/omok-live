@@ -27,6 +27,13 @@ test('반려동물: 서버가 기억해 섬에 들어오면 처음부터 같이 
   await expect.poll(() => a.page.evaluate(() => { const p = window.PlazaDebug().pets().find((x) => x.key === 'me'); return p && `${p.role} ${p.clip}`; }), { timeout: 20000 }).toBe('basket BasketSit');
   await expect.poll(() => b.page.evaluate((id) => window.PlazaDebug().pets().find((p) => p.key === id)?.role, aId), { timeout: 30000 }).toBe('basket');
   { const [me, pet] = await a.page.evaluate(() => { const d = window.PlazaDebug(); return [{ x: d.x, z: d.z }, d.pets().find((x) => x.key === 'me')]; }); expect(Math.hypot(pet.x - me.x, pet.z - me.z)).toBeLessThan(1.2); } /* (in the crate before the rider) */
+  /* (assets 181, 사용자 「다리, 팔에서 불꽃 효과를 넣고 날아오게 해」: Iron Man by a stopped bike hovers with his four jets lit; riding on, he flies
+     (FlyRepulsor), tipped by the pace -- upright slow, lying flatter fast) */
+  expect((await post(request, '/api/test/pet', a.token, { kind: 'tf_ironman', name: '' })).status).toBe(200);
+  await expect.poll(() => a.page.evaluate(() => { const p = window.PlazaDebug().pets().find((x) => x.key === 'me'); return p && `${p.role} ${p.clip} ${p.jets}`; }), { timeout: 30000 }).toBe('flyR Hover true');
+  await a.page.locator('#plazaStage').focus(); await a.page.keyboard.down('KeyW');
+  await expect.poll(() => a.page.evaluate(() => { const p = window.PlazaDebug().pets().find((x) => x.key === 'me'); return p && `${p.clip} ${p.jets} ${p.tilt !== 0}`; }), { timeout: 15000 }).toBe('FlyRepulsor true true');
+  await a.page.keyboard.up('KeyW');
   await a.page.locator('#plazaStage').focus(); await a.page.keyboard.press('KeyB'); await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().cycling), { timeout: 15000 }).toBe(null);
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().pets().find((x) => x.key === 'me')?.role), { timeout: 20000 }).toBe('follow');
   /* (1.10.396, 검토 notes pet-unnamed-invisible-20261121 · Codex 381~390 #15: a pet with no name -- '' from the server, null kept -- was made again
