@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.426 U8 남은 화면 정리(검토 ui-review-20261121 A9 · C6 · C8 · C9 · C10 · D5 · P4, stamp-overflow §3, 결정 83 A)
+
+- 가방: 칸 메뉴 첫 열 · 끝 열에서 창 안(atStart · atEnd), PC(pointer:fine)는 종류 탭 · 기록의 탑 칩 줄바꿈, 폰은 가방 한 세로 줄(빠른 칸이 화면 안).
+- 옷가게(D5 · A9): 섬에서 아래 닫기 · 포인트 숨김, 거르기 칩 한 줄 + 「더 보기」.
+- 포인트 알약(C9), 빈 목록 글(C10), 창 모서리 12px(C8), 섬 창 옆 스크롤 없음.
+- 시험: `island-ui-u8`, e2e island-paper-windows · island-bag.
+
 ## v1.10.425 H1 한판마당 혼자 퍼즐(사용자 결정 82 A, 에셋 180)
 
 - 불빛 채우기: 오늘의 퍼즐(서버가 답을 만들어 확인, 퍼즐 워커), 퍼즐 카드 · 게임관 카드.
@@ -26,12 +33,3 @@
 - 화면: 밤하늘 판(고리 · 돌림 화살표, 달 · 별 구슬 또는 사목 칩 꾸미기), 밀기는 상대 구슬 → 옆 칸(터치는 칸을 두 번).
 - 게임관 카드 · 방 목록 · 규칙 · 안내 · 소리 · 최근 수, 미션 · 업적(74) · 자리 이름 달 / 별.
 - 시험: `orbit4`(8), e2e orbit4 · achievements.
-
-## v1.10.423 다듬기 164(에셋 164 · 결정 79 A · 80 A) + 출석 도장 폭
-
-- 에셋 164 다섯 파일 교체, 분수 물(밤 ×1.4), 개울 돌 24개(둑 돌 막힘 원), 채석장 먼지 · 캘 바위 금빛 고리, 택시 지붕 표시등, 수족관 벽 물고기 색, 방 들어갈 때 카메라 뒤.
-- 밤 빛: 가로등 아래 둥근 빛 웅덩이(InstancedMesh, 방사형 텍스처), 분수 테두리.
-- 굽은 길 횡단보도: 가장 가까운 건널목 자기 방향으로 줄무늬(`crossFrames`, 셰이더 `uCross`).
-- 결정 80 A: 야영장 옛 가운데 묶음(불 · 벤치 · 의자) 뺌. 폰 대회 띠 한 줄, 마루 대기 자리 1.25 m 앞.
-- 출석 도장 칸 `minmax(0,1fr)` — 큰 도장 달에도 창이 옆으로 안 넓어짐.
-- 시험: `polish-164`, e2e attendance-card · island-assets.
