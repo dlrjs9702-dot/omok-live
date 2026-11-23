@@ -1,4 +1,4 @@
-// v1.10.250 기록의 탑 (gamecenter-notes docs/gamehall-ranking-board-20261103.md): the 14 solo games ranked, their board level
+// v1.10.250 기록의 탑 (gamecenter-notes docs/gamehall-ranking-board-20261103.md): the 19 solo games ranked (H1: five more), their board level
 // (「보통」, or the nearest a game has), their week's title, and how a record reads -- shared by the server (lib's ranking API)
 // and the page (the tower's faces and window)
 (function (root, factory) {
@@ -22,12 +22,20 @@
     ['klondike', '카드놀이', false, ['easy', 'hard'], 'easy', '카드 정리왕', 'time', 'cards'],
     ['freecell', '프리셀', false, ['easy', 'hard'], 'easy', '프리셀 고수', 'time', 'cards'],
     ['spider', '스파이더', true, ['easy', 'normal', 'hard'], 'normal', '거미줄 마스터', 'pt', 'cards'],
+    /* (H1 한판마당 혼자 퍼즐, 사용자 결정 82 A: on the tower now -- their week's trophies once assets 180's models are in, TROPHY below) */
+    ['lightup', '불빛 채우기', false, ['easy', 'normal', 'hard'], 'normal', '불빛 화가', 'sec', 'puzzle'],
+    ['slide', '숫자 밀기', false, ['easy', 'normal', 'hard'], 'normal', '숫자 조각가', 'sec', 'puzzle'],
+    ['blockpuzzle', '블록 퍼즐', true, ['easy', 'normal', 'hard'], 'normal', '블록 장인', 'pt', 'puzzle'],
+    ['apple10', '사과 게임', true, ['easy', 'normal', 'hard'], 'normal', '사과 농부', 'pt', 'puzzle'],
+    ['watermelon', '수박 만들기', true, ['normal'], 'normal', '수박 농부', 'pt', 'puzzle'],
   ].map(([id, name, higher, levels, board, title, unit, group]) => Object.freeze({ id, name, higher, levels, board, title, unit, group }));
   const BY_ID = Object.fromEntries(GAMES.map((g) => [g.id, g]));
   // v1.10.251 the week's 1·2·3 a yard trophy (assets 98 yard_trophy_<sym>): each game its symbol; 「게임관의 별」 (three titles or
   // more in a week) the star, gold only
   const TROPHY = Object.freeze({ whack: 'mole', reaction: 'reaction', colorfind: 'color', numbers: 'numbers', rhythm: 'beat', stairs: 'sky', minesweeper: 'mines',
     sudoku: 'sudoku', nonogram: 'nonogram', hashi: 'bridges', circuit: 'circuit', klondike: 'klondike', freecell: 'freecell', spider: 'spider' });
+  // (H1, 결정 82 A: assets 180 yard-v1/trophy_lights · slide · blocks · apple · melon -- added to TROPHY once in; till then a week's 1·2·3 there no trophy)
+  const TROPHY_SOON = Object.freeze({ lightup: 'lights', slide: 'slide', blockpuzzle: 'blocks', apple10: 'apple', watermelon: 'melon' });
   const STAR = Object.freeze({ id: 'gamestar', title: '게임관의 별', sym: 'star' });
   const METALS = Object.freeze(['gold', 'silver', 'bronze']); const METAL_KO = Object.freeze({ gold: '금', silver: '은', bronze: '동' });
   const trophyGood = (sym, metal) => `yard_trophy_${sym}__${metal}`;
@@ -57,5 +65,5 @@
       .map((r, i) => ({ ...r, rank: i + 1 }));
   }
 
-  return Object.freeze({ GAMES, BY_ID, LEVEL_NAMES, levelName, format, rank, TROPHY, STAR, METALS, METAL_KO, trophyGood, weekLabel });
+  return Object.freeze({ GAMES, BY_ID, LEVEL_NAMES, levelName, format, rank, TROPHY, TROPHY_SOON, STAR, METALS, METAL_KO, trophyGood, weekLabel });
 }));

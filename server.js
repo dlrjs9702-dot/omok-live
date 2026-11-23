@@ -1608,7 +1608,7 @@ async function settleSoloWeeks(now = nowMs()) {
         const top = SoloRanking.rank(g.id, await pointStore.soloLeaders({ game: g.id, level: g.board, week })).slice(0, 3).map((r) => ({ rank: r.rank, userId: r.userId, name: nameOf(r.userId), best: r.best }));
         games[g.id] = top; if (top[0]) firsts.set(top[0].userId, (firsts.get(top[0].userId) || 0) + 1);
         const short = SoloRanking.weekLabel(week).replace(/^\d+년 /, ''); // (the line pressed: 「두더지 왕 · 이름 · 11월 2주 · 기록 52점」)
-        for (const r of top) await giveTrophy(r.userId, SoloRanking.trophyGood(SoloRanking.TROPHY[g.id], SoloRanking.METALS[r.rank - 1]), `${g.title} · ${r.name} · ${SoloRanking.weekLabel(week)}`, `solo:${week}:${g.id}:${r.rank}`,
+        if (SoloRanking.TROPHY[g.id]) for (const r of top) await giveTrophy(r.userId, SoloRanking.trophyGood(SoloRanking.TROPHY[g.id], SoloRanking.METALS[r.rank - 1]), /* (H1, 결정 82 A: a game whose trophy model is not in yet -- its title only) */ `${g.title} · ${r.name} · ${SoloRanking.weekLabel(week)}`, `solo:${week}:${g.id}:${r.rank}`,
           { line: `${g.title} · ${r.name} · ${short} · 기록 ${SoloRanking.format(g.id, r.best)}`, lead: `${g.name} ${SoloRanking.weekLabel(week)} ${r.rank}위!` });
       }
       const star = [...firsts].filter(([, n]) => n >= 3).map(([u]) => u);
