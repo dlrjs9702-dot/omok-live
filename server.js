@@ -4267,6 +4267,7 @@ function presenceForSession(session) {
     : isTeam(room) ? `${teamColor(seat) === 'black' ? '흑' : '백'}팀 ${seat}번`
     : room.gameType === 'baseball' ? (seat === 'black' ? '선공' : '후공')
       : room.gameType === 'connect4' ? (seat === 'black' ? '빨강' : '노랑')
+      : room.gameType === 'orbit4' ? (seat === 'black' ? '달' : '별') /* (달무리 사목: the moon bead and the star bead) */
         : ['yut', 'dots'].includes(room.gameType) ? (seat === 'black' ? '파랑' : '빨강')
           : (seat === 'black' ? '흑' : '백')) : '관전자';
   const game = getGame(room.gameType)?.name || '게임';
@@ -5064,7 +5065,7 @@ async function handleRoomAction(req, res, action, session) {
       if (room.game.nextSeat !== seat) return sendError(res, 409, 'NOT_YOUR_TURN', '현재 차례의 플레이어만 착수할 수 있습니다.');
     } else if (room.game.turn !== seat) return sendError(res, 409, 'NOT_YOUR_TURN', '상대 차례입니다.');
     const gameEngine = getGame(room.gameType) || getGame('omok');
-    const verdict = gameEngine.applyMove(room.game, Number(body.x), Number(body.y), seat, nowIso());
+    const verdict = gameEngine.applyMove(room.game, Number(body.x), Number(body.y), seat, nowIso(), body); /* (달무리 사목: the body's push -- the other games read none) */
     if (!verdict.legal) {
       const extra = verdict.forbidden ? { forbidden: verdict.forbidden } : {};
       return sendError(res, 409, verdict.forbidden ? 'FORBIDDEN_MOVE' : 'ILLEGAL_MOVE', gameEngine.moveError(verdict.reason), extra);

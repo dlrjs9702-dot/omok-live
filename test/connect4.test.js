@@ -11,7 +11,7 @@ const { getGame, listGames } = require('../lib/games');
 
 test('Connect Four is registered independently of existing games', () => {
   assert.equal(getGame('connect4'), connect4);
-  assert.deepEqual(listGames().map(g => g.id).sort(), ['baseball', 'bingo', 'cityking', 'connect4', 'davinci', 'dots', 'gostop', 'halligalli', 'liar', 'oldmaid', 'omok', 'omok2v2', 'othello', 'pandemic', 'pictionary', 'rpg', 'twentyquestions', 'yut']);
+  assert.deepEqual(listGames().map(g => g.id).sort(), ['baseball', 'bingo', 'cityking', 'connect4', 'davinci', 'dots', 'gostop', 'halligalli', 'liar', 'oldmaid', 'omok', 'omok2v2', 'orbit4' /* (달무리 사목) */, 'othello', 'pandemic', 'pictionary', 'rpg', 'twentyquestions', 'yut']);
   assert.equal(connect4.create().board.length, 6);
   assert.equal(connect4.create().board[0].length, 7);
 });
