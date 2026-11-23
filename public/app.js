@@ -1304,6 +1304,7 @@
 
   function showToast(message, ms = 2800, onTap = null) { // (v1.10.257 onTap: a note that opens something -- a catch's 설명)
     toast.textContent = message;
+    const home = document.body.classList.contains('plazaMode') ? document.getElementById('islandNoteLine') : document.body; if (toast.parentElement !== home) home.append(toast); /* (1.10.422 U7 D2: on the island the note line's one slot, under the 대회 띠) */
     toast.classList.toggle('tappable', Boolean(onTap)); toast.onclick = onTap ? () => { toast.classList.add('hidden'); onTap(); } : null;
     toast.classList.remove('hidden');
     clearTimeout(toastTimer);
@@ -1765,6 +1766,7 @@
   document.body.classList.toggle('touchIsland', touchIsland);
   if (touchIsland) byId('islandChatInput').placeholder = '메시지 입력'; // no Enter/Esc keys to name on a phone
   if (touchIsland) byId('islandTopRow').insertBefore(byId('islandViewTab'), byId('contestBar')); /* (297 사용자 「핸드폰에서 시점 버튼이 안보여」: a phone's 시점 in the top row, after 메신저) */
+  if (touchIsland) byId('islandTopRow').insertBefore(byId('questTracker'), byId('islandNoteLine')); /* (1.10.422 U7 D2: a phone's one column -- the buttons, the 대회 띠, the 할 일, then the note line) */
   const islandStick = byId('islandStick'); const stickKnob = islandStick.firstElementChild; let stickPointer = null;
   function moveStick(event) {
     const box = islandStick.getBoundingClientRect(); const r = box.width / 2;
@@ -1896,8 +1898,8 @@
     lite.addEventListener('click', () => { setScreenPreset('min'); box.remove(); showToast('화면을 최대한 가볍게 바꿨어요 · ☰ 환경설정에서 바꿀 수 있어요', 4000); plazaStage.focus({ preventScroll: true }); });
     const row = document.createElement('div'); row.className = 'slowNoteRow'; row.append(keep, lite); box.append(p, row); plazaStage.append(box);
   }
-  // U4 조작법: the menu's card, PC and phone side by side; and for the first 3 days on this device a one-line band of the main keys
-  // (✕ closes it for good; not in tests unless asked: gc.testHint)
+  // U4 조작법: the menu's card, PC and phone side by side; and on the first visit on this device (1.10.422 U7 D2: that visit's tab
+  // only, was 3 days) a one-line band of the main keys in the note line (✕ closes it for good; not in tests unless asked: gc.testHint)
   const CONTROLS_PC = [['W A S D · 방향키', '걷기'], ['Shift 누르고 있기', '뛰기'], ['SPACE', '눈앞의 것 하기 (말 걸기·줍기·들어가기)'], ['마우스 끌기', '시점 돌리기'], ['Q · E', '가까이·멀리'], ['V', '1인칭·3인칭'], ['I', '가방'], ['T 누르고 있기', '감정 표현'], ['B', '자전거'], ['Enter', '채팅'], ['Esc', '메뉴']];
   const CONTROLS_PHONE = [['왼쪽 아래 막대', '걷기'], ['「뛰기」 누르고 있기', '뛰기'], ['「걷기」', '느리게·보통'], ['「상호작용」', '눈앞의 것 하기 (말 걸기·줍기·들어가기)'], ['화면 끌기', '시점 돌리기'], ['두 손가락 벌리기·모으기', '가까이·멀리'], ['「시점」', '1인칭·3인칭'], ['「가방」', '가방'], ['😊', '감정 표현'], ['「채팅」', '채팅'], ['☰', '메뉴']];
   function openControls() {
@@ -1910,14 +1912,14 @@
   }
   byId('controlsBtn').addEventListener('click', () => { byId('gameMenuDialog').close(); openControls(); });
   function showControlsHint() {
-    let test = null; let since = 0; try { if (localStorage.getItem('gc.hintClosed')) return; test = localStorage.getItem('gc.testHint'); if (navigator.webdriver && !test) return; since = Number(localStorage.getItem('gc.hintSince')) || 0; if (!since) { since = Date.now(); localStorage.setItem('gc.hintSince', String(since)); } } catch { return; }
-    if (Date.now() - since > 3 * 86400000 || byId('controlsHint')) return;
+    let test = null; let since = 0; try { if (localStorage.getItem('gc.hintClosed')) return; test = localStorage.getItem('gc.testHint'); if (navigator.webdriver && !test) return; since = Number(localStorage.getItem('gc.hintSince')) || 0; if (!since) { since = Date.now(); localStorage.setItem('gc.hintSince', String(since)); sessionStorage.setItem('gc.hintVisit', String(since)); } if (sessionStorage.getItem('gc.hintVisit') !== String(since)) return; } catch { return; }
+    if (byId('controlsHint')) return;
     const bar = document.createElement('div'); bar.id = 'controlsHint'; bar.className = 'controlsHint isle-tape';
     const words = document.createElement('span'); words.textContent = touchIsland ? '막대 걷기 · 「뛰기」 누르고 뛰기 · 「상호작용」 눈앞의 것 하기' : 'WASD 걷기 · Shift 뛰기 · SPACE 눈앞의 것 하기 · I 가방 · Enter 채팅 · Esc 메뉴';
     const more = document.createElement('button'); more.type = 'button'; more.className = 'ghost tiny'; more.textContent = '조작법'; more.addEventListener('click', openControls);
     const x = document.createElement('button'); x.type = 'button'; x.className = 'ghost tiny'; x.textContent = '✕'; x.setAttribute('aria-label', '조작 안내 띠 닫기');
     x.addEventListener('click', () => { try { localStorage.setItem('gc.hintClosed', '1'); } catch {} bar.remove(); plazaStage.focus({ preventScroll: true }); });
-    bar.append(words, more, x); plazaStage.append(bar);
+    bar.append(words, more, x); byId('islandNoteLine').append(bar);
   }
   // U3 막혔을 때 (☰ 환경설정 맨 위, on the island only): the server puts me on the nearest free spot (364), or 대청마당 when none is near
   byId('unstuckBtn').addEventListener('click', async () => {
@@ -2112,7 +2114,7 @@
       plaza.controller.setQualityMode?.(qualityMode()); plaza.controller.setRenderScale?.(renderScaleMode()); /* (314) */ plaza.controller.onAutoTier?.(autoTierNote); watchSlowStart(); showControlsHint(); reportFrames(); /* (1.10.322 U1, U4; 1.10.324 the frame rate) */ api('/api/island/quarry').then((d) => plaza.controller?.setQuarry?.(d.rocks)).catch(() => {}); /* (1.10.323 채석장: the rocks as they are) */ plaza.controller.setMotionMode?.(motionMode()); // (5회차 1: the menu's 「섬 화질」, this device's)
       refreshAffinity(); // (R2: who greets me first)
       refreshRoster(); refreshProjects(); // (v1.10.215: today's table on; v1.10.222 섬 가꾸기)
-      showControlsNotice(); // (v1.10.217: the keys swapped -- told once on a PC)
+      setTimeout(() => showControlsNotice(skins), 0); // (v1.10.217: the keys swapped -- told once on a PC; 1.10.422 D1: after the 캐릭터 선택 has opened)
       plaza.controller?.setLockTip?.(() => showToast('🖱 마우스로 둘러봐요 · Esc로 풀기 · 걷기는 W/A/S/D, 방향키는 시점', 5000)); // (v1.10.217: the first lock, once on this device)
       refreshStory(true); // (S1·S2: the 할 일 line, the little door -- the island up before plazaMode is set)
       try { const v = localStorage.getItem('gc.xmasPreview'); if (v) plaza.controller.setXmasPreview?.(v); } catch {} /* (1.10.332 관리자 크리스마스 미리 보기: this browser's) */
@@ -2960,8 +2962,9 @@
   }
   // (문제 기록 1103 4) 한 번 공지: the first not seen, on paper, once -- seen when it shuts (「알겠어요」 or let go)
   async function islandNoticeOnce() {
-    if (!document.body.classList.contains('plazaMode') || document.querySelector('dialog[open]')) return;
-    let n = null; try { n = (await api('/api/island/notices')).notices?.[0]; } catch {} if (!n || document.querySelector('dialog[open]')) return;
+    if (!document.body.classList.contains('plazaMode')) return;
+    if (document.querySelector('dialog[open]')) { whenNoWindow(islandNoticeOnce); return; } /* (1.10.422 U7 D1: after the window open, not dropped) */
+    let n = null; try { n = (await api('/api/island/notices')).notices?.[0]; } catch {} if (!n) return; if (document.querySelector('dialog[open]')) { whenNoWindow(islandNoticeOnce); return; }
     const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
     const card = el('section', 'card visitCard islandNotice'); card.append(el('p', '', n.text)); const ok = el('button', 'primary', '알겠어요'); ok.type = 'button'; ok.addEventListener('click', () => plazaDialog.close()); card.append(ok);
     openPlazaWindow(n.title, [card]); plazaDialog.addEventListener('close', () => api('/api/island/notices', { method: 'POST', body: JSON.stringify({ id: n.id }) }).catch(() => {}), { once: true });
@@ -6123,9 +6126,15 @@
   // v1.10.217 조작 개편 (총괄 검토 「클릭 안 하는 PC 사용자는 방향키가 갑자기 시점이 된 걸 몰라요」): a PC's first time on the island
   // since -- the walking and view keys swapped, told once (kept on this device); not on a phone (its stick is as it was); a
   // test only when it asks (gc.testControlsNotice)
-  function showControlsNotice() {
+  // 1.10.422 U7 D1 (검토 ui-review D1): one window at a time on the first visit -- the 캐릭터 선택 first, this after it; a new player
+  // (no character yet) knew no old keys: not told (the keys band shows instead)
+  function whenNoWindow(fn) { const open = document.querySelector('dialog[open]'); if (!open) { fn(); return; } open.addEventListener('close', () => setTimeout(() => whenNoWindow(fn), 400), { once: true }); }
+  function showControlsNotice(skins = null) {
     try { if (localStorage.getItem('gc.controlsNotice') === '217' || (navigator.webdriver && !localStorage.getItem('gc.testControlsNotice'))) return; } catch { return; }
     if (document.body.classList.contains('touchIsland') || matchMedia('(pointer: coarse)').matches) return;
+    const avatar = skins?.avatar || plazaAvatar; if (!avatar && sessionRole !== 'admin') return; /* (not known yet: the next visit) */
+    if (sessionRole !== 'admin' && !avatar.look?.gender) { try { localStorage.setItem('gc.controlsNotice', '217'); } catch {} return; }
+    if (document.querySelector('dialog[open]')) { whenNoWindow(() => { if (document.body.classList.contains('plazaMode')) showControlsNotice(); }); return; }
     try { localStorage.setItem('gc.controlsNotice', '217'); } catch {}
     const card = document.createElement('div'); card.className = 'mirrorCard controlsNotice';
     for (const t of ['걷기는 W·A·S·D, 시점은 방향키(←↑↓→)로 바뀌었어요.', '섬을 한 번 클릭하면 마우스로 둘러봐요. Esc를 누르면 풀려요.', '마우스 감도는 ☰ 메뉴에서 바꿀 수 있어요.']) { const p = document.createElement('p'); p.className = 'lookMeta'; p.textContent = t; card.append(p); }

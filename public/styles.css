@@ -1803,13 +1803,22 @@ body.plazaMode .gameMenuThemes input { accent-color: var(--isle-tag); }
 .controlsCol dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 10px; margin: 0; font-size: .88rem; }
 .controlsCol dt { font-weight: 850; }
 .controlsCol dd { margin: 0; }
-.controlsHint { position: absolute; left: 50%; top: calc(max(12px, env(safe-area-inset-top)) + 48px); transform: translateX(-50%); z-index: 3; display: flex; align-items: center; gap: 6px; max-width: min(640px, calc(100% - 440px)); padding: 4px 6px 4px 12px; font-size: .84rem; font-weight: 800; }
+.controlsHint { z-index: 3; display: flex; align-items: center; gap: 6px; max-width: min(640px, 100%); padding: 4px 6px 4px 12px; font-size: .84rem; font-weight: 800; }
 .controlsHint span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-body.touchIsland .controlsHint { left: 12px; right: 140px; transform: none; max-width: none; top: calc(max(12px, env(safe-area-inset-top)) + 46px); font-size:.75rem; }
+body.touchIsland .controlsHint { align-self: stretch; max-width: none; font-size:.75rem; }
 body.touchIsland .controlsHint span { white-space: normal; }
 body.photoMode .controlsHint, body.placing .controlsHint, body:has(dialog[open]) .controlsHint { visibility: hidden; }
-.plazaStage:has(#controlsHint) .questTracker { top: 96px; }
-body.touchIsland .plazaStage:has(#controlsHint) .questTracker { top: 112px; }
+/* 1.10.422 U7 D2 (검토 ui-review D2): the top middle one 띠 (the row's 대회 띠), then the note line under the row -- the running
+   events' chips and one slot, a toast or (the first visit) the keys band, never both; a phone's 할 일 joins the row's column (app.js) */
+.islandNoteLine { flex: 0 0 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; pointer-events: none; }
+.islandNoteLine > * { pointer-events: auto; }
+.islandNoteLine > .islandEventLine { position: static; transform: none; max-width: 100%; pointer-events: none; }
+.islandNoteLine:has(> .toast:not(.hidden)) > .controlsHint { display: none; }
+body.plazaMode .islandNoteLine > .toast { position: static; transform: rotate(-1deg); max-width: min(100%, 440px); margin-top: 6px; animation: isleNoteIn .45s cubic-bezier(.2,1.4,.4,1); }
+@keyframes isleNoteIn { from { transform: translateY(-40%) rotate(-6deg); opacity: 0; } to { transform: rotate(-1deg); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { body.plazaMode .islandNoteLine > .toast { animation: none; } }
+body:not(.touchIsland) .plazaStage:has(#questTracker:not(.hidden)) .islandNoteLine { padding-left: min(340px, 30%); }
+.islandTopRow > .questTracker { position: static; flex: 0 0 100%; max-width: none; justify-items: start; }
 /* v1.10.63 게임 선택 탭: 멀티게임 / 싱글게임, then 대전게임 / 협동게임 -- only the chosen tab's games and panes show */
 .gameTabs { display: flex; gap: 6px; margin: 12px 0 8px; }
 .gameTab { flex: 1; padding: 10px 8px; border-radius: 12px; background: #0f172a; color: #cbd5e1; border: 1px solid #334155; font-weight: 850; }
@@ -3984,8 +3993,7 @@ body.plazaMode .isle-sheet.genderDialog #genderConfirmBtn:disabled{opacity:1;bac
 body.plazaMode .slowNote button.primary{background:var(--isle-btn);color:#fff;border:1px solid transparent}
 /* P1 폰: the band's buttons never fold to one letter a line; on a phone its words over its buttons */
 .controlsHint button{flex:0 0 auto;white-space:nowrap}
-body.touchIsland .controlsHint{flex-wrap:wrap;justify-content:flex-end;right:172px}
-body.touchIsland .controlsHint span{flex:1 1 100%}
+body.touchIsland .controlsHint span{flex:1 1 auto;min-width:0}
 /* A6 환경설정 라디오, A7 「접속 종료」 (the island's danger: paper, red words and line), B13 지금 화면 */
 body.plazaMode .gameMenuDialog{color-scheme:light}
 body.plazaMode .gameMenuDialog input:is([type="radio"],[type="checkbox"]){background:transparent;border:0;accent-color:var(--isle-btn)}

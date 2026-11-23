@@ -13,6 +13,12 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.422 U7 둘째 — 첫 방문 · 위쪽 가운데(검토 ui-review-20261121 D1 · D2)
+
+- D1: 첫 방문 창은 한 번에 하나(`whenNoWindow`) — 새 사람은 조작 안내를 건너뛰고, 섬 안내도 열린 창이 닫힌 뒤.
+- D2: 위쪽 가운데는 대회 띠 + 알림 한 줄(`#islandNoteLine`): 토스트가 그 줄로 들어가고, 조작 힌트는 첫 방문만(`gc.hintVisit`) · 토스트가 보이면 숨김; 터치는 할 일 칸이 위 줄 안으로.
+- 시험: `island-ui-u7b`, e2e 첫 방문 · 섬 위쪽 묶음.
+
 ## v1.10.421 U7 첫째 — 폰 다듬기(검토 ui-review-20261121 P2 · P3 · P5 · P7 · D6)
 
 - 터치 화면: 가방 아래 단추 · 증권 · 벼룩 탭 한 줄 밀기, 기록의 탑 칩 끝 흐림, 작은 누름 대상 40px 이상, 폰 도감 목록 높이 52dvh(가방 아래 줄이 화면 밖으로 안 밀리게).
@@ -23,10 +29,3 @@
 
 - 관리자 창: 섬 종이 규칙에 들어감(카드 · 계정 칩 · 단추가 종이색, 고른 칩은 꿀색). 머리 제목 옆에 빨간 「관리자」 표시.
 - 시험: admin-issue-log · admin-point-grant · island-paper-windows e2e.
-
-## v1.10.419 U5 고른 색 하나 · 12px · 선 색 하나(검토 ui-review-20261121 C5 · C7 · C11, 결정 43 A 2)
-
-- 고른 것(탭 · 칩 · 가방 탭 등): `--isle-select` 바탕 + `--isle-tag` 테 + `--isle-ink` 글자로 하나.
-- 글자: 섬 창 안 12px(.75rem) 아래 8곳을 .75rem으로.
-- 선: 비슷한 선 색들을 `--isle-line` 하나로.
-- 시험: `island-ui-tokens` U5 규칙.
