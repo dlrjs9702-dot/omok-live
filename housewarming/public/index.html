@@ -17,6 +17,11 @@
 .overview{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.stat{background:#fff;border:1px solid #eeeee9;border-radius:17px;padding:17px 16px;box-shadow:0 4px 14px #312f2510}.stat .label{display:block;color:#87908a;font-size:12px;margin-bottom:7px}.stat .big{font-size:23px;font-weight:850;letter-spacing:-.8px}.stat .tiny{font-size:11px;color:#a2a8a2}
 .progress{height:7px;background:#eeeae5;border-radius:10px;margin-top:12px;overflow:hidden}.progress-bar{height:100%;background:#e58f62;border-radius:10px;transition:width .3s}
 .tabs{display:flex;gap:8px;overflow-x:auto;padding:4px 0 8px;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}.tab{border:1px solid #e3e7e0;background:#fff;color:#68756d;border-radius:999px;padding:11px 17px;white-space:nowrap;font-size:13px;font-weight:750;transition:.18s;min-width:max-content}.tab.active{background:#263f36;color:#fff;border-color:#263f36;box-shadow:0 4px 12px #263f3620}
+.owner-filters{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:8px 0 16px}
+.owner-filters-title{font-size:12px;font-weight:800;color:#67796d;margin-right:5px}
+.owner-filter{background:#fff;color:#50675a;border:1px solid #e0e7df;border-radius:10px;padding:9px 12px;font-size:12px;font-weight:750}
+.owner-filter.active{background:#e4f2e7;color:#216040;border-color:#9bc9a9}
+.owner-filter:hover{border-color:#95b8a0}
 .meat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.meat-card{border-radius:17px;background:#fff;border:1px solid #e8eae3;padding:16px;box-shadow:0 3px 16px #312f2510}.meat-card .meat-name{font-size:15px;font-weight:850;display:flex;gap:7px;align-items:center}.meat-card .qtyline{display:flex;align-items:baseline;gap:5px;margin:12px 0}.meat-card .qtyline strong{font-size:27px;font-weight:850;letter-spacing:-.9px}.meat-card .qtyline span{font-size:12px;color:#a0a7a1}.meat-card .controls{display:flex;align-items:center;gap:6px;margin-bottom:12px}.counter{background:#f3f5f1;border:1px solid #e7eae3;border-radius:10px;width:31px;height:34px;font-size:19px;font-weight:650;color:#496052}.meat-input{min-width:0;width:100%;padding:8px 5px;text-align:center;border-radius:10px;border:1px solid #e3e8e0;background:#fff;font-size:15px;font-weight:800;color:#263f36}
 .field-select{width:100%;border:1px solid #e5e8e1;border-radius:9px;background:#fafbf9;padding:9px 10px;color:#43574b;font-size:12px;min-height:36px}.meat-card .checkline{display:flex;align-items:center;gap:8px;margin:12px 0 0;font-size:12px;font-weight:700;color:#61726b}.checkline input,.tick{accent-color:#4c936f;width:18px;height:18px;flex-shrink:0}
 .main-card{background:#fff;border:1px solid #ebede7;border-radius:20px;padding:20px;box-shadow:0 5px 20px #312f250c}.list-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px}.list-header h3{font-size:16px;letter-spacing:-.5px;margin:0}.muted{font-size:12px;color:#929a93}
@@ -47,7 +52,7 @@
   var MEATS=["삼겹살","목살","항정살"];
   var CAT=["식사 재료","조리 도구","식기·정리","음료·간식","보드게임","삼겹살","목살","항정살","기타"];
   var key=new URL(location.href).searchParams.get("key")||"";
-  var active="전체", state=null, focused=false, pending=false, busy=false, toastTimeout=null, eventSource=null;
+  var active="전체", ownerFilter="전체", state=null, focused=false, pending=false, busy=false, toastTimeout=null, eventSource=null;
   var app=document.getElementById("app"), status=document.getElementById("online"), statusText=document.getElementById("onlineText");
   function esc(x){return String(x==null?"":x).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
   function qs(x){return document.querySelector(x);}
@@ -125,8 +130,10 @@
     var pendingCount=pendingItems.length+pendingMeats.length;
     var isPending=active==="담당자 대기";
     var items=active==="전체"?state.items:isPending?pendingItems:state.items.filter(function(x){return x.category===active;});
+    if(ownerFilter!=="전체")items=items.filter(function(x){return x.owner===ownerFilter;});
     var selectedMeats=active==="전체"?MEATS:isPending?pendingMeats:[active];
-    var meatArea=selectedMeats.length?'<div class="meat-grid">'+selectedMeats.map(meatCard).join("")+'</div>':'<div class="empty">담당자 배정이 필요한 고기는 없어요.</div>';
+    if(ownerFilter!=="전체")selectedMeats=selectedMeats.filter(function(k){return state.meats[k].owner===ownerFilter;});
+    var meatArea=selectedMeats.length?'<div class="meat-grid">'+selectedMeats.map(meatCard).join("")+'</div>':'<div class="empty">'+(ownerFilter!=="전체"?"선택한 담당자에게 배정된 고기가 없어요.":"담당자 배정이 필요한 고기는 없어요.")+'</div>';
     app.innerHTML=
       '<div class="overview" style="margin-top:18px">'+
        '<div class="stat"><span class="label">전체 고기</span><span class="big">'+grams(totalMeat)+'</span><div class="tiny">1인당 '+Math.round(totalMeat/4)+'g</div></div>'+
@@ -134,10 +141,11 @@
        '<div class="stat"><span class="label">담당자 대기</span><span class="big">'+pendingCount+'건</span><div class="tiny">미배정 준비물·고기</div></div></div>'+
       '<div class="head-row"><h2 class="section-title">고기 종류 · 수량</h2><button class="share" id="share">↗ 링크 공유</button></div>'+
       '<nav class="tabs" aria-label="고기 및 준비물 탭">'+["전체"].concat(MEATS,["담당자 대기"]).map(function(t){return '<button class="tab'+(active===t?' active':'')+'" data-tab="'+t+'">'+(t==="전체"?"📋 전체 준비물":t==="담당자 대기"?"👤 담당자 대기 ("+pendingCount+")":t)+"</button>";}).join("")+'</nav>'+
+      '<div class="owner-filters" role="group" aria-label="담당자별 준비물 조회"><span class="owner-filters-title">담당자별 보기</span>'+["전체"].concat(OWNERS).map(function(owner){var count=state.items.filter(function(x){return x.owner===owner;}).length+MEATS.filter(function(k){return state.meats[k].grams>0&&state.meats[k].owner===owner;}).length;return '<button class="owner-filter'+(ownerFilter===owner?' active':'')+'" data-filter-owner="'+owner+'" aria-pressed="'+(ownerFilter===owner)+'">'+(owner==="전체"?"모두 보기":owner+" ("+count+")")+"</button>";}).join("")+'</div>'+
       meatArea+
       '<div class="head-row"><h2 class="section-title">'+(active==="전체"?"전체 준비물":isPending?"👤 담당자 배정 대기":"📍 "+active+" 추가 준비물")+'</h2><span class="small">'+items.filter(function(x){return x.done;}).length+' / '+items.length+' 완료</span></div>'+
       '<div class="main-card"><div class="list-header"><h3>체크리스트</h3><span class="muted">이름·수량을 직접 수정할 수 있어요</span></div>'+
-      (items.length?groupHtml(items):isPending?'<div class="empty">담당자를 기다리는 준비물이 없어요. 🎉</div>':'<div class="empty">아직 등록된 준비물이 없어요.<br>아래에서 새 준비물을 추가해 주세요.</div>')+
+      (items.length?groupHtml(items):isPending?'<div class="empty">담당자를 기다리는 준비물이 없어요. 🎉</div>':ownerFilter!=="전체"?'<div class="empty">'+esc(ownerFilter)+' 담당 준비물이 없어요.</div>':'<div class="empty">아직 등록된 준비물이 없어요.<br>아래에서 새 준비물을 추가해 주세요.</div>')+
       '<form class="add" id="addForm"><div class="add-head">＋ 새로운 준비물 추가</div>'+
       '<div class="add-grid"><input id="newName" placeholder="예: 버섯, 아이스박스" required maxlength="100" aria-label="준비물 이름"><input id="newQty" placeholder="수량 (예: 2개)" maxlength="40" aria-label="준비물 수량">'+
       '<select id="newCategory" aria-label="분류">'+options(CAT,(active==="전체"||isPending)?"기타":active,"")+'</select>'+
@@ -148,7 +156,8 @@
   app.addEventListener("focusout",function(e){if(e.target.matches("input:not([type=checkbox])")){focused=false;if(pending){pending=false;setTimeout(load,180);}}});
   app.addEventListener("click",async function(e){
     var b=e.target.closest("button");if(!b)return;
-    if(b.dataset.tab){active=b.dataset.tab;render();return;}
+    if(b.dataset.tab){active=b.dataset.tab;if(active==="담당자 대기")ownerFilter="전체";render();return;}
+    if(b.hasAttribute("data-filter-owner")){ownerFilter=b.dataset.filterOwner;if(active==="담당자 대기"&&ownerFilter!=="전체")active="전체";render();return;}
     if(b.id==="share"){try{await navigator.clipboard.writeText(location.href);toast("공유 링크를 복사했어요!");}catch(_){prompt("이 주소를 친구에게 보내 주세요",location.href);}return;}
     if(b.dataset.delete){
       var id=b.dataset.delete, item=state.items.find(function(x){return x.id===id;});
