@@ -2673,7 +2673,8 @@
     for (const [k, s] of [...document.getElementById('islandBagGrid').children].entries()) { s.classList.toggle('picked', k === bagPicked); s.querySelector('.bagMenu')?.remove(); }
     byId('islandBagInfo').replaceChildren(...(item ? [bagDetail(item)] : [])); // (1.10.356 가방 개편: its card -- v1.10.231 a fish's sizes, 257 ⓘ in it)
     const acts = item ? bagActions(item) : []; if (!acts.length) return;
-    const menu = document.createElement('div'); menu.className = `bagMenu${bagPicked < bagCols() ? ' below' : ''}`; menu.setAttribute('role', 'menu'); // (the top row's: under it, off the pouch's title)
+    const col = bagPicked % bagCols(); /* (1.10.426 U8, 검토 stamp-overflow §3 #2: the first column's menu from the slot's left edge, the last's to its right -- in the window) */
+    const menu = document.createElement('div'); menu.className = `bagMenu${bagPicked < bagCols() ? ' below' : ''}${col === 0 ? ' atStart' : col === bagCols() - 1 ? ' atEnd' : ''}`; menu.setAttribute('role', 'menu'); // (the top row's: under it, off the pouch's title)
     for (const [label, run] of acts) { const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'menuitem'); b.textContent = label; b.addEventListener('click', (event) => { event.stopPropagation(); run(); }); menu.append(b); }
     document.getElementById('islandBagGrid').children[bagPicked].append(menu);
   }
