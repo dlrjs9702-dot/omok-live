@@ -39,7 +39,8 @@ test('별마루섬 목책·문·늪·캠핑장: 문은 다리 길 위 하나(지
   }
   assert.ok(P.SWAMPS.length >= 5); assert.equal(P.inSwamp(I.camp.x, I.camp.z), false);
   // the camp's pieces round its fire; the cave at the creek's head; 우레's rock below the peak
-  assert.ok(P.CAMP.every(([x, z]) => Math.hypot(x - I.camp.x, z - I.camp.z) < 4)); assert.equal(P.CAMP_KINDS[P.CAMP[0][3]], 'campfire');
+  assert.deepEqual(P.CAMP, []); /* (1.10.423 사용자 결정 80 A: the camp's old middle set gone -- the hearth set its fire, the middle open) */ assert.deepEqual(P.CAMP_KINDS, ['campfire', 'log_bench', 'log_stool']);
+  assert.ok(P.solids().every((c) => Math.hypot(c.x - I.camp.x, c.z - I.camp.z) > 3), 'nothing blocks the open middle');
   assert.ok(D.creekDist(P.CAVE.x, P.CAVE.z) < 3, '샘 동굴은 개울 머리'); assert.ok(Math.hypot(P.ROCK[0] - I.peak.x, P.ROCK[1] - I.peak.z) < 46);
   // nature (trees, bushes, rocks, the forest) keeps off every piece
   const N = T.nature(); const near = [...N.trees, ...N.bushes].filter((o) => o.isle2 && props.some((c) => Math.hypot(c.x - o.x, c.z - o.z) < c.r + 0.3));

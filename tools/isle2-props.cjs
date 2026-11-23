@@ -70,9 +70,9 @@ const SIGN_TRAIL = (() => {
 const CAVE = { x: 363, z: 176, yaw: 0.942 };
 const caveSolids = SRC.caveSolids;
 
-// ---- the camp (136): the fire in its middle, two benches facing it, three stools round it ----
-const C = I.camp; const CAMP = [[C.x, C.z, 0, 0]];
-for (const [ang, kind, d] of [[0.3, 1, 2.6], [Math.PI + 0.3, 1, 2.6], [1.9, 2, 2.3], [4.2, 2, 2.3], [5.3, 2, 2.4]]) { const x = C.x + Math.cos(ang) * d; const z = C.z + Math.sin(ang) * d; const yaw = Math.atan2(-(C.x - x), -(C.z - z)); CAMP.push([r2(x), r2(z), r3(yaw), kind]); } /* (each one's -Z, the way a seat faces, toward the fire) */
+// ---- the camp (136): its old middle set (a fire, two benches, three stools) -- gone in 1.10.423 (사용자 결정 80 A: 164's hearth set the camp's fire,
+//      the middle left open ground); its kinds kept (their models, the stand-ins' sizes) ----
+const C = I.camp; const CAMP = [];
 const CAMP_KINDS = ['campfire', 'log_bench', 'log_stool'];
 /* ---- 1.10.413 S1 the camp's tall palisade (assets 174, 사용자 결정 72 · 검토 safe-zones-visible §2-1): a ring round the camp, the pieces' middles
    camp.ring.r out, +Z (their inside) to the camp; a people's wicket (1.2 m, tigers 1.5 ~ 1.8 m across) on each walk that crosses it -- the middle of
