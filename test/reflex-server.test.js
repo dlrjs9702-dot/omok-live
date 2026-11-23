@@ -33,6 +33,14 @@ test('순발력 판정: 최소 시간·사람 점수 범위·최소 노력', () 
   assert.equal(Reflex.judge('stairs', 'normal', 200, 25000), 'ok');
   assert.equal(Reflex.judge('stairs', 'normal', 20, 25000), 'low');
   assert.equal(Reflex.judge('stairs', 'hard', 9000, 999999), 'score');
+  // H1 점수 퍼즐 (한판마당 자료 2 08~11 점수.md): 숫자 밀기 time no faster than its size's floor nor than it took; the others' points a second
+  assert.equal(Reflex.judge('slide', 'normal', 8000, 20000), 'score'); // a 4x4 in 8 s
+  assert.equal(Reflex.judge('slide', 'normal', 30000, 20000), 'fast'); // says 30 s, took 20 s
+  assert.equal(Reflex.judge('slide', 'normal', 30000, 34000), 'ok');
+  assert.equal(Reflex.judge('blockpuzzle', 'normal', 3000, 5000), 'fast'); // 3000 points in 5 s (300 a second at most)
+  assert.equal(Reflex.judge('blockpuzzle', 'normal', 900, 60000), 'ok'); assert.equal(Reflex.judge('blockpuzzle', 'normal', 20, 60000), 'low');
+  assert.equal(Reflex.judge('apple10', 'normal', 161, 200000), 'score'); assert.equal(Reflex.judge('apple10', 'normal', 100, 20000), 'fast'); assert.equal(Reflex.judge('apple10', 'normal', 90, 110000), 'ok');
+  assert.equal(Reflex.levelOf('watermelon', 'hard'), 'normal'); assert.equal(Reflex.judge('watermelon', 'normal', 600, 5000), 'fast'); assert.equal(Reflex.judge('watermelon', 'normal', 600, 60000), 'ok');
 });
 
 // v1.10.255 두더지 잡기 「헬」 (docs/whack-hell-20261106.md): whack only; 10 a mole; no sooner than that many can come up (the
@@ -100,7 +108,7 @@ test('순발력 API: 판을 열고 한 번만 보고, 포인트 없이 기록만
   const balance = async () => (await req('/api/points', sa)).data.balance;
   const info = (await req('/api/solo/reflex', sa)).data;
   assert.deepEqual([info.points, info.cap, info.today], [undefined, undefined, undefined]);
-  assert.deepEqual(Object.keys(info.records), ['whack', 'reaction', 'colorfind', 'numbers', 'rhythm', 'stairs']);
+  assert.deepEqual(Object.keys(info.records), ['whack', 'reaction', 'colorfind', 'numbers', 'rhythm', 'stairs', 'slide', 'blockpuzzle', 'apple10', 'watermelon' /* (H1 점수 퍼즐) */]);
   assert.equal((await req('/api/solo/reflex/start', sa, { game: 'whack', level: 'huge' })).status, 400);
   const round = async (game, level, ageMs) => {
     const id = (await req('/api/solo/reflex/start', sa, { game, level })).data.id;

@@ -37,6 +37,7 @@ import nonogram from './js/games/nonogram.js';
 import hashi from './js/games/hashi.js';
 import circuit from './js/games/circuit.js';
 import lightup from './js/games/lightup.js'; // (H1 불빛 채우기)
+import slide from './js/games/slide.js'; import blockpuzzle from './js/games/blockpuzzle.js'; import apple10 from './js/games/apple10.js'; import watermelon from './js/games/watermelon.js'; // (H1 점수 퍼즐 넷)
 import klondike from './js/games/klondike.js';
 import freecell from './js/games/freecell.js';
 import spider from './js/games/spider.js';
@@ -50,6 +51,8 @@ const SETS = {
   reflex: { title: '순발력 게임', games: [whack, reaction, colorfind, numbers, rhythm, stairs], info: '/api/solo/reflex' },
   puzzle: { title: '퍼즐', games: [sudoku, nonogram, hashi, circuit, lightup], info: '/api/solo/puzzle' },
   cards: { title: '카드 게임', games: [klondike, freecell, spider], info: '/api/solo/cards' },
+  // H1 (한판마당 자료 2 08~11): puzzles played for a score -- their rounds as the 순발력 games' (the server opens each, keeps a score a person can make)
+  scored: { title: '점수 퍼즐', games: [slide, blockpuzzle, apple10, watermelon], info: '/api/solo/reflex' },
   ai: { title: 'AI 대전', games: [gomoku, connect4, reversi], info: null }, // practice: no server
   // v1.10.249 G4: 지뢰찾기 -- its board on the server (/api/solo/minesweeper), which keeps the record when it is cleared
   mines: { title: '지뢰찾기', games: [mines], info: '/api/solo/minesweeper', records: (got) => ({ ...got, records: { mines: got.records || {} } }) },
@@ -190,7 +193,7 @@ export function mount({ api, onBack, pieceSkin = null }) {
     const skin = set === SETS.ai ? await pieceSkin?.(g.id) : null; // (A3 G3-2)
     try {
       const contest = contestPlay ? { contest: true } : launch?.place === 'bet' && launch.bet ? { bet: launch.bet } : {}; // (v1.10.238: the tent's round; v1.10.278: a bet's -- the server settles it with the round)
-      if (set === SETS.reflex) id = (await api('/api/solo/reflex/start', { method: 'POST', body: JSON.stringify({ game: g.id, level, ...contest }) })).id;
+      if (set === SETS.reflex || set === SETS.scored) id = (await api('/api/solo/reflex/start', { method: 'POST', body: JSON.stringify({ game: g.id, level, ...contest }) })).id;
       else if (set === SETS.cards) ({ id, seed } = await api('/api/solo/cards/start', { method: 'POST', body: JSON.stringify({ game: g.id, level, ...contest }) }));
       else if (set === SETS.mines) { const n = await api('/api/solo/minesweeper/new', { method: 'POST', body: JSON.stringify({ level }) }); board = { minesId: n.id, minesView: n.view, api }; }
       else if (mode === 'daily') await api('/api/solo/puzzle/start', { method: 'POST', body: JSON.stringify({ game: g.id, level }) });
@@ -219,7 +222,7 @@ export function mount({ api, onBack, pieceSkin = null }) {
     const pill = g.resultPill?.(runLevel) || (r.outcome === 'win' ? ['win', '승리'] : r.outcome === 'loss' || (set === SETS.mines && score == null) ? ['loss', '패배'] : r.outcome === 'draw' ? ['draw', '무승부'] : ['done', '완성']); /* (v1.10.255: a game's own -- 헬 「게임 오버」) */
     box.append(el('span', `hpPanelPill ${pill[0]}`, pill[1]), el('h2', null, r.title || g.name));
     if (score != null) box.append(el('p', 'reflexScore', fmtScore(score, g.unit)));
-    const line = el('p', 'reflexPaid', (set === SETS.reflex || set === SETS.cards || r.proof) ? '기록 확인 중…' : '');
+    const line = el('p', 'reflexPaid', (set === SETS.reflex || set === SETS.scored || set === SETS.cards || r.proof) ? '기록 확인 중…' : '');
     box.append(line);
     if (r.stats?.length) {
       const stats = el('div', 'reflexStats');
