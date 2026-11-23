@@ -21,6 +21,14 @@ test('U3 부품: .ghost · .secondary · .primary가 변수로 색을 받고, �
   for (const v of ['--btn-ghost-bg:var(--isle-card)', '--btn-ghost-ink:var(--isle-ink)', '--btn-secondary-bg:var(--isle-card)', '--btn-primary-bg:var(--isle-btn)', '--btn-primary-ink:#fff']) assert.ok(island.body.includes(v), v);
 });
 
+test('U5 규칙: 섬 규칙에 12px 아래 글자 · 비슷한 선 색 없음, 고른 탭 · 칩은 꿀색 하나(--isle-select) + 진한 테두리 + 먹 글자', () => {
+  const island = rules.filter((r) => /plazaMode|isle-|island/i.test(r.sel)); const px = (v) => { const m = /^([\d.]+)(px|rem)$/.exec(v); return m ? (m[2] === 'px' ? +m[1] : +m[1] * 16) : null; };
+  assert.deepEqual(island.flatMap((r) => [...r.body.matchAll(/font-size:\s*([\d.]+(?:px|rem))/g)].filter((m) => (px(m[1]) ?? 99) < 12).map((m) => `${r.sel.slice(0, 60)} ${m[1]}`)), [], 'under 12 px');
+  assert.deepEqual(island.filter((r) => /#(d0bfa5|e6d3b3|c4a77d|d6c3a5|decdaf)\b/i.test(r.body)).map((r) => r.sel.slice(0, 60)), [], 'a near line colour');
+  const sel = island.filter((r) => /(aria-selected="true"|\.selected|aria-checked="true")/.test(r.sel) && /background:/.test(r.body));
+  assert.ok(sel.length >= 4); for (const r of sel) { assert.match(r.body, /background:var\(--isle-select\)/, r.sel); assert.match(r.body, /color:var\(--isle-ink\)/, r.sel); }
+});
+
 test('U3 지킴: 섬 규칙(plazaMode · isle- 선택자)에 어두운 팔레트 색이 새로 들어오지 않음(관리자 창은 U6까지 빼고)', () => {
   const DARK = /#(0f172a|111827|1e293b|334155|94a3b8|64748b)\b/i;
   const bad = rules.filter((r) => /plazaMode|isle-/.test(r.sel) && !/adminMode/.test(r.sel) && DARK.test(r.body)).map((r) => `${r.sel.slice(0, 90)} => ${r.body.match(DARK)[0]}`);
