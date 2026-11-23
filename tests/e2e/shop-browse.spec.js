@@ -19,6 +19,8 @@ test('상점·내 정보: 검색·등급·보유 분류와 파츠 미리보기',
   await expect.poll(async () => { if (await shop.isVisible()) return true; await spaceOn(page, 'accessories', isMobile); await page.waitForTimeout(800); return shop.isVisible(); }, { timeout: 30000, intervals: [500] }).toBe(true);
   await expect(shop.locator('#skinShopTitle')).toHaveText('소품 가게');
   await expect(shop.locator('.skinCard').first()).toBeVisible(); const all = await shop.locator('.skinCard').count();
+  /* (1.10.426 U8 A9: on the island the chip groups past the first fold behind 「더 보기」) */
+  await shop.locator('.skinChipsToggle').click(); await expect(shop.locator('.skinChipsToggle')).toHaveText('접기');
   await shop.getByRole('group', { name: '보유' }).getByRole('button', { name: '산 것', exact: true }).click();
   await expect(shop.locator('.skinCount')).toHaveText('1개'); // the hat (the hair is the 미용실's)
   await shop.getByRole('group', { name: '보유' }).getByRole('button', { name: '보유 전체', exact: true }).click();
