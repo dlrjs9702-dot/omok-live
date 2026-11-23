@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.424 달무리 사목 ①(한판마당 자료)
+
+- 서버 `lib/games/orbit4.js`: 바깥 · 안쪽 고리, 구슬마다 반시계 한 칸 돌림, 돌기 전 상대 구슬 밀기(선택), 줄은 돈 뒤에만 · 둘 다 이으면 무승부, 판이 차면 다섯 번 더 돌림, 구슬 각 8개.
+- 화면: 밤하늘 판(고리 · 돌림 화살표, 달 · 별 구슬 또는 사목 칩 꾸미기), 밀기는 상대 구슬 → 옆 칸(터치는 칸을 두 번).
+- 게임관 카드 · 방 목록 · 규칙 · 안내 · 소리 · 최근 수, 미션 · 업적(74) · 자리 이름 달 / 별.
+- 시험: `orbit4`(8), e2e orbit4 · achievements.
+
 ## v1.10.423 다듬기 164(에셋 164 · 결정 79 A · 80 A) + 출석 도장 폭
 
 - 에셋 164 다섯 파일 교체, 분수 물(밤 ×1.4), 개울 돌 24개(둑 돌 막힘 원), 채석장 먼지 · 캘 바위 금빛 고리, 택시 지붕 표시등, 수족관 벽 물고기 색, 방 들어갈 때 카메라 뒤.
@@ -27,9 +34,3 @@
 - D1: 첫 방문 창은 한 번에 하나(`whenNoWindow`) — 새 사람은 조작 안내를 건너뛰고, 섬 안내도 열린 창이 닫힌 뒤.
 - D2: 위쪽 가운데는 대회 띠 + 알림 한 줄(`#islandNoteLine`): 토스트가 그 줄로 들어가고, 조작 힌트는 첫 방문만(`gc.hintVisit`) · 토스트가 보이면 숨김; 터치는 할 일 칸이 위 줄 안으로.
 - 시험: `island-ui-u7b`, e2e 첫 방문 · 섬 위쪽 묶음.
-
-## v1.10.421 U7 첫째 — 폰 다듬기(검토 ui-review-20261121 P2 · P3 · P5 · P7 · D6)
-
-- 터치 화면: 가방 아래 단추 · 증권 · 벼룩 탭 한 줄 밀기, 기록의 탑 칩 끝 흐림, 작은 누름 대상 40px 이상, 폰 도감 목록 높이 52dvh(가방 아래 줄이 화면 밖으로 안 밀리게).
-- 노점(D6): 골라 팔기 목록에서 가게가 사는 것 먼저.
-- 시험: `island-ui-u7`, e2e dex-tabs · island-bag · island-stocks · island-contest · mobile-island.

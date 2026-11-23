@@ -12,9 +12,9 @@ const app = fs.readFileSync(path.join(root, 'public/app.js'), 'utf8');
 
 test('all thirteen games expose one shared rules selector with the original full rule text', () => {
   const games = listGames();
-  assert.equal(games.length, 18);
-  const selectedIds = [...html.matchAll(/<option value="(omok|omok2v2|connect4|yut|bingo|dots|cityking|othello|baseball|pictionary|liar|oldmaid|twentyquestions|davinci|halligalli|gostop|pandemic|rpg)">/g)].map(m => m[1]);
-  assert.equal(selectedIds.length, 18);
+  assert.equal(games.length, 19); /* (1.10.424 달무리 사목) */
+  const selectedIds = [...html.matchAll(/<option value="(omok|omok2v2|connect4|yut|bingo|dots|cityking|othello|baseball|pictionary|liar|oldmaid|twentyquestions|davinci|halligalli|gostop|pandemic|rpg|orbit4)">/g)].map(m => m[1]);
+  assert.equal(selectedIds.length, 19);
   assert.deepEqual(new Set(selectedIds), new Set(games.map(g => g.id)));
   assert.equal((html.match(/class="gameRuleDetails"/g) || []).length, 0);
   assert.equal((html.match(/id="gameRulesSelect"/g) || []).length, 1);

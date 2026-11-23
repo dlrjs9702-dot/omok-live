@@ -586,8 +586,9 @@
   function boardTurnActionable() {
     const g = state?.game;
     if (!actionWindowOpen(g)) return false;
-    if (!['omok', 'omok2v2', 'othello', 'connect4', 'dots'].includes(state.gameType)) return false;
+    if (!['omok', 'omok2v2', 'othello', 'connect4', 'orbit4', 'dots'].includes(state.gameType)) return false;
     if ((isTeamGame() ? g.nextSeat : g.turn) !== seat) return false;
+    if (state.gameType === 'orbit4') return (g.legalMoves || []).length > 0;
     if (state.gameType === 'othello') return (g.legalMoves || []).length > 0;
     if (state.gameType === 'connect4') return (g.legalColumns || []).length > 0;
     if (state.gameType === 'dots') return (g.legalEdges || []).length > 0;
@@ -1412,7 +1413,7 @@
       const first = game?.winningLine?.[0];
       const color = first ? game.board?.[first[1]]?.[first[0]] : null;
       if (color) skin = type === 'connect4' ? state.players?.[color]?.skin : stoneSkin(first[0], first[1], color);
-    } else if (['othello', 'yut', 'dots'].includes(type) && game?.status === 'finished' && game.winner) skin = state.players?.[game.winner]?.skin; // v1.9.0
+    } else if (['othello', 'yut', 'dots', 'orbit4'].includes(type) && game?.status === 'finished' && game.winner) skin = state.players?.[game.winner]?.skin; // v1.9.0 (달무리 사목: the winner's -- the line may be the other's turn)
     else if (['bingo', 'baseball', 'pictionary', 'twentyquestions', 'liar', 'davinci', 'oldmaid', 'halligalli'].includes(type) && game?.status === 'finished') { // v1.9.1: a winner's legend plays over the panel
       const winners = [].concat(game.winners?.length ? game.winners : game.winner || []);
       skin = winners.map((s) => state.players?.[s]?.skin).find((id) => { const d = window.SkinLooks?.def(id); return d?.legend && d.win; }) || null;
@@ -6861,7 +6862,7 @@
 
   function gameName(type) {
     return type === 'omok2v2' ? '오목 2vs2' : type === 'baseball' ? '숫자야구'
-      : type === 'connect4' ? '사목 (4목)' : type === 'yut' ? '윷놀이' : type === 'yut3' ? '윷놀이 3명' : type === 'yut4' ? '윷놀이 4명' : type === 'bingo' ? '빙고' : type === 'dots' ? '점과 상자' : type === 'cityking' ? '랜드킹' : type === 'pictionary' ? '그림 맞히기' : type === 'liar' ? '라이어게임' : type === 'oldmaid' ? '도둑잡기' : type === 'marathon' ? '마라톤' : type === 'twentyquestions' ? '스무고개' : type === 'davinci' ? '다빈치 코드' : type === 'pandemic' ? '팬데믹' : type === 'halligalli' ? '할리갈리' : type === 'gostop' ? '고스톱 · 맞고' : type === 'rpg' ? '잿빛 원정'
+      : type === 'connect4' ? '사목 (4목)' : type === 'orbit4' ? '달무리 사목' : type === 'yut' ? '윷놀이' : type === 'yut3' ? '윷놀이 3명' : type === 'yut4' ? '윷놀이 4명' : type === 'bingo' ? '빙고' : type === 'dots' ? '점과 상자' : type === 'cityking' ? '랜드킹' : type === 'pictionary' ? '그림 맞히기' : type === 'liar' ? '라이어게임' : type === 'oldmaid' ? '도둑잡기' : type === 'marathon' ? '마라톤' : type === 'twentyquestions' ? '스무고개' : type === 'davinci' ? '다빈치 코드' : type === 'pandemic' ? '팬데믹' : type === 'halligalli' ? '할리갈리' : type === 'gostop' ? '고스톱 · 맞고' : type === 'rpg' ? '잿빛 원정'
         : (type === 'othello' ? '오델로' : '오목');
   }
 
@@ -6911,6 +6912,7 @@
   const gameRules = Object.freeze({
     "omok": "15×15 바둑판에서 흑이 먼저 둡니다. 흑은 정확히 5목을 만들면 승리하며 3-3, 4-4, 6목 이상은 금수입니다. 백은 5목 이상이면 승리하며 금수가 없습니다.",
     "omok2v2": "4인 팀전! 흑팀 1번 → 백팀 2번 → 흑팀 3번 → 백팀 4번 순서로 반복합니다. 네 자리가 모두 정해지면 시작하며 기존 15×15 오목과 금수 규칙은 그대로입니다. 승리하면 같은 팀 두 명이 함께 승리합니다. 누군가 연결이 끊기면 복귀할 때까지 일시정지합니다.",
+    "orbit4": "4×4 달무리 판. 달 구슬이 먼저, 한 사람 8개. 내 차례에 상대 구슬 하나를 옆 빈칸으로 밀 수 있고(안 해도 돼요), 빈칸에 구슬을 놓으면 두 고리가 화살표 쪽으로 한 칸씩 돌아요. 돈 뒤에 4개가 이어진 쪽이 이기고, 둘 다면 무승부예요.",
     "connect4": "7열×6행. 빨강이 먼저 시작하며 번갈아 열을 누르면 맨 아래 빈칸부터 돌이 쌓입니다. 같은 색 돌 4개를 가로·세로·대각선으로 먼저 연결하면 승리합니다. 가득 찬 열에는 둘 수 없고 판이 다 차면 무승부입니다.",
     "yut": "각자 말(2명은 4개, 3~4명은 3개)을 모두 먼저 완주하면 승리합니다. 도·개·걸·윷·모만큼 움직이며, 윷·모가 나오거나 상대 말을 잡으면 한 번 더 던집니다. 빽도가 나오면 보드 위의 말 하나를 한 칸 뒤로 물립니다(대기 중인 말은 낼 수 없고, 물릴 말이 없으면 차례가 자동으로 넘어갑니다). 출발 직후 첫 번째 칸의 말이 빽도로 물러나면 한 바퀴를 돌아온 것과 같이 완주 직전 칸으로 들어갑니다. 같은 편 말끼리는 업어서 함께 이동하고 모서리에 정확히 멈추면 지름길을 이용하며, 중앙에 정확히 멈춘 말은 항상 짧은 지름길로 출발합니다. 완주 직전 칸에 정확히 멈춘 말은 그 칸에 머무르고 다음 이동에서 한 칸 이상 더 나아가야 완주하지만, 그 칸을 지나칠 만큼 눈이 넉넉하면 그 던지기 안에서 곧바로 완주합니다.",
     "bingo": "2~4명이 참가합니다. 방장이 시작 전에 판 크기(5×5/7×7)와 숫자 범위(1~50/75/100/150)를 정하면 각자 그 범위에서 중복 없는 숫자로 자신의 판을 받습니다. 자기 차례에 자신의 판에서 아직 선택되지 않은 숫자를 누르면 같은 숫자를 가진 모든 참가자의 판도 함께 체크됩니다. 방장이 정한 목표 줄 수(5×5는 최대 12줄, 7×7은 최대 16줄)를 가로·세로·두 대각선을 합쳐 먼저 달성하면 승리합니다.",
@@ -6971,7 +6973,7 @@
   let gameTabReady = false; // v1.10.63: set once the remembered tabs are shown (startup must not override them)
   function selectGame(type) {
     if (type === 'rpg' && rpgTouchOnly()) { type = 'omok'; showToast(RPG_PC_ONLY, 3500); }
-    selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'bingo', 'dots', 'cityking', 'pictionary', 'liar', 'oldmaid', 'twentyquestions', 'davinci', 'halligalli', 'pandemic', 'gostop', 'rpg'].includes(type) ? type : 'omok';
+    selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'orbit4', 'yut', 'bingo', 'dots', 'cityking', 'pictionary', 'liar', 'oldmaid', 'twentyquestions', 'davinci', 'halligalli', 'pandemic', 'gostop', 'rpg'].includes(type) ? type : 'omok';
     for (const button of gameChoiceButtons) button.classList.toggle('selected', button.dataset.game === selectedGameType);
     const resolvedType = selectedGameType === 'omok' && omokMode() === '2v2' ? 'omok2v2' : selectedGameType;
     selectedGameText.textContent = `${gameDisplayName(resolvedType)} 방을 만듭니다.`;
@@ -9189,7 +9191,7 @@
     gameInfoOverlayOpen = false;
     gameInfoActiveTab = 'system';
     updateChatBadges();
-    selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'yut', 'bingo', 'dots', 'cityking', 'pictionary', 'liar'].includes(state?.gameType) ? state.gameType : 'omok';
+    selectedGameType = ['othello', 'baseball', 'omok2v2', 'connect4', 'orbit4', 'yut', 'bingo', 'dots', 'cityking', 'pictionary', 'liar'].includes(state?.gameType) ? state.gameType : 'omok';
     seat = state?.me?.seat || null;
     isHost = Boolean(state?.me?.isHost);
     showView('room');
@@ -9483,8 +9485,8 @@
     if (characterPairActive() && ['black','white'].includes(choice)) return choice === 'black' ? '흑' : '백';
     if ((isRpgGame() || isGostopGame() || isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame() || isDavinciGame() || isHalliGame() || isPandemicGame()) && numberedSeats().includes(choice)) return `${choice}번`;
     if (isTeamGame() && ['1','2','3','4'].includes(choice)) return `${seatColor(choice) === 'black' ? '흑' : '백'}팀 ${choice}번`;
-    if (choice === 'black') return state?.gameType === 'baseball' ? '선공' : state?.gameType === 'connect4' ? '빨강' : ['yut','dots','cityking'].includes(state?.gameType) ? '파랑' : (isTeamGame() ? '흑팀' : '흑');
-    if (choice === 'white') return state?.gameType === 'baseball' ? '후공' : state?.gameType === 'connect4' ? '노랑' : ['yut','dots','cityking'].includes(state?.gameType) ? '빨강' : (isTeamGame() ? '백팀' : '백');
+    if (choice === 'black') return state?.gameType === 'baseball' ? '선공' : state?.gameType === 'connect4' ? '빨강' : state?.gameType === 'orbit4' ? '달' : ['yut','dots','cityking'].includes(state?.gameType) ? '파랑' : (isTeamGame() ? '흑팀' : '흑');
+    if (choice === 'white') return state?.gameType === 'baseball' ? '후공' : state?.gameType === 'connect4' ? '노랑' : state?.gameType === 'orbit4' ? '별' : ['yut','dots','cityking'].includes(state?.gameType) ? '빨강' : (isTeamGame() ? '백팀' : '백');
     if (choice === 'green' || choice === 'yellow') return seatKo(choice); /* (윷놀이 B: 「내 차례 · 노랑」, not 미선택) */
     if (choice === 'spectator') return '관전';
     return '미선택';
@@ -9494,8 +9496,8 @@
     if (characterPairActive() && ['black','white'].includes(value)) return value === 'black' ? '흑' : '백';
     if ((isRpgGame() || isGostopGame() || isBingoGame() || isPictionaryGame() || isLiarGame() || isOldMaidGame() || isCityKingGame() || isDavinciGame() || isHalliGame() || isPandemicGame()) && numberedSeats().includes(value)) return `${value}번`;
     if (isTeamGame() && ['1','2','3','4'].includes(value)) return `${seatColor(value) === 'black' ? '흑' : '백'}팀 ${value}번`;
-    if (value === 'black') return state?.gameType === 'baseball' ? '선공' : state?.gameType === 'connect4' ? '빨강' : ['yut','dots'].includes(state?.gameType) ? '파랑' : (isTeamGame() ? '흑팀' : '흑');
-    if (value === 'white') return state?.gameType === 'baseball' ? '후공' : state?.gameType === 'connect4' ? '노랑' : ['yut','dots'].includes(state?.gameType) ? '빨강' : (isTeamGame() ? '백팀' : '백');
+    if (value === 'black') return state?.gameType === 'baseball' ? '선공' : state?.gameType === 'connect4' ? '빨강' : state?.gameType === 'orbit4' ? '달' : ['yut','dots'].includes(state?.gameType) ? '파랑' : (isTeamGame() ? '흑팀' : '흑');
+    if (value === 'white') return state?.gameType === 'baseball' ? '후공' : state?.gameType === 'connect4' ? '노랑' : state?.gameType === 'orbit4' ? '별' : ['yut','dots'].includes(state?.gameType) ? '빨강' : (isTeamGame() ? '백팀' : '백');
     if (value === 'green') return '초록'; if (value === 'yellow') return '노랑'; /* (윷놀이 B: the third and fourth seats) */
     return '관전';
   }
@@ -9659,7 +9661,7 @@
   // Short, public wording only -- never a secret word, hidden number or role.
   function turnAlertVerb(type, g) {
     switch (type) {
-      case 'omok': case 'omok2v2': case 'othello': case 'connect4': return '착수할';
+      case 'omok': case 'omok2v2': case 'othello': case 'connect4': case 'orbit4': return '착수할';
       case 'dots': return '선을 그을';
       case 'bingo': return '숫자를 고를';
       case 'baseball': return g.status === 'setup' ? '비밀 숫자를 정할' : '추측할';
@@ -10189,7 +10191,7 @@
   const twentyAnswerBox = document.getElementById('twentyAnswerBox'); const twentyAnswerMark = document.createComment('twentyAnswerBox'); twentyAnswerBox.before(twentyAnswerMark); // (v1.10.197)
   // G-틀③ 게임방 소리 (room-sound.js): a move made -- a stone in the stone games, a card in the others (the yut sticks sound
   // as they are thrown) --, my turn come, the hand over (my win or loss, or just its end). The first view of a room is quiet.
-  const STONE_GAMES = new Set(['omok', 'omok2v2', 'othello', 'connect4', 'dots']);
+  const STONE_GAMES = new Set(['omok', 'omok2v2', 'othello', 'connect4', 'orbit4', 'dots']);
   let soundSeen = null;
   function roomSounds(g) {
     const now = { cures: Object.values(g.cures || {}).filter(Boolean).length, outbreaks: Number(g.outbreaks) || 0, awards: (g.roundAwards || []).length, liarDone: (g.results || []).length, guesses: (g.guessHistory || []).length, room: state?.me?.roomCode || state?.roomId || null, moves: Number(g.moveCount) || 0, round: g.round || 0, status: g.status, mine: Boolean(seat && currentActorSeats().seats.has(String(seat))), bell: g.lastBell ? `${g.lastBell.flipId}:${g.lastBell.at}` : null };
@@ -10387,11 +10389,13 @@
       teamSpectatorBtn.classList.toggle('selected', choice === 'spectator');
       return;
     }
-    chooseBlackBtn.lastChild.nodeValue = baseball ? '선공 선택' : connect4 ? '빨강 선택' : (yut || dots || city) ? '파랑 선택' : '흑 선택';
-    chooseWhiteBtn.lastChild.nodeValue = baseball ? '후공 선택' : connect4 ? '노랑 선택' : (yut || dots || city) ? '빨강 선택' : '백 선택';
+    const orbit = state.gameType === 'orbit4'; /* (달무리 사목: the moon bead first) */
+    chooseBlackBtn.lastChild.nodeValue = baseball ? '선공 선택' : connect4 ? '빨강 선택' : orbit ? '달 구슬 선택' : (yut || dots || city) ? '파랑 선택' : '흑 선택';
+    chooseWhiteBtn.lastChild.nodeValue = baseball ? '후공 선택' : connect4 ? '노랑 선택' : orbit ? '별 구슬 선택' : (yut || dots || city) ? '빨강 선택' : '백 선택';
     roleChooser.querySelector('small').textContent = baseball
       ? '선공·후공이 정해지면 각자 비밀 숫자를 설정합니다. 나머지 참가자는 자동 관전됩니다.'
       : connect4 ? '빨강·노랑 선수를 선택하세요. 두 사람이 정해지면 게임이 시작됩니다. 열을 눌러 돌을 떨어뜨리세요.'
+      : orbit ? '달 구슬·별 구슬 선수를 고르세요. 두 사람이 정해지면 달 구슬부터 둡니다. 놓으면 두 고리가 한 칸씩 돌아요.'
       : yut ? '파랑·빨강 선수를 선택하세요. 두 사람이 정해지면 파랑부터 윷을 던집니다.'
       : dots ? '파랑·빨강 선수를 선택하세요. 두 사람이 정해지면 파랑부터 빈 선을 선택합니다.'
       : city ? '파랑·빨강 선수를 선택하세요. 두 사람이 정해지면 파랑부터 주사위를 굴립니다.'
@@ -10401,7 +10405,7 @@
     if (characterPairActive()) {
       chooseBlackBtn.lastChild.nodeValue = '흑 선택'; chooseWhiteBtn.lastChild.nodeValue = '백 선택';
       const help = roleChooser.querySelector('small');
-      help.textContent = connect4 ? help.textContent.replaceAll('빨강','흑').replaceAll('노랑','백') : help.textContent.replaceAll('파랑','흑').replaceAll('빨강','백');
+      help.textContent = connect4 ? help.textContent.replaceAll('빨강','흑').replaceAll('노랑','백') : orbit ? help.textContent.replaceAll('달 구슬', '흑').replaceAll('별 구슬', '백') : help.textContent.replaceAll('파랑','흑').replaceAll('빨강','백');
     }
     chooseBlackBtn.disabled = Boolean(state.players.black && seat !== 'black');
     chooseWhiteBtn.disabled = Boolean(state.players.white && seat !== 'white');
@@ -12829,6 +12833,7 @@
     if (state?.gameType === 'dots') return drawDotsBoard();
     if (state?.gameType === 'cityking') return drawCityBoard();
     if (state?.gameType === 'connect4') return drawConnect4Board();
+    if (state?.gameType === 'orbit4') return drawOrbit4Board();
     if (state?.gameType === 'othello') return drawOthelloBoard();
     return drawOmokBoard();
   }
@@ -13802,6 +13807,77 @@
     }
   }
 
+  // 달무리 사목 (notes docs/orbit-4-plan-20261122.md §3-3, 결정 59): a night-sky board of two rings (the outer twelve, the inner four), the moon bead
+  // (선공) and the star bead; after each bead both rings turn one step counter-clockwise -- the beads slide along their ring (0.5 s a step, at once
+  // with 「움직임 줄이기」). A push: tap the other's bead, then the empty cell beside it (tap again to take it back); then the cell to place on --
+  // on a touch screen tapped twice (결정 59-6 A: the phone only)
+  const ORBIT = { N: 4, OUTER: [[0, 0], [1, 0], [2, 0], [3, 0], [3, 1], [3, 2], [3, 3], [2, 3], [1, 3], [0, 3], [0, 2], [0, 1]], INNER: [[1, 1], [2, 1], [2, 2], [1, 2]] };
+  let orbitPush = null; let orbitPick = null; let orbitSeen = -1; /* ({ from, to } the push picked; the cell a touch has picked to place on; the moves seen) */
+  function orbit4Layout() { const cell = 140; return { cell, left: (canvas.width - cell * 4) / 2, top: 96 }; } /* (720 x 720: the count above, the board, one line below) */
+  const orbitRingOf = (x, y) => { for (const ring of [ORBIT.OUTER, ORBIT.INNER]) { const i = ring.findIndex(([a, b]) => a === x && b === y); if (i >= 0) return { ring, i }; } return null; };
+  const orbitStep = (x, y, s) => { const r = orbitRingOf(x, y); if (!r) return [x, y]; const n = r.ring.length; return r.ring[(((r.i + s) % n) + n) % n]; }; /* (s steps clockwise: where a bead was s turns ago) */
+  function orbitPaintBead(cx, cy, r, color, alpha = 1) {
+    ctx.save(); ctx.globalAlpha = alpha;
+    const skin = window.SkinLooks.def(state.players?.[color]?.skin);
+    if (skin?.stone) { ctx.translate(cx, cy); window.SkinLooks.paintStone(ctx, r, state.players[color].skin, color); ctx.restore(); return; } /* (the 사목 chips -- 결정 59-7 A) */
+    const g = ctx.createRadialGradient(cx - r * .35, cy - r * .4, 2, cx, cy, r);
+    if (color === 'black') { g.addColorStop(0, '#fff7d6'); g.addColorStop(.5, '#f2cf6b'); g.addColorStop(1, '#a8781c'); } else { g.addColorStop(0, '#eef4ff'); g.addColorStop(.5, '#86a8ff'); g.addColorStop(1, '#3651c4'); }
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    if (color === 'black') { ctx.fillStyle = 'rgba(120,80,10,.38)'; ctx.beginPath(); ctx.arc(cx, cy, r * .52, Math.PI * .35, Math.PI * 1.65); ctx.arc(cx + r * .22, cy, r * .44, Math.PI * 1.6, Math.PI * .4, true); ctx.fill(); } /* (a crescent on the moon) */
+    else { ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.beginPath(); for (let k = 0; k < 10; k += 1) { const a = -Math.PI / 2 + (k * Math.PI) / 5; const rr = k % 2 ? r * .2 : r * .46; ctx.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } ctx.closePath(); ctx.fill(); } /* (a star on the star) */
+    ctx.restore();
+  }
+  function drawOrbit4Board() {
+    const w = canvas.width; const h = canvas.height; const g = state.game; const { cell, left, top } = orbit4Layout(); const side = cell * 4;
+    if (g.moveCount !== orbitSeen || g.turn !== seat || g.status !== 'playing') { if (g.moveCount !== orbitSeen || orbitPush || orbitPick) { orbitPush = null; orbitPick = null; } orbitSeen = g.moveCount; } /* (a move made, or not my turn: the picks gone) */
+    const sky = ctx.createLinearGradient(0, 0, 0, h); sky.addColorStop(0, '#0b1433'); sky.addColorStop(1, '#1b2452'); ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = 'rgba(255,255,255,.55)'; for (let k = 0; k < 40; k += 1) { const sx = (k * 197) % w; const sy = (k * 113) % h; ctx.fillRect(sx, sy, k % 3 ? 1.4 : 2.2, k % 3 ? 1.4 : 2.2); }
+    ctx.fillStyle = 'rgba(255,255,255,.06)'; ctx.beginPath(); ctx.roundRect(left - 18, top - 18, side + 36, side + 36, 36); ctx.fill();
+    const ctr = (x, y) => ({ x: left + (x + .5) * cell, y: top + (y + .5) * cell });
+    for (let y = 0; y < 4; y += 1) for (let x = 0; x < 4; x += 1) { const p = ctr(x, y); ctx.fillStyle = 'rgba(4,8,26,.6)'; ctx.beginPath(); ctx.arc(p.x, p.y, cell * .38, 0, Math.PI * 2); ctx.fill(); }
+    // the two rings (달무리): a soft loop through each ring's cells (over the holes -- whole), an arrow on its top edge pointing the way it turns
+    for (const [ring, col] of [[ORBIT.OUTER, 'rgba(255,236,170,.42)'], [ORBIT.INNER, 'rgba(190,210,255,.5)']]) {
+      ctx.strokeStyle = col; ctx.lineWidth = 10; ctx.lineJoin = 'round'; ctx.beginPath(); ring.forEach(([x, y], i) => { const p = ctr(x, y); if (i) ctx.lineTo(p.x, p.y); else ctx.moveTo(p.x, p.y); }); ctx.closePath(); ctx.stroke();
+      const a = ctr(...ring[1]); const b = ctr(...ring[0]); const mx = (a.x + b.x) / 2; const my = a.y; ctx.fillStyle = col.replace(/[\d.]+\)$/, '.95)'); ctx.beginPath(); ctx.moveTo(mx - 14, my); ctx.lineTo(mx + 8, my - 11); ctx.lineTo(mx + 8, my + 11); ctx.closePath(); ctx.fill();
+    }
+    // the turn's slide: every bead from where it was `turns` steps ago to where it is
+    const last = g.lastMove; const turns = Math.max(1, Number(last?.turns) || 1);
+    const t = pieceMotion(last ? `o4:${g.moveCount}:${last.at || ''}` : '', 500 * turns); const u = easeOutCubic(t) * turns;
+    const k = Math.min(turns, Math.floor(u)); const f = u - k; const r = cell * .34;
+    for (let y = 0; y < 4; y += 1) for (let x = 0; x < 4; x += 1) {
+      const c = g.board?.[y]?.[x]; if (!c) continue;
+      const from = ctr(...orbitStep(x, y, turns - k)); const to = ctr(...orbitStep(x, y, turns - k - 1)); const px = from.x + (to.x - from.x) * (k >= turns ? 0 : f); const py = from.y + (to.y - from.y) * (k >= turns ? 0 : f);
+      const pushedFrom = orbitPush && orbitPush.from[0] === x && orbitPush.from[1] === y;
+      orbitPaintBead(orbitPush?.to && pushedFrom ? ctr(...orbitPush.to).x : px, orbitPush?.to && pushedFrom ? ctr(...orbitPush.to).y : py, r, c, orbitPush?.to && pushedFrom ? .8 : 1);
+      if (pushedFrom) { ctx.save(); ctx.setLineDash([8, 6]); ctx.strokeStyle = '#ffe9a8'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(px, py, r + 8, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
+    }
+    // the last bead placed, where it ended up (a thin ring) once the slide is over
+    if (last && t >= 1) { const [ex, ey] = orbitStep(last.x, last.y, -turns); const p = ctr(ex, ey); ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p.x, p.y, r + 6, 0, Math.PI * 2); ctx.stroke(); }
+    // a push picked: its empty neighbours lit; the place picked (touch) or hovered: a faint bead
+    if (orbitPush && !orbitPush.to) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = orbitPush.from[0] + dx; const ny = orbitPush.from[1] + dy; if (nx < 0 || ny < 0 || nx > 3 || ny > 3 || g.board[ny][nx]) continue; const p = ctr(nx, ny); ctx.fillStyle = 'rgba(255,233,168,.28)'; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill(); }
+    const ghost = orbitPick || (hover && canPlace(hover.x, hover.y) && orbitFree(hover.x, hover.y) ? hover : null);
+    if (ghost && seat && g.turn === seat) { const p = ctr(ghost.x, ghost.y); orbitPaintBead(p.x, p.y, r, seat, orbitPick ? .75 : .4); }
+    // lines once all is still: each one through its four beads
+    if (t >= 1) for (const line of g.winningLines || []) { const a = ctr(...line[0]); const b = ctr(...line[3]); ctx.save(); ctx.strokeStyle = 'rgba(255,248,200,.9)'; ctx.lineWidth = 12; ctx.lineCap = 'round'; ctx.shadowColor = '#fff3b0'; ctx.shadowBlur = 18; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.restore(); }
+    ctx.fillStyle = '#e8ecff'; ctx.font = '700 26px Pretendard, "Malgun Gothic", sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(`달 구슬 ${g.left?.black ?? 8}개 · 별 구슬 ${g.left?.white ?? 8}개 남음`, w / 2, 56);
+    ctx.font = '500 22px Pretendard, "Malgun Gothic", sans-serif'; ctx.fillStyle = 'rgba(232,236,255,.8)';
+    ctx.fillText(orbitPick ? '한 번 더 누르면 놓아요' : orbitPush && !orbitPush.to ? '밀 빈칸을 고르세요 · 다시 누르면 취소' : '놓으면 두 고리가 화살표 쪽으로 한 칸 돌아요', w / 2, top + side + 44);
+  }
+  // a cell free to place on now (the picked push counted: its bead gone from `from`, on `to`)
+  function orbitFree(x, y) { const b = state?.game?.board; if (!b) return false; if (orbitPush?.to && orbitPush.to[0] === x && orbitPush.to[1] === y) return false; if (orbitPush?.to && orbitPush.from[0] === x && orbitPush.from[1] === y) return true; return !b[y]?.[x]; }
+  function orbitTap(p, touch) {
+    const g = state.game; const mine = seat; const theirs = mine === 'black' ? 'white' : 'black'; const at = g.board[p.y]?.[p.x];
+    if (orbitPush && !orbitPush.to && orbitPush.from[0] === p.x && orbitPush.from[1] === p.y) { orbitPush = null; orbitPick = null; drawBoard(); return; } // (the push taken back)
+    if (orbitPush?.to && orbitPush.to[0] === p.x && orbitPush.to[1] === p.y) { orbitPush = { from: orbitPush.from }; orbitPick = null; drawBoard(); return; }
+    if (at === theirs && !(orbitPush?.to && orbitPush.from[0] === p.x && orbitPush.from[1] === p.y)) { orbitPush = { from: [p.x, p.y] }; orbitPick = null; drawBoard(); return; }
+    if (orbitPush && !orbitPush.to) { if (!at && Math.abs(p.x - orbitPush.from[0]) + Math.abs(p.y - orbitPush.from[1]) === 1) { orbitPush = { ...orbitPush, to: [p.x, p.y] }; drawBoard(); } return; }
+    if (!orbitFree(p.x, p.y)) return;
+    if (touch && !(orbitPick && orbitPick.x === p.x && orbitPick.y === p.y)) { orbitPick = { x: p.x, y: p.y }; drawBoard(); return; }
+    const push = orbitPush?.to ? { from: orbitPush.from, to: orbitPush.to } : undefined; orbitPush = null; orbitPick = null;
+    roomAction('move', { x: p.x, y: p.y, ...(push ? { push } : {}) });
+  }
+
   function drawConnect4Board() {
     const w = canvas.width;
     const h = canvas.height;
@@ -14280,6 +14356,7 @@
       if (x < 0 || x >= 7 || py < top - 74 || py >= top + 6 * cell) return null;
       return { x, y: 0 }; // Column-only input: the server computes the gravity landing row.
     }
+    if (state?.gameType === 'orbit4') { const { cell, left, top } = orbit4Layout(); const x = Math.floor((px - left) / cell); const y = Math.floor((py - top) / cell); return x >= 0 && x < 4 && y >= 0 && y < 4 ? { x, y } : null; }
     if (state?.gameType === 'othello') {
       const cell = canvas.width / 8;
       const x = Math.floor(px / cell);
@@ -14309,6 +14386,7 @@
         && (state.game.legalColumns || []).includes(x);
     }
     if (state.gameType === 'dots') return (state.game.legalEdges || []).includes(x);
+    if (state.gameType === 'orbit4') return Number.isInteger(x) && Number.isInteger(y) && x >= 0 && x < 4 && y >= 0 && y < 4; /* (any cell: a bead to push, a cell to push to or to place on -- orbitTap sorts it) */
     return Boolean(state.game.board?.[y] && !state.game.board[y][x]);
   }
 
@@ -15036,7 +15114,7 @@
     const s = timer ? Math.ceil(left / 1000) : null; if (s !== null && s <= 5 && s > 0 && s !== hudBeep) window.RoomSound?.play('beep', s === 1); hudBeep = s;
     // (U2: the turn told once, the pill lit -- after the HUD is filled, so the banner is placed under its full height)
     // (G1: 사목's how-to once on this device, with the first 「내 차례예요」 -- off the board)
-    const HOWTO = { connect4: '열을 눌러 두어요', halligalli: '과일이 5개면 종을 쳐요' }; let howTo = ''; if (HOWTO[state.gameType]) { try { if (localStorage.getItem(`gc.howTo.${state.gameType}`) !== '1') howTo = ` · ${HOWTO[state.gameType]}`; } catch {} } /* (v1.10.247 G2: 할리갈리 too) */
+    const HOWTO = { connect4: '열을 눌러 두어요', orbit4: '상대 구슬을 밀 수 있어요 · 놓으면 판이 돌아요', halligalli: '과일이 5개면 종을 쳐요' }; let howTo = ''; if (HOWTO[state.gameType]) { try { if (localStorage.getItem(`gc.howTo.${state.gameType}`) !== '1') howTo = ` · ${HOWTO[state.gameType]}`; } catch {} } /* (v1.10.247 G2: 할리갈리 too) */
     const mine = Boolean(seat) && currentActorSeats().seats.has(String(seat)); if (mine && !hudMine) { boardNote(`내 차례예요${howTo}`); if (howTo) try { localStorage.setItem(`gc.howTo.${state.gameType}`, '1'); } catch {} } hudMine = mine;
     const note = byId('boardNote'); if (!note.classList.contains('hidden')) placeBoardNote(note); // (the plates may settle after it shows)
   }
@@ -15121,6 +15199,7 @@
     if (state?.gameType === 'cityking') { selectCityTileFromPointer(ev); return; }
     const p = canvasPoint(ev);
     if (!p || !canPlace(p.x, p.y)) return;
+    if (state?.gameType === 'orbit4') { orbitTap(p, ev.pointerType === 'touch'); return; } /* (달무리 사목: a push, then the cell -- a touch taps the cell twice) */
     // A3 G3-1 오목 터치 두 번 누르기: on a touch screen the first tap shows the stone (the hover preview), the same point
     // again places it, another point moves the preview; a mouse still places at once
     if (ev.pointerType === 'touch' && /^omok/.test(state?.gameType || '')) {

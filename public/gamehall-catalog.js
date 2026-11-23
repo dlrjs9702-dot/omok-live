@@ -26,6 +26,7 @@
     bingo: '<rect x="8" y="8" width="48" height="48" rx="6" fill="none" stroke="currentColor" stroke-width="5"/><path d="M24 8v48M40 8v48M8 24h48M8 40h48" stroke="currentColor" stroke-width="3"/><path d="M12 12l40 40" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>',
     dots: '<g fill="currentColor"><circle cx="14" cy="14" r="5"/><circle cx="32" cy="14" r="5"/><circle cx="50" cy="14" r="5"/><circle cx="14" cy="32" r="5"/><circle cx="32" cy="32" r="5"/><circle cx="50" cy="32" r="5"/><circle cx="14" cy="50" r="5"/><circle cx="32" cy="50" r="5"/><circle cx="50" cy="50" r="5"/></g><path d="M14 14h18v18H14z" fill="currentColor" opacity=".5"/>',
     bat: '<circle cx="32" cy="32" r="22" fill="none" stroke="currentColor" stroke-width="5"/><path d="M20 18c6 8 6 20 0 28M44 18c-6 8-6 20 0 28" fill="none" stroke="currentColor" stroke-width="3"/>',
+    orbit: '<rect x="9" y="9" width="46" height="46" rx="12" fill="none" stroke="currentColor" stroke-width="4" opacity=".7"/><rect x="21" y="21" width="22" height="22" rx="6" fill="none" stroke="currentColor" stroke-width="4" opacity=".7"/><circle cx="15" cy="15" r="6" fill="currentColor"/><circle cx="49" cy="49" r="6" fill="currentColor"/><circle cx="27" cy="37" r="5" fill="currentColor"/><path d="M38 6l-7 3 7 3z" fill="currentColor"/>', /* (달무리 사목: two rings, beads on them, the turn's arrow) */
     tiles: '<rect x="8" y="14" width="14" height="36" rx="3" fill="currentColor"/><rect x="25" y="14" width="14" height="36" rx="3" fill="currentColor" opacity=".55"/><rect x="42" y="14" width="14" height="36" rx="3" fill="currentColor"/>',
   };
   const how = (...lines) => lines;
@@ -35,6 +36,8 @@
       intro: '다섯 개를 먼저 잇는 바둑판 대결', how: how('흑과 백이 번갈아 한 수씩 둡니다', '가로·세로·대각선으로 5개를 먼저 이으면 이깁니다', '흑은 3-3·4-4·6목이 금수, 2vs2 팀전도 있어요') },
     { id: 'connect4', name: '사목', cats: ['board', 'ai'], players: '2인', colors: ['#1d4ed8', '#1e3a8a'], art: 'connect4', room: 'connect4', ai: 'connect4',
       intro: '떨어뜨린 말로 네 개를 잇는 대결', how: how('줄을 골라 말을 떨어뜨리면 맨 아래 빈칸에 놓입니다', '가로·세로·대각선으로 4개를 먼저 이으면 이깁니다', '상대의 세 개 줄은 미리 막으세요') },
+    { id: 'orbit4', name: '달무리 사목', cats: ['board'], players: '2인', colors: ['#3730a3', '#1e1b4b'], svg: 'orbit', room: 'orbit4',
+      intro: '놓을 때마다 판이 도는 네 개 잇기', how: how('상대 구슬 하나를 옆 빈칸으로 밀 수 있어요(안 해도 돼요)', '빈칸에 구슬을 놓으면 두 고리가 한 칸씩 돌아요', '돈 뒤에 4개가 이어진 쪽이 이겨요 · 둘 다면 무승부') }, /* (결정 57 · 59; AI 연습은 ②) */
     { id: 'othello', name: '오델로', cats: ['board', 'ai'], players: '2인', colors: ['#166534', '#14532d'], art: 'reversi', room: 'othello', ai: 'reversi',
       intro: '사이에 낀 돌을 뒤집는 판 게임', how: how('상대 돌을 내 돌 사이에 끼우는 자리에만 둡니다', '끼운 돌은 모두 내 색으로 뒤집힙니다', '판이 다 차면 돌이 많은 쪽이 이깁니다') },
     { id: 'yut', name: '윷놀이', cats: ['board'], players: '2인', colors: ['#9a3412', '#7c2d12'], art: 'yut', room: 'yut',
