@@ -11,7 +11,7 @@ const { boot } = require('../test-support/test-server');
 // v1.10.250 기록의 탑 (gamecenter-notes docs/gamehall-ranking-board-20261103.md §2): 14 games, the better record first (a time
 // smaller, a score bigger), a tie to who set it first; the records read as the games show them
 test('기록의 탑 순위 규칙: 14종, 시간은 짧을수록·점수는 높을수록, 같으면 먼저 세운 사람', () => {
-  assert.equal(R.GAMES.length, 14);
+  assert.equal(R.GAMES.length, 19); /* (H1: five more) */
   for (const g of R.GAMES) assert.ok(g.levels.includes(g.board), `${g.id} 게시판 난이도`);
   const rows = [{ userId: 'b', best: 900, at: 2 }, { userId: 'a', best: 900, at: 1 }, { userId: 'c', best: 500, at: 3 }];
   assert.deepEqual(R.rank('minesweeper', rows).map((r) => [r.userId, r.rank]), [['c', 1], ['a', 2], ['b', 3]]);
@@ -57,7 +57,7 @@ test('기록의 탑 서버: 이번 주·역대 순위(1~20 + 내 순위), 결과
   // the board: 14 games at their board level (지뢰찾기 중급) -- one clear there shows; the others empty
   await clear(a, 'intermediate', 90_000);
   const board = (await req('/api/solo/board', b)).data;
-  assert.equal(board.games.length, 14); assert.ok(board.endsAt > Date.now());
+  assert.equal(board.games.length, 19); assert.ok(board.endsAt > Date.now());
   const ms = board.games.find((g) => g.game === 'minesweeper');
   assert.equal(ms.level, 'intermediate'); assert.deepEqual(ms.top.map((r) => [r.rank, r.name]), [[1, '탑가']]); assert.equal(ms.allTime.name, '탑가'); assert.equal(ms.title, '지뢰 탐정');
   assert.deepEqual(board.games.find((g) => g.game === 'sudoku').top, []);

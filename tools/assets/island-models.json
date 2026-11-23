@@ -8573,6 +8573,46 @@
       "precompressed": true
     },
     {
+      "out": "yard-v1/trophy_lights.glb",
+      "src": "trophies180:01. High/yard-v1/trophy_lights.glb",
+      "sha256": "79567419f1ffac856463967580b140c5c53b3dcb787bb00533f301ccad87d91f",
+      "lowSrc": "trophies180:02. Low/yard-v1/trophy_lights_low.glb",
+      "lowSha256": "f468441f70ecccc7ffb9a208f0268d2addf5df4972a9764bd1e34f8ad01eae28",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/trophy_slide.glb",
+      "src": "trophies180:01. High/yard-v1/trophy_slide.glb",
+      "sha256": "95a293fb3d0b2f05e55d24781132820e54966108fa3b2778a7dcc5714e0be1de",
+      "lowSrc": "trophies180:02. Low/yard-v1/trophy_slide_low.glb",
+      "lowSha256": "b54534edfc974edd22409749d56581637ddad4e82d23461530277ac52f3981eb",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/trophy_blocks.glb",
+      "src": "trophies180:01. High/yard-v1/trophy_blocks.glb",
+      "sha256": "42dc8fac0591d4acd75f38af47d4b06decc548b965f1976131ddb4bf02268516",
+      "lowSrc": "trophies180:02. Low/yard-v1/trophy_blocks_low.glb",
+      "lowSha256": "8de59f5e471e29bf9ae983c55cd0a07730d16c125f296f6a1c14f4b46a0184dd",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/trophy_apple.glb",
+      "src": "trophies180:01. High/yard-v1/trophy_apple.glb",
+      "sha256": "fb3933a5baa53d764d0a81bc2d7e5f86af4f915ea54364df939febe84f4fb132",
+      "lowSrc": "trophies180:02. Low/yard-v1/trophy_apple_low.glb",
+      "lowSha256": "d4de764227e98c2df5b13af1b5cd0a7c5976ccb958150754630c118e3c95fb98",
+      "precompressed": true
+    },
+    {
+      "out": "yard-v1/trophy_melon.glb",
+      "src": "trophies180:01. High/yard-v1/trophy_melon.glb",
+      "sha256": "67bc976e5a8cbab801e098f4ca42e4618fc88540c04c3d2c47fafc17cb8736f1",
+      "lowSrc": "trophies180:02. Low/yard-v1/trophy_melon_low.glb",
+      "lowSha256": "99ea2dff30cfc60ef9137138590053b781aedfd67b3210652a0704c8edc1f6d2",
+      "precompressed": true
+    },
+    {
       "out": "characters/motions/ShowCatch.glb",
       "src": "show97:01. High/motions/ShowCatch.glb",
       "sha256": "f2fe18a9748ab645bc68d3639fcdb1b5be31e22bd80895aa6d7fe71865536cb7"
@@ -15978,6 +16018,7 @@
     "tower178": "178. Game Island lookout tower 2026-11-22",
     "polish164": "164. Game Island polish bundle 2026-11-21",
     "office176": "176. Game Island camp office 2026-11-22",
-    "morak177": "177. Game Island camp keeper Morak 2026-11-22"
+    "morak177": "177. Game Island camp keeper Morak 2026-11-22",
+    "trophies180": "180. Game Island solo game trophies 2026-11-23"
   }
 }

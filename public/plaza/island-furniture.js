@@ -72,7 +72,8 @@
   // v1.10.251 기록의 탑 트로피 (assets 98): the week's 1·2·3 of a game a yard trophy -- given at the week's settling, never sold or
   // bought (no shelf), placed in the yard; its metal a colour of the one model, its name plate the piece's own words
   const TROPHY_SYMS = Object.freeze({ mole: '두더지 왕', reaction: '번개 손', color: '매의 눈', numbers: '숫자 사냥꾼', beat: '리듬 천재', sky: '하늘 정복자', mines: '지뢰 탐정', sudoku: '스도쿠 박사',
-    nonogram: '그림 퍼즐 장인', bridges: '다리 건축가', circuit: '회로 마법사', klondike: '카드 정리왕', freecell: '프리셀 고수', spider: '거미줄 마스터', star: '게임관의 별' });
+    nonogram: '그림 퍼즐 장인', bridges: '다리 건축가', circuit: '회로 마법사', klondike: '카드 정리왕', freecell: '프리셀 고수', spider: '거미줄 마스터', star: '게임관의 별',
+    lights: '불빛 화가', slide: '숫자 조각가', blocks: '블록 장인', apple: '사과 농부', melon: '수박 농부' /* (H1 assets 180) */ });
   const TROPHY_GOODS = Object.freeze(Object.entries(TROPHY_SYMS).flatMap(([sym, title]) => (sym === 'star' ? ['gold'] : ['gold', 'silver', 'bronze']).map((metal) => Object.freeze({
     id: `yard_trophy_${sym}__${metal}`, shape: `yard_trophy_${sym}`, yardShape: `trophy_${sym}`, variant: metal, name: `${title} ${({ gold: '금', silver: '은', bronze: '동' })[metal]} 트로피`,
     zone: 'yard', rarity: 'trophy', kind: 'yard', model: `yard.trophy_${sym}`, yard: true, trophy: true, metal }))));

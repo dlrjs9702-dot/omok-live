@@ -444,7 +444,7 @@
   for (let s = 1; s <= 4; s += 1) for (const [roof, rgb] of Object.entries(STORE_ROOF)) REGISTRY[`yard.storehouse_${s}.${roof}`] = { url: `/assets/island/yard-v1/storehouse_${s}.glb`, low: { url: `/assets/island/yard-v1/storehouse_${s}_low.glb` }, near: 45, snow: true, nightGlow: true, paint: { roof: rgb } };
   // v1.10.251 기록의 탑 트로피 (assets 98): yard.trophy_<sym>, one a game and 「게임관의 별」 -- each drawn on its own (its metal and
   // plate are the piece's), keepNodes for those two, its symbol's glow lit at night
-  for (const s of ['mole', 'reaction', 'color', 'numbers', 'beat', 'sky', 'mines', 'sudoku', 'nonogram', 'bridges', 'circuit', 'klondike', 'freecell', 'spider', 'star']) REGISTRY[`yard.trophy_${s}`] = { url: `/assets/island/yard-v1/trophy_${s}.glb`, low: { url: `/assets/island/yard-v1/trophy_${s}_low.glb` }, near: 30, keepNodes: true };
+  for (const s of ['mole', 'reaction', 'color', 'numbers', 'beat', 'sky', 'mines', 'sudoku', 'nonogram', 'bridges', 'circuit', 'klondike', 'freecell', 'spider', 'star', 'lights', 'slide', 'blocks', 'apple', 'melon' /* (H1 assets 180) */]) REGISTRY[`yard.trophy_${s}`] = { url: `/assets/island/yard-v1/trophy_${s}.glb`, low: { url: `/assets/island/yard-v1/trophy_${s}_low.glb` }, near: 30, keepNodes: true };
   REGISTRY['project.blossom'] = { url: `${BASE}/spring/nature/tree_v2_spring.glb`, low: { url: `${BASE}/spring/nature/tree_v2_spring_low.glb` }, scale: 0.55, near: 35 }; // (the flower path's trees: in bloom whatever the season)
   REGISTRY['good.bugnet'] = { ...REGISTRY['together.tool_bugnet'], scale: 0.55 }; // (on the store's table, laid small)
   REGISTRY['good.fishing_rod'] = { ...REGISTRY['fishing.rod'], scale: 0.55 }; // (the rod one fishes with, on the table)

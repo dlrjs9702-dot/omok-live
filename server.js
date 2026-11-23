@@ -1608,7 +1608,7 @@ async function settleSoloWeeks(now = nowMs()) {
         const top = SoloRanking.rank(g.id, await pointStore.soloLeaders({ game: g.id, level: g.board, week })).slice(0, 3).map((r) => ({ rank: r.rank, userId: r.userId, name: nameOf(r.userId), best: r.best }));
         games[g.id] = top; if (top[0]) firsts.set(top[0].userId, (firsts.get(top[0].userId) || 0) + 1);
         const short = SoloRanking.weekLabel(week).replace(/^\d+년 /, ''); // (the line pressed: 「두더지 왕 · 이름 · 11월 2주 · 기록 52점」)
-        for (const r of top) await giveTrophy(r.userId, SoloRanking.trophyGood(SoloRanking.TROPHY[g.id], SoloRanking.METALS[r.rank - 1]), `${g.title} · ${r.name} · ${SoloRanking.weekLabel(week)}`, `solo:${week}:${g.id}:${r.rank}`,
+        if (SoloRanking.TROPHY[g.id]) for (const r of top) await giveTrophy(r.userId, SoloRanking.trophyGood(SoloRanking.TROPHY[g.id], SoloRanking.METALS[r.rank - 1]), /* (H1, 결정 82 A: a game whose trophy model is not in yet -- its title only) */ `${g.title} · ${r.name} · ${SoloRanking.weekLabel(week)}`, `solo:${week}:${g.id}:${r.rank}`,
           { line: `${g.title} · ${r.name} · ${short} · 기록 ${SoloRanking.format(g.id, r.best)}`, lead: `${g.name} ${SoloRanking.weekLabel(week)} ${r.rank}위!` });
       }
       const star = [...firsts].filter(([, n]) => n >= 3).map(([u]) => u);
@@ -5235,7 +5235,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.424' });
+    return sendJson(res, 200, { ok: true, version: '1.10.425' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -11150,7 +11150,7 @@ async function main() {
   bootMark('before-listen');
   /* (1.10.376 별마루섬 호랑이: their ground made after the start in 20 ms slices, as 별마루섬's open table -- the tigers wait till it is) */
   if (process.env.NODE_ENV !== 'test') setTimeout(() => { const step = () => { try { if (!tigerSim.warm(20)) setImmediate(step); } catch (error) { console.error('호랑이 땅 만들기 실패:', error.message); } }; step(); }, 6000).unref?.();
-  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.424 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); tigerPendingResume().catch(() => {}); /* (403 Codex #16: catches whose loss was not saved before the restart) */ if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.425 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); tigerPendingResume().catch(() => {}); /* (403 Codex #16: catches whose loss was not saved before the restart) */ if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

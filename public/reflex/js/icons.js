@@ -190,6 +190,21 @@ const A = {
   hashi: `<g stroke="${W}" stroke-width="3" stroke-linecap="round"><path d="M20 17h24M20 23h24"/><path d="M14 26v18" opacity=".7"/><path d="M50 26v18"/></g>
     <g fill="${W}"><circle cx="14" cy="20" r="8"/><circle cx="50" cy="20" r="8"/><circle cx="14" cy="50" r="8" opacity=".7"/><circle cx="50" cy="50" r="8"/></g>
     <g font-size="10" font-weight="900" fill="${D}" text-anchor="middle"><text x="14" y="23.5">3</text><text x="50" y="23.5">3</text><text x="14" y="53.5">1</text><text x="50" y="53.5">1</text></g>`,
+  /* (H1 한판마당 자료 2: the five new games' icons, as they came) */
+  lightup: `<g fill="${W}" opacity=".35"><rect x="8" y="8" width="14" height="14" rx="3"/><rect x="42" y="42" width="14" height="14" rx="3"/></g>
+    <rect x="42" y="8" width="14" height="14" rx="3" fill="${W}"/><text x="49" y="19.5" font-size="11" font-weight="900" fill="${D}" text-anchor="middle">2</text>
+    <g fill="${W}" opacity=".55"><rect x="8" y="27" width="48" height="10" rx="5"/><rect x="27" y="8" width="10" height="48" rx="5"/></g>
+    <circle cx="32" cy="32" r="10" fill="${W}"/><circle cx="29" cy="29" r="3" fill="${D}" opacity=".35"/>`,
+  slide: `<g fill="${W}"><rect x="8" y="8" width="14" height="14" rx="3.5"/><rect x="25" y="8" width="14" height="14" rx="3.5"/><rect x="42" y="8" width="14" height="14" rx="3.5"/><rect x="8" y="25" width="14" height="14" rx="3.5"/><rect x="25" y="25" width="14" height="14" rx="3.5"/><rect x="42" y="25" width="14" height="14" rx="3.5" opacity=".45"/><rect x="8" y="42" width="14" height="14" rx="3.5" opacity=".45"/><rect x="25" y="42" width="14" height="14" rx="3.5" opacity=".45"/></g><path d="M44 49h10m-4-4 4 4-4 4" stroke="${W}" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <g font-size="10" font-weight="900" fill="${D}" text-anchor="middle" font-family="system-ui,sans-serif"><text x="15" y="18.5">1</text><text x="32" y="18.5">2</text><text x="49" y="18.5">3</text><text x="15" y="35.5">4</text><text x="32" y="35.5">5</text></g>`,
+  blockpuzzle: `<g fill="${W}"><rect x="8" y="8" width="14" height="14" rx="3.5"/><rect x="25" y="8" width="14" height="14" rx="3.5"/><rect x="8" y="25" width="14" height="14" rx="3.5"/>
+    <rect x="42" y="42" width="14" height="14" rx="3.5" opacity=".55"/><rect x="25" y="42" width="14" height="14" rx="3.5" opacity=".55"/><rect x="42" y="25" width="14" height="14" rx="3.5" opacity=".55"/></g>`,
+  apple10: `<circle cx="22" cy="36" r="14" fill="${W}"/><circle cx="44" cy="30" r="12" fill="${W}" opacity=".75"/>
+    <path d="M22 22c1-4 4-7 8-8" stroke="${W}" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <g font-size="14" font-weight="900" fill="${D}" text-anchor="middle"><text x="22" y="41">7</text><text x="44" y="35">3</text></g>`,
+  watermelon: `<path d="M8 30a24 24 0 0 0 48 0z" fill="${W}"/><path d="M13 30a19 19 0 0 0 38 0z" fill="${W}" opacity=".55"/>
+    <g fill="${D}"><ellipse cx="24" cy="38" rx="1.8" ry="2.6"/><ellipse cx="32" cy="42" rx="1.8" ry="2.6"/><ellipse cx="40" cy="38" rx="1.8" ry="2.6"/></g>
+    <circle cx="48" cy="14" r="7" fill="${W}" opacity=".8"/><circle cx="36" cy="12" r="5" fill="${W}" opacity=".6"/>`,
   circuit: `<g stroke="${W}" stroke-width="6" stroke-linecap="round" fill="none"><path d="M32 32V10M32 32h22M32 32v12a6 6 0 0 1-6 6H10" /></g>
     <g stroke="${W}" stroke-width="6" stroke-linecap="round" opacity=".35"><path d="M10 14h10M54 50h-8"/></g>
     <circle cx="32" cy="32" r="9" fill="${W}"/><path d="M33.5 26l-5 7h4l-1.5 6 5-7.5h-4z" fill="${D}"/>`,

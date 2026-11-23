@@ -84,6 +84,17 @@
       intro: '섬의 숫자만큼 다리를 놓아 모두 이으세요', how: how('섬을 누른 뒤 이을 섬을 누르면 다리가 놓여요', '다리는 가로·세로로만, 엇갈리지 않게', '모든 섬이 하나로 이어지면 완성') },
     { id: 'circuit', name: '회로 연결', cats: ['puzzle'], players: '혼자', colors: ['#a21caf', '#701a75'], art: 'circuit', set: 'puzzle',
       intro: '칸을 돌려 모든 칸에 전기가 흐르게', how: how('칸을 누르면 90도씩 돌아갑니다', '전원과 이어진 칸에 불이 들어와요', '모든 칸에 불이 들어오면 완성') },
+    { id: 'lightup', name: '불빛 채우기', cats: ['puzzle'], players: '혼자', colors: ['#b45309', '#78350f'], art: 'lightup', set: 'puzzle', /* (H1 한판마당 자료 2 07) */
+      intro: '벽 숫자에 맞게 전구를 놓아 모든 칸을 밝히기', how: how('흰 칸을 누르면 전구를 놓아요, 전구는 벽에 막힐 때까지 가로·세로를 비춰요', '전구끼리 서로 비추면 안 되고, 벽 숫자는 그 벽에 붙은 전구 수예요', '모든 흰 칸이 밝아지면 완성') },
+    /* (H1 한판마당 자료 2 08~11: 점수 퍼즐 -- their rounds as the 순발력 games', the score kept when a person can make it) */
+    { id: 'slide', name: '숫자 밀기', cats: ['puzzle'], players: '혼자', colors: ['#475569', '#1e293b'], art: 'slide', set: 'scored',
+      intro: '빈칸으로 숫자 조각을 밀어 차례대로 맞추기', how: how('빈칸 옆 조각을 누르면 빈칸으로 밀려요', '1부터 차례대로, 마지막 칸이 비게 맞추면 완성', '3×3 · 4×4 · 5×5, 빨리 맞출수록 좋은 기록') },
+    { id: 'blockpuzzle', name: '블록 퍼즐', cats: ['puzzle'], players: '혼자', colors: ['#4338ca', '#312e81'], art: 'blockpuzzle', set: 'scored',
+      intro: '조각을 놓아 가로·세로 줄을 채워 지우기', how: how('아래 조각 셋을 끌어 판에 놓아요', '가로나 세로 한 줄이 차면 지워지고 점수가 올라요', '조각을 놓을 곳이 없으면 끝') },
+    { id: 'apple10', name: '사과 게임', cats: ['puzzle'], players: '혼자', colors: ['#b91c1c', '#7f1d1d'], art: 'apple10', set: 'scored',
+      intro: '합이 10이 되게 사과를 묶어 지우기', how: how('끌어서 네모로 사과를 묶어요', '묶은 숫자의 합이 10이면 지워지고 1개에 1점', '시간이 끝나거나 10을 더 못 만들면 끝') },
+    { id: 'watermelon', name: '수박 만들기', cats: ['puzzle'], players: '혼자', colors: ['#15803d', '#14532d'], art: 'watermelon', set: 'scored',
+      intro: '같은 과일을 합쳐 더 큰 과일, 마지막엔 수박', how: how('좌우로 자리를 정하고 떼면 과일이 떨어져요', '같은 과일끼리 닿으면 한 단계 큰 과일이 돼요', '과일이 상자 위 점선을 넘친 채 2초가 지나면 끝') },
     { id: 'mines', name: '지뢰찾기', cats: ['puzzle', 'solo'], players: '혼자', colors: ['#475569', '#334155'], art: 'mines', set: 'mines',
       intro: '숫자를 단서로 지뢰를 피해 칸을 여세요', how: how('칸의 숫자는 주변 8칸의 지뢰 수예요', '지뢰라고 생각되면 깃발을 꽂습니다', '지뢰 아닌 칸을 모두 열면 성공') },
     { id: 'klondike', name: '카드놀이', cats: ['solo'], players: '혼자', colors: ['#15803d', '#14532d'], art: 'klondike', set: 'cards',

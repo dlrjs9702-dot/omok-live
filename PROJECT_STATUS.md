@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.425 H1 한판마당 혼자 퍼즐(사용자 결정 82 A, 에셋 180)
+
+- 불빛 채우기: 오늘의 퍼즐(서버가 답을 만들어 확인, 퍼즐 워커), 퍼즐 카드 · 게임관 카드.
+- 점수 퍼즐 묶음: 숫자 밀기(크기 · 걸린 시간) · 블록 퍼즐 · 사과 게임 · 수박 만들기(점수전만) — 판은 서버가 열고, 사람이 낼 수 있는 기록만 받음.
+- 기록의 탑 19게임: 칭호 불빛 화가 · 숫자 조각가 · 블록 장인 · 사과 농부 · 수박 농부, 주간 트로피(에셋 180 열 개, sha256 확인) 마당 · 가구 이름.
+- 시험: `h1-games`, reflex · puzzle-daily · solo-ranking 서버, e2e reflex · hanpan-h1 · solo-quest.
+
 ## v1.10.424 달무리 사목 ①(한판마당 자료)
 
 - 서버 `lib/games/orbit4.js`: 바깥 · 안쪽 고리, 구슬마다 반시계 한 칸 돌림, 돌기 전 상대 구슬 밀기(선택), 줄은 돈 뒤에만 · 둘 다 이으면 무승부, 판이 차면 다섯 번 더 돌림, 구슬 각 8개.
@@ -28,9 +35,3 @@
 - 결정 80 A: 야영장 옛 가운데 묶음(불 · 벤치 · 의자) 뺌. 폰 대회 띠 한 줄, 마루 대기 자리 1.25 m 앞.
 - 출석 도장 칸 `minmax(0,1fr)` — 큰 도장 달에도 창이 옆으로 안 넓어짐.
 - 시험: `polish-164`, e2e attendance-card · island-assets.
-
-## v1.10.422 U7 둘째 — 첫 방문 · 위쪽 가운데(검토 ui-review-20261121 D1 · D2)
-
-- D1: 첫 방문 창은 한 번에 하나(`whenNoWindow`) — 새 사람은 조작 안내를 건너뛰고, 섬 안내도 열린 창이 닫힌 뒤.
-- D2: 위쪽 가운데는 대회 띠 + 알림 한 줄(`#islandNoteLine`): 토스트가 그 줄로 들어가고, 조작 힌트는 첫 방문만(`gc.hintVisit`) · 토스트가 보이면 숨김; 터치는 할 일 칸이 위 줄 안으로.
-- 시험: `island-ui-u7b`, e2e 첫 방문 · 섬 위쪽 묶음.
