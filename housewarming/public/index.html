@@ -120,22 +120,27 @@
     var finished=doneMeats+state.items.filter(function(x){return x.done;}).length;
     var total=meatCount+state.items.length;
     var pct=total?Math.round(finished/total*100):100;
-    var items=active==="전체"?state.items:state.items.filter(function(x){return x.category===active;});
-    var meatArea=active==="전체"?'<div class="meat-grid">'+MEATS.map(meatCard).join("")+'</div>':'<div class="meat-grid">'+meatCard(active)+'</div>';
+    var pendingItems=state.items.filter(function(x){return !x.owner;});
+    var pendingMeats=MEATS.filter(function(k){return state.meats[k].grams>0 && !state.meats[k].owner;});
+    var pendingCount=pendingItems.length+pendingMeats.length;
+    var isPending=active==="담당자 대기";
+    var items=active==="전체"?state.items:isPending?pendingItems:state.items.filter(function(x){return x.category===active;});
+    var selectedMeats=active==="전체"?MEATS:isPending?pendingMeats:[active];
+    var meatArea=selectedMeats.length?'<div class="meat-grid">'+selectedMeats.map(meatCard).join("")+'</div>':'<div class="empty">담당자 배정이 필요한 고기는 없어요.</div>';
     app.innerHTML=
       '<div class="overview" style="margin-top:18px">'+
        '<div class="stat"><span class="label">전체 고기</span><span class="big">'+grams(totalMeat)+'</span><div class="tiny">1인당 '+Math.round(totalMeat/4)+'g</div></div>'+
        '<div class="stat"><span class="label">준비 완료</span><span class="big">'+finished+' <span class="tiny">/ '+total+'개</span></span><div class="progress"><div class="progress-bar" style="width:'+pct+'%"></div></div></div>'+
-       '<div class="stat"><span class="label">함께하는 친구</span><span class="big">4명</span><div class="tiny">실시간 공동 수정</div></div></div>'+
+       '<div class="stat"><span class="label">담당자 대기</span><span class="big">'+pendingCount+'건</span><div class="tiny">미배정 준비물·고기</div></div></div>'+
       '<div class="head-row"><h2 class="section-title">고기 종류 · 수량</h2><button class="share" id="share">↗ 링크 공유</button></div>'+
-      '<nav class="tabs" aria-label="고기 및 준비물 탭">'+["전체"].concat(MEATS).map(function(t){return '<button class="tab'+(active===t?' active':'')+'" data-tab="'+t+'">'+(t==="전체"?"📋 전체 준비물":t)+"</button>";}).join("")+'</nav>'+
+      '<nav class="tabs" aria-label="고기 및 준비물 탭">'+["전체"].concat(MEATS,["담당자 대기"]).map(function(t){return '<button class="tab'+(active===t?' active':'')+'" data-tab="'+t+'">'+(t==="전체"?"📋 전체 준비물":t==="담당자 대기"?"👤 담당자 대기 ("+pendingCount+")":t)+"</button>";}).join("")+'</nav>'+
       meatArea+
-      '<div class="head-row"><h2 class="section-title">'+(active==="전체"?"전체 준비물":"📍 "+active+" 추가 준비물")+'</h2><span class="small">'+items.filter(function(x){return x.done;}).length+' / '+items.length+' 완료</span></div>'+
+      '<div class="head-row"><h2 class="section-title">'+(active==="전체"?"전체 준비물":isPending?"👤 담당자 배정 대기":"📍 "+active+" 추가 준비물")+'</h2><span class="small">'+items.filter(function(x){return x.done;}).length+' / '+items.length+' 완료</span></div>'+
       '<div class="main-card"><div class="list-header"><h3>체크리스트</h3><span class="muted">이름·수량을 직접 수정할 수 있어요</span></div>'+
-      (items.length?groupHtml(items):'<div class="empty">아직 등록된 준비물이 없어요.<br>아래에서 새 준비물을 추가해 주세요.</div>')+
+      (items.length?groupHtml(items):isPending?'<div class="empty">담당자를 기다리는 준비물이 없어요. 🎉</div>':'<div class="empty">아직 등록된 준비물이 없어요.<br>아래에서 새 준비물을 추가해 주세요.</div>')+
       '<form class="add" id="addForm"><div class="add-head">＋ 새로운 준비물 추가</div>'+
       '<div class="add-grid"><input id="newName" placeholder="예: 버섯, 아이스박스" required maxlength="100" aria-label="준비물 이름"><input id="newQty" placeholder="수량 (예: 2개)" maxlength="40" aria-label="준비물 수량">'+
-      '<select id="newCategory" aria-label="분류">'+options(CAT,active==="전체"?"기타":active,"")+'</select>'+
+      '<select id="newCategory" aria-label="분류">'+options(CAT,(active==="전체"||isPending)?"기타":active,"")+'</select>'+
       '<select id="newOwner" aria-label="담당자">'+options(OWNERS,"","담당자 미정")+'</select></div>'+
       '<div class="actions"><button type="submit" class="action">준비물 추가하기 +</button></div></form></div>';
   }
