@@ -341,6 +341,12 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   solids.push({ x: PLAZA_C.x, z: PLAZA_C.z, r: 3.4 }); // (the fountain)
   const oldFountain = fountain.children.filter((c) => !drops.includes(c)); let dropTop = 2.3; // (v1.10.222: the new one in its place -- its water a little higher)
+  let fountainWater = null; /* (1.10.423 164 ②: the renovated fountain's water -- { g, parts: { ripple, ripple_top, jet } } once in) */
+  function stepFountainWater(t) { // (the ripple 1 -> 1.12 and its sheen in and out over 2 s, the top ripple half a beat behind; the jet up and down 3 cm)
+    const P = fountainWater?.parts; if (!P || !fountainWater.g.parent || lessMotion?.matches) return; const k = (ph) => 0.5 - 0.5 * Math.cos((t / 2 + ph) * TAU);
+    for (const [o, ph] of [[P.ripple, 0], [P.ripple_top, 0.5]]) if (o) { const s = 1 + 0.12 * k(ph); o.scale.set(s, 1, s); o.traverse((m) => { if (!m.isMesh) return; const mm = m.material; if (mm && !Array.isArray(mm)) { mm.userData.o0 ??= mm.opacity; mm.opacity = mm.userData.o0 * (1 - 0.3 * k(ph)); } }); }
+    if (P.jet) P.jet.position.y = P.jet.userData.y0 + Math.sin(t * 4.8) * 0.03;
+  }
   // v1.10.36 10월 할로윈 (IDEAS, 사용자 확정 2026-10-06): all October (Asia/Seoul) the island is at night -- the sky, the
   // fog and the light; the seasons, their zones and the plaza stay as they are -- and the fountain gives its place to a
   // pedestal with a jack-o'-lantern bigger than it, lit from inside (an orange light on what is near, a slow candle
@@ -1472,6 +1478,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   (() => { const W = globalThis.IslandTerrain.TOWER; const P2 = globalThis.Isle2Props; if (!W || !P2?.TOWER) return;
     const g = new THREE.Group(); g.position.set(W.x, W.base, W.z); g.rotation.y = W.yaw; scene.add(g); const v = new THREE.Group(); g.add(v); const B = P2.BOXES.lookout_tower;
     mesh(new THREE.BoxGeometry(B[0], B[1], B[2]), mat(0x8a6440), 0, B[1] / 2, 0, v); assets.attach('byeolmaru.lookout_tower', g, v); })();
+  /* 1.10.423 다듬기 164 ④ 개울 돌 (assets 164 placements): 24 on the banks and mid-stream, each at the creek's water line there (its origin), turned along
+     the flow and sized as placed; a bank stone's stand-in covers its round (Isle2Props.solids) */
+  (() => { const P2 = globalThis.Isle2Props; const T = globalThis.IslandTerrain; if (!P2?.CREEK_STONES) return;
+    for (const [x, z, yaw, k, s, r] of P2.CREEK_STONES) {
+      const g = new THREE.Group(); g.position.set(x, T.creekWaterY ? T.creekWaterY(x, z) : heightAt(x, z), z); g.rotation.y = yaw; g.scale.setScalar(s); scene.add(g); const v = new THREE.Group(); g.add(v);
+      const w = r > 0 ? (r * 2) / s : 0.8; mesh(new THREE.BoxGeometry(w, 0.4, w), mat(0x8a8478), 0, 0.1, 0, v); assets.attach(`byeolmaru.${P2.CREEK_KINDS[k]}`, g, v);
+    } })();
   let campKeeper = null;
   (() => {
     const P2 = globalThis.Isle2Props; if (!P2?.CAMP2) return;
@@ -2250,6 +2263,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (id === 'fountain') { // (in the fountain's own group: the 할로윈 pumpkin and the winter tree still take its place in their season)
       const nf = new THREE.Group(); fountain.add(nf); const f = new THREE.Group(); nf.add(f); assets.attach('project.fountain', nf, f);
       for (const c of oldFountain) c.visible = false; dropTop = 2.95; g.userData.inFountain = nf;
+      /* (1.10.423 다듬기 164 ②: its water -- the falls, the jet and two ripples, moving (stepFountainWater); the eight drops put away) */
+      const w = new THREE.Group(); nf.add(w); fountainWater = { g: w, parts: null };
+      assets.attach('project.fountain_water', w, new THREE.Group(), (entry) => { if (!entry) return; const n = {}; w.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) if (m) m.depthWrite = false; if (/^(ripple|ripple_top|jet)$/.test(o.name) && !n[o.name]) { n[o.name] = o; o.matrixAutoUpdate = true; o.userData.y0 = o.position.y; } }); n.ripple_top?.traverse((m) => { if (m.isMesh && !Array.isArray(m.material)) m.material = m.material.clone(); }); /* (its sheen its own: the two ripples share one material) */ fountainWater.parts = n; for (const d of drops) d.visible = false; });
     }
     if (id === 'flower_path') for (const s of P.PLANTERS) {
       projectPiece('project.flower_planter', g, s.x, s.z, s.yaw, (v) => mesh(new THREE.BoxGeometry(3, 0.5, 0.8), mat(0xb9a98f), 0, 0.25, 0, v));
@@ -3533,6 +3549,10 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   let showOff = null; let onShowSkip = null; const SHOW_DIST = 3.6;
   // (총괄 #408) the catch seen: at least this long while shown (a big one as it is); every fish in both hands (259)
   const SHOW_MIN = { fish: 0.5, insect: 0.22 }; const showBox = new THREE.Box3(); const showC = new THREE.Vector3();
+  // (164 ⑧ holds.json, measured on body_core in ShowInsectHold 0.6 s) the insect's back to the camera, its head up, 0.10 m above the
+  // hand -- was lying on its side; the wide-winged ten (butterflies, moths, dragonflies) a little bigger
+  const INSECT_WIDE = new Set(['butterfly_blue', 'butterfly_cabbage', 'butterfly_swallowtail', 'butterfly_yellow', 'dragonfly_emperor', 'dragonfly_red', 'hawkmoth_hummingbird', 'moth_longtail', 'moth_silk', 'winter_moth']);
+  const insectHold = (sp) => ({ key: 'catch', at: [-0.0343, 0.0939, -0.03], rot: [1.5707, 0.35, -3.1415], size: INSECT_WIDE.has(sp) ? 0.26 : SHOW_MIN.insect });
   function showCatch({ kind = 'fish', species = null, rare = false } = {}, onSkip = null) {
     if (showOff || overview || riding || sitting || !me.anim || (kind === 'fish' && fishing?.phase !== 'catch')) return false;
     showOff = { kind, species, rare, big: kind === 'fish' && BIG_FISH.has(species), phase: 'wait', since: performance.now() }; onShowSkip = onSkip;
@@ -3545,7 +3565,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const cam = showPose(me.root.position).want; me.targetYaw = Math.atan2(cam.x - me.root.position.x, cam.z - me.root.position.z); me.root.rotation.y = lessMotion?.matches ? me.targetYaw : me.root.rotation.y;
     const into = s.kind === 'insect' ? 'showInsect' : 'showCatchBig'; // (v1.10.259 총괄 #408: every fish in both hands, laid across them -- stepShow)
     me.anim.release(); me.anim.play(into); me.anim.loop(`${into}Hold`);
-    if (s.kind === 'insect') setTimeout(() => { if (showOff !== s) return; assets.reseat(me, 'bugnet', NET_L); if (s.species) assets.hold(me, `insect.${s.species}`, 0, { key: 'catch', at: [0, 0, -0.065], size: SHOW_MIN.insect }); }, SHOW_NET_TO_L * 1000);
+    if (s.kind === 'insect') setTimeout(() => { if (showOff !== s) return; assets.reseat(me, 'bugnet', NET_L); if (s.species) assets.hold(me, `insect.${s.species}`, 0, insectHold(s.species)); }, SHOW_NET_TO_L * 1000);
     myAct.act = s.kind === 'insect' ? 'insect:show' : 'fish:show'; myAct.seat = null; myAct.n += 1;
     if (s.rare) { fxAt('fx.pollen_burst', mine([0.25, 1.0, -0.5]), me.root.rotation.y, 900, 1.6); netSound('sparkle'); } // (v1.10.260: a rare insect's pollen before my hand)
     /* (294: no time limit -- held till the card is closed, I walk or tap: showDone / showSkip) */
@@ -3599,7 +3619,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
         o.updateWorldMatrix(true, true); const inv = o.matrixWorld.clone().invert(); showBox.makeEmpty();
         o.traverse((x) => { if (!x.isMesh || !x.geometry) return; if (!x.geometry.boundingBox) x.geometry.computeBoundingBox(); showBox.union(partBox.copy(x.geometry.boundingBox).applyMatrix4(acrossM.multiplyMatrices(inv, x.matrixWorld))); });
         const d = showBox.getSize(new THREE.Vector3()).toArray(); const order = [0, 1, 2].sort((a, b) => d[b] - d[a]);
-        s.across = { long: order[0], tall: order[1], center: showBox.getCenter(new THREE.Vector3()), hl: handBone('HandL'), hr: handBone('HandR') };
+        s.across = { long: order[0], tall: order[1], tallH: d[order[1]], center: showBox.getCenter(new THREE.Vector3()), hl: handBone('HandL'), hr: handBone('HandR') };
       }
     }
     const a = s.across; if (!a?.hl || !a.hr) return;
@@ -3608,7 +3628,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const U = new THREE.Vector3(0, 1, 0).addScaledVector(L, -L.y).normalize(); const cols = []; cols[a.long] = L; cols[a.tall] = U;
     const k = 3 - a.long - a.tall; cols[k] = new THREE.Vector3().crossVectors(cols[(k + 1) % 3], cols[(k + 2) % 3]); // (a right-handed turn)
     o.getWorldScale(acrossS); acrossM.makeBasis(cols[0], cols[1], cols[2]).scale(acrossS);
-    acrossC.copy(a.center).applyMatrix4(acrossM); acrossM.setPosition(acrossL.add(acrossR).multiplyScalar(0.5).sub(acrossC)); // (its middle between the hands)
+    acrossC.copy(a.center).applyMatrix4(acrossM); acrossM.setPosition(acrossL.add(acrossR).multiplyScalar(0.5).sub(acrossC).addScaledVector(U, (a.tallH * acrossS.getComponent(a.tall)) / 2 + 0.03)); // (its middle between the hands; 164 ⑧: its belly on the fingers, half its height + 3 cm up -- the body was in the fists)
     acrossM.premultiply(o.parent.matrixWorld.clone().invert()).decompose(o.position, o.quaternion, o.scale); s.placed = true;
   }
   // (v1.10.260) others' net: aiming and sneaking held, the swings, the bag and the cheer played once each
@@ -3623,7 +3643,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (!now) { c.anim?.release?.(); /* (Codex 251-260 #13: the Hold loop let go too, as remoteNet) */ if (was === 'insect:show') assets.letGo(c, 'catch'); return; }
     const insect = now === 'insect:show'; const into = insect ? 'showInsect' : 'showCatchBig'; // (259: every fish in both hands)
     c.anim?.release?.(); c.anim?.play(into); c.anim?.loop?.(`${into}Hold`);
-    if (insect && p.fish) assets.hold(c, `insect.${p.fish}`, 0, { key: 'catch', at: [0, 0, -0.065], size: SHOW_MIN.insect });
+    if (insect && p.fish) assets.hold(c, `insect.${p.fish}`, 0, insectHold(p.fish));
   }
   // start pulling a weed (the app has told the server); `done(true)` after about a second, `done(false)` when called off
   function gatherWeed(id, done) {
@@ -4760,10 +4780,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const q of quarryRocks.values()) {
       const st = quarryState.get(q.r.id)?.stage === 'mined' ? 'mined' : 'full';
       if (q.stage !== st) {
-        if (q.h) { q.h.removeFromParent(); assets.detach(q.h); if (q.v) assets.detach(q.v); disposeOwn(q.f); }
+        if (q.h) { q.h.removeFromParent(); assets.detach(q.h); if (q.v) assets.detach(q.v); if (q.s) assets.detach(q.s); disposeOwn(q.f); }
         q.h = new THREE.Group(); q.h.position.set(q.r.x, heightAt(q.r.x, q.r.z), q.r.z); q.h.rotation.y = q.r.yaw; quarryGroup.add(q.h);
         q.f = quarryStandIn(QY.SOLIDS[q.r.kind].box, 0xb7ad9e); q.h.add(q.f); assets.attach(`quarry.rock_${q.r.kind}${st === 'mined' ? '_mined' : ''}`, q.h, q.f); q.stage = st;
         q.v = new THREE.Group(); q.h.add(q.v); const none = new THREE.Group(); q.v.add(none); assets.attach(`quarry.vein.${q.r.ore || 'granite'}.${q.r.kind}${st === 'mined' ? '_mined' : ''}`, q.v, none); /* (1.10.342 assets 140: its main ore's vein over it, the same transform) */
+        q.s = new THREE.Group(); q.h.add(q.s); assets.attach(`quarry.skirt_${q.r.kind}`, q.s, new THREE.Group()); /* (1.10.423 164 ⑤: its spill of stone dust round its foot, full or mined; flat -- no round) */
       }
       for (let i = 0; i < QY.spotCount(q.r); i += 1) { const s = QY.standOf(q.r, st, i); doors[`quarry:${q.r.id}:${i}`] = { x: s.x, z: s.z, tool: 'pickaxe', name: st === 'mined' ? '다 캔 바위 · 다시 차는 중' : `바위 캐기 · ${QUARRY_ORE_NAMES[q.r.ore] || '광석'}` }; }
     }
@@ -6988,7 +7009,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       if (boatObjs.length) stepBoats(dt, p); /* (1.10.390 탐방선: the boats, their captains, the riders on their seats) */
     }
     farCull(camera.position.x, camera.position.z);
-    drops.forEach((d) => { const t = (ambientClock * 0.7 + d.userData.phase) % 1; const a = d.userData.phase * TAU; d.position.set(Math.cos(a) * t * 1.4, dropTop + Math.sin(t * Math.PI) * 0.9 - t * 1.6, Math.sin(a) * t * 1.4); });
+    drops.forEach((d) => { const t = (ambientClock * 0.7 + d.userData.phase) % 1; const a = d.userData.phase * TAU; d.position.set(Math.cos(a) * t * 1.4, dropTop + Math.sin(t * Math.PI) * 0.9 - t * 1.6, Math.sin(a) * t * 1.4); }); stepFountainWater(ambientClock);
     lamps.forEach((l, i) => { l.material.emissiveIntensity = (night ? 1.7 : 0.55) + Math.sin(ambientClock * 1.5 + i) * 0.05; }); shopGlow.value = night ? 1.7 : 0.55; beaconStep(clock); // (S2: 초승등대 at night)
     if (clock - halloweenCheckedAt > 5) { halloweenCheckedAt = clock; setIsland(halloweenOverride ?? (decorMode === 'halloween' ? true : decorMode === 'auto' ? isHalloween(Date.now() + serverOffset) : false), Date.now() + serverOffset); } // (A5: the administrator's decorations)
     decor.step(clock, camera, Boolean(lessMotion?.matches));

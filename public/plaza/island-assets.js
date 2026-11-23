@@ -67,6 +67,7 @@
     'train.platform': { url: '/assets/island/train-v1/train_platform.glb', low: { url: '/assets/island/train-v1/train_platform_low.glb' }, near: 45 },
   // v1.10.271 섬 택시 (assets 99): the car (front −Z: turned round, its doors and wheels kept as nodes) and the stop's bench
   'taxi.car': { url: '/assets/island/taxi-v1/taxi_island.glb', low: { url: '/assets/island/taxi-v1/taxi_island_low.glb' }, near: 40, rotationY: Math.PI },
+  'taxi.roof_sign': { url: '/assets/island/taxi-v1/taxi_roof_sign.glb', low: { url: '/assets/island/taxi-v1/taxi_roof_sign_low.glb' }, near: 40, rotationY: Math.PI }, /* (1.10.423 다듬기 164 ⑦: the car's roof mark, the car file's frame) */
   'taxi.stop': { url: '/assets/island/taxi-v1/taxi_stop.glb', low: { url: '/assets/island/taxi-v1/taxi_stop_low.glb' }, near: 40, rotationY: Math.PI },
   'taxi.stop_sign': { url: '/assets/island/taxi-v1/taxi_stop_sign.glb', low: { url: '/assets/island/taxi-v1/taxi_stop_sign_low.glb' }, near: 40, keepNodes: true }, /* (1.10.392 N4-b, assets 163: a road stop's sign -- its `plate` both faces, the game's words on it) */
   /* (1.10.399 assets 168: where one stands to get in -- a round taxi mark in the ground, read from any side; a terminal's lane of tiles from the bench to it; a dock's board, its `plate` the game's words) */
@@ -432,6 +433,7 @@
   // v1.10.222 섬 가꾸기 사업 (assets 71 projects-v1): the six works and the works fence, each as project.<file> (shown once a project
   // is at its works or open)
   for (const f of ['bridge_stone', 'flower_planter', 'promenade', 'lookout', 'string_lights', 'uplight', 'works', 'fountain']) REGISTRY[`project.${f}`] = { url: `/assets/island/projects-v1/${f}.glb`, low: { url: `/assets/island/projects-v1/${f}_low.glb` }, near: 45, nightGlow: true }; // (v1.10.223: their lamps and bulbs lit at night only)
+  REGISTRY['project.fountain_water'] = { url: '/assets/island/projects-v1/fountain_water.glb', low: { url: '/assets/island/projects-v1/fountain_water_low.glb' }, near: 45, keepNodes: true, shadows: false }; /* (1.10.423 다듬기 164 ②: its ripples and jet move -- plaza-scene stepFountainWater) */
   // v1.10.225 마당 꾸미기 (assets 70 yard-v1): the yard's twelve, yard.<shape> (instanced over the lots, Low far off; the two
   // lamps' glow lit at night only)
   for (const f of ['fence_wood', 'fence_stone', 'fence_flower', 'stepping_stones', 'garden_light', 'birdhouse', 'flowerbed', 'planter_box', 'mailbox', 'bench', 'lantern_stone', 'arch']) REGISTRY[`yard.${f}`] = { url: `/assets/island/yard-v1/${f}.glb`, low: { url: `/assets/island/yard-v1/${f}_low.glb` }, near: 30, nightGlow: true };
@@ -473,6 +475,7 @@
 // the ore (in the hand), its pile, the 곡괭이 and the sign (its FACE written 「채석장」 by plaza-scene)
 { const QY = '/assets/island/quarry-v1'; const q = (file, extra = {}) => ({ url: `${QY}/${file}.glb`, low: { url: `${QY}/${file}_low.glb` }, ...extra });
   for (const k of ['a', 'b', 'c']) for (const st of ['', '_mined']) REGISTRY[`quarry.rock_${k}${st}`] = q(`quarry_rock_${k}${st}`, { near: 60 });
+  for (const k of ['a', 'b', 'c']) REGISTRY[`quarry.skirt_${k}`] = q(`quarry_skirt_${k}`, { near: 60, shadows: false }); /* (1.10.423 다듬기 164 ⑤: the stone dust at a rock's foot) */
   REGISTRY['quarry.ore_chunk'] = q('ore_chunk'); REGISTRY['quarry.ore_pile'] = q('ore_pile', { near: 50 }); REGISTRY['quarry.pickaxe'] = q('pickaxe'); REGISTRY['quarry.sign'] = q('sign_quarry', { near: 40 });
   REGISTRY['good.pickaxe'] = { ...REGISTRY['quarry.pickaxe'], scale: 0.55 }; } // (on the 잡화점's tool wall)
 // 1.10.342 4a 광석 8가지·채석장 전체 (assets 140 ore-v1, 141 quarry-v2, 143 quarry-v3): the eight ores in the hand (finished colours),
@@ -720,6 +723,7 @@
     REGISTRY['byeolmaru.tiger_rock'] ={ ...two(B1, 'tiger_rock'), near: 40 }; REGISTRY['byeolmaru.sign_tiger'] = { ...two(B1, 'sign_tiger'), near: 40 }; /* (152e's board) */
     for (const k of ['reeds_a', 'reeds_b', 'reeds_c', 'swamp_lily_a', 'swamp_lily_b', 'swamp_fungus', 'swamp_grass_a', 'swamp_grass_b', 'swamp_planks']) REGISTRY[`byeolmaru.${k}`] = { ...two(B1, k), near: 25, shadows: false, hideFar: 40 };
     REGISTRY['byeolmaru.swamp_stones'] = { ...two(B1, 'swamp_stones'), near: 30 };
+    for (const k of ['creek_stone_a', 'creek_stone_b', 'creek_stone_c']) REGISTRY[`byeolmaru.${k}`] = { ...two(B1, k), near: 30 }; /* (1.10.423 다듬기 164 ④: the creek's stones -- Isle2Props.CREEK_STONES) */
     for (const k of ['campfire', 'log_bench', 'log_stool', 'sign_reserve', 'sign_trail' /* (1.10.377: their letters by plaza-scene, at the FACE spots) */]) REGISTRY[`newisle.${k}`] = { ...two(N1, k), near: 30 };
     /* (1.10.414 S2: 164's hearth set -- embers lit at night; 176's office -- 「관리소」 written on its plate, snow on its roof, its lamp and windows at night) */
     REGISTRY['newisle.camp_hearth_set'] = { ...two(N1, 'camp_hearth_set'), near: 40, nightGlow: true };

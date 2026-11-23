@@ -1421,12 +1421,12 @@
     },
     "characters/npc_walker_maru_work.glb": {
       "triangles": 18167,
-      "sourceSha256": "186d5f87e5f863db028e954fda42275920fa7216c61347aef6f89d602cf14bd9",
+      "sourceSha256": "96957f40075d7dc467338cea0cc5652996998b30f3e9f9a7d524438d5f4b4487",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_maru_work_low.glb": {
       "triangles": 6532,
-      "sourceSha256": "fb0a25ff284ad5922b18e6a00668372c0450cad717c83dec3dbf03c3ff7195ca",
+      "sourceSha256": "0e58e11004a0b10b4788e2e960c950bab9fea7249322782066e6adc2a9764cea",
       "reason": "User-authorized transformation fidelity exception, F3 walking islanders (assets 51 v2, 2026-10-24; v1.10.213 assets 88: all 27 islanders, knees and hands -- High <= 32,000 / Low <= 10,000); global character budget unchanged; v1.10.264 assets 102: the same triangles, the eyes and mouth split out as face_eyes_base / face_mouth_base"
     },
     "characters/npc_walker_mulgyeol_off.glb": {
@@ -2385,6 +2385,72 @@
     "newisle-v1/camp_hearth_set_low.glb": {
       "nodes": 2,
       "reason": "1.10.414 S2 assets 164: the camp's hearth set -- its mesh under a named node, as packed"
+    },
+    "projects-v1/fountain_water.glb": {
+      "nodes": 9,
+      "meshes": 4,
+      "reason": "1.10.423 다듬기 assets 164: the renovated fountain's water -- fall, jet, ripple, ripple_top named nodes (the ripples and jet move), as packed"
+    },
+    "projects-v1/fountain_water_low.glb": {
+      "nodes": 9,
+      "meshes": 4,
+      "reason": "1.10.423 다듬기 assets 164: the renovated fountain's water -- fall, jet, ripple, ripple_top named nodes (the ripples and jet move), as packed"
+    },
+    "byeolmaru-v1/creek_stone_a.glb": {
+      "nodes": 2,
+      "reason": "1.10.423 다듬기 assets 164: the creek's stones -- its mesh under a named node, as packed"
+    },
+    "byeolmaru-v1/creek_stone_a_low.glb": {
+      "nodes": 2,
+      "reason": "1.10.423 다듬기 assets 164: the creek's stones -- its mesh under a named node, as packed"
+    },
+    "byeolmaru-v1/creek_stone_b.glb": {
+      "nodes": 2,
+      "reason": "1.10.423 다듬기 assets 164: the creek's stones -- its mesh under a named node, as packed"
+    },
+    "byeolmaru-v1/creek_stone_b_low.glb": {
+      "nodes": 2,
+      "reason": "1.10.423 다듬기 assets 164: the creek's stones -- its mesh under a named node, as packed"
+    },
+    "byeolmaru-v1/creek_stone_c.glb": {
+      "nodes": 2,
+      "reason": "1.10.423 다듬기 assets 164: the creek's stones -- its mesh under a named node, as packed"
+    },
+    "byeolmaru-v1/creek_stone_c_low.glb": {
+      "nodes": 2,
+      "reason": "1.10.423 다듬기 assets 164: the creek's stones -- its mesh under a named node, as packed"
+    },
+    "quarry-v1/quarry_skirt_a.glb": {
+      "nodes": 2,
+      "reason": "1.10.423 다듬기 assets 164: a quarry rock's stone dust -- its mesh under a named node, as packed"
+    },
+    "quarry-v1/quarry_skirt_a_low.glb": {
+      "nodes": 2,
+      "reason": "1.10.423 다듬기 assets 164: a quarry rock's stone dust -- its mesh under a named node, as packed"
+    },
+    "quarry-v1/quarry_skirt_b.glb": {
+      "nodes": 2,
+      "reason": "1.10.423 다듬기 assets 164: a quarry rock's stone dust -- its mesh under a named node, as packed"
+    },
+    "quarry-v1/quarry_skirt_b_low.glb": {
+      "nodes": 2,
+      "reason": "1.10.423 다듬기 assets 164: a quarry rock's stone dust -- its mesh under a named node, as packed"
+    },
+    "quarry-v1/quarry_skirt_c.glb": {
+      "nodes": 2,
+      "reason": "1.10.423 다듬기 assets 164: a quarry rock's stone dust -- its mesh under a named node, as packed"
+    },
+    "quarry-v1/quarry_skirt_c_low.glb": {
+      "nodes": 2,
+      "reason": "1.10.423 다듬기 assets 164: a quarry rock's stone dust -- its mesh under a named node, as packed"
+    },
+    "taxi-v1/taxi_roof_sign.glb": {
+      "nodes": 2,
+      "reason": "1.10.423 다듬기 assets 164: the taxi's roof mark -- its mesh under a named node, as packed"
+    },
+    "taxi-v1/taxi_roof_sign_low.glb": {
+      "nodes": 2,
+      "reason": "1.10.423 다듬기 assets 164: the taxi's roof mark -- its mesh under a named node, as packed"
     },
     "byeolmaru-v1/camp_office.glb": {
       "meshes": 2,
