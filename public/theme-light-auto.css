@@ -1494,6 +1494,9 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] #islandBagDialog.bagPouch .bagMenu::after{background:var(--isle-paper)}
 :root[data-theme="light"] #islandBagDialog.bagPouch .islandBagSlot .bagMenu button{border:0;background:transparent;color:var(--isle-ink)}
 :root[data-theme="light"] #islandBagDialog.bagPouch .islandBagSlot .bagMenu button:is(:hover,:focus-visible){background:var(--isle-hover);outline:none}
+:root[data-theme="light"] #islandBagDialog.bagPouch .islandBagSlot .bagMenu button:disabled{color:var(--isle-soft);background:transparent}
+:root[data-theme="light"] #islandBagDialog.bagPouch .islandBagSlot .bagMenu .bagMenuWhy{color:var(--isle-soft)}
+:root[data-theme="light"] .discardQty input{border:2px solid var(--isle-line);background:var(--isle-field);color:var(--isle-ink)}
 :root[data-theme="light"] .islandBagInfo{color:var(--isle-ink)}
 :root[data-theme="light"] .islandBagGrow{color:var(--isle-ink)}
 :root[data-theme="light"] .islandBagFoot .islandBagPoints{background:url("/assets/items/point.svg") 8px 50%/16px 16px no-repeat #f2e3c4;color:var(--isle-ink)}

@@ -44,10 +44,10 @@ test('가방 개편: 동그라미 칸·이름 줄·말풍선 메뉴, 내 순서(
   await page.locator('.islandBagSlot[data-item="fish_goby"]').click(); await expect(page.locator('#islandBagInfo .bagDetailKind')).toHaveText('물고기'); await expect(page.locator('#islandBagInfo .bagDetailWords')).not.toBeEmpty();
   await expect(page.locator('.islandBagSlot[data-item="fish_goby"] .bagMenu [role="menuitem"]')).toContainText(['놓아주기']);
   // picked: its name below; bread does nothing; the net -- a bubble with 들기
-  await open('etc'); await expect(page.locator('.islandBagSlot:not(.empty)')).toHaveCount(1); await page.locator('.islandBagSlot[data-item="bread"]').click(); await expect(page.locator('#islandBagInfo')).toContainText('빵'); await expect(page.locator('.bagMenu')).toHaveCount(0);
+  await open('etc'); await expect(page.locator('.islandBagSlot:not(.empty)')).toHaveCount(1); await page.locator('.islandBagSlot[data-item="bread"]').click(); await expect(page.locator('#islandBagInfo')).toContainText('빵'); await expect(page.locator('.islandBagSlot[data-item="bread"] .bagMenu [role="menuitem"]')).toHaveText(['버리기']); /* (1.10.432: only 버리기) */
   await expect(page.locator('#islandBagGrow')).toHaveText('10칸 · 팔거나 쓰면 자리가 나요.');
   await open('tool'); await expect(page.locator('#islandBagCount')).toHaveText('4/8');
-  await page.locator('.islandBagSlot[data-item="bugnet"]').click(); await expect(page.locator('.islandBagSlot[data-item="bugnet"] .bagMenu [role="menuitem"]')).toHaveText(['들기', '빠른 칸에']); // (v1.10.236 빠른 칸)
+  await page.locator('.islandBagSlot[data-item="bugnet"]').click(); await expect(page.locator('.islandBagSlot[data-item="bugnet"] .bagMenu [role="menuitem"]')).toHaveText(['들기', '빠른 칸에', '버리기']); // (v1.10.236 빠른 칸 -- 1.10.432 버리기 last)
   // kept when the bag opens again; 가구: the list of pieces not put down
   await tab(); await expect(bag).toBeHidden(); await tab(); await expect(bag).toBeVisible(); await expect(page.locator('.bagTab.on')).toHaveAttribute('data-tab', 'tool');
   await open('furniture'); await expect(page.locator('#islandFurnList')).toBeVisible(); await expect(page.locator('#islandBagGrid')).toBeHidden(); await expect(page.locator('#islandFurnList')).toContainText('아직 놓지 않은 가구가 없어요');
@@ -114,6 +114,35 @@ test('가방 개편: 동그라미 칸·이름 줄·말풍선 메뉴, 내 순서(
   await here.click(); await expect(page.locator('#islandBagCount')).toHaveText('2/100'); await expect(page.locator('#bagGrowHereBtn')).toHaveText('물고기 통 200칸 · 2,000,000P');
   await page.locator('.islandBagSlot[data-item="fish_mackerel"]').click(); await page.locator('.islandBagSlot[data-item="fish_mackerel"] .bagMenu [role="menuitem"]', { hasText: '놓아주기' }).click();
   await expect(page.locator('#islandBagCount')).toHaveText('1/100'); await expect(page.locator('.islandBagSlot[data-item="fish_mackerel"]')).toHaveCount(0);
+  /* 1.10.432 가방 버리기 (사용자 결정 92 전부 A): 버리기 last in the bubble; a stack asks how many (1개 · 전부 · a number), gone for good; a line
+     「…버렸어요 · n초」 with 되돌리기 for 10 s (once: the server judges it); a lost thing greyed with why; a tool in hand and in a 빠른 칸 --
+     out of both when none of it is left */
+  for (const [itemId, qty] of [['herb', 7], ['lost', 1]]) expect((await post(request, '/api/test/island/give', token, { itemId, qty })).data.applied).toBe(true);
+  const have = async (id) => (await get(request, '/api/island/bag', token)).data.items.filter((e) => e.itemId === id).reduce((n, e) => n + e.qty, 0);
+  const menuOf = (id) => page.locator(`.islandBagSlot[data-item="${id}"] .bagMenu [role="menuitem"]`); const dlg = page.locator('#discardDialog');
+  await tab(); await expect(bag).toBeHidden(); await tab(); await open('gather');
+  await page.locator('.islandBagSlot[data-item="herb"]').click(); await menuOf('herb').filter({ hasText: '버리기' }).click();
+  await expect(dlg).toBeVisible(); await expect(page.locator('#discardText')).toContainText('7개'); await expect(page.locator('#discardQty')).toBeVisible();
+  await page.locator('#discardQty [data-n="all"]').click(); await expect(page.locator('#discardCount')).toHaveValue('7');
+  await page.locator('#discardQty [data-n="1"]').click(); await expect(page.locator('#discardCount')).toHaveValue('1');
+  await page.locator('#discardCount').fill('3'); await page.locator('#discardOk').click(); await expect(dlg).toBeHidden();
+  await expect.poll(() => have('herb')).toBe(4); await expect(page.locator('#islandBagInfo .discardUndo')).toContainText(/버렸어요 · \d+초/);
+  if (process.env.ZZ_SHOT) await page.screenshot({ path: `${process.env.ZZ_SHOT}-bag-discard-undo-${isMobile ? 'phone' : 'pc'}.png` });
+  await page.locator('#discardUndoBtn').click(); await expect.poll(() => have('herb')).toBe(7); await expect(page.locator('#islandBagInfo .discardUndo')).toHaveCount(0);
+  expect((await post(request, '/api/island/bag/discard/undo', token, { undo: 'not-a-token' })).status).toBe(409);
+  await open('etc'); await page.locator('.islandBagSlot[data-item="lost"]').click();
+  await expect(menuOf('lost').filter({ hasText: '버리기' })).toBeDisabled(); await expect(page.locator('.islandBagSlot[data-item="lost"] .bagMenuWhy')).toHaveText('분실물은 주인이나 관공서에 가져다줘요.');
+  { const b = (await get(request, '/api/island/bag', token)).data; const lost = b.items.find((e) => e.itemId === 'lost'); /* (the server too) */
+    const r = await post(request, '/api/island/bag/discard', token, { requestId: 'e2e-lost-0001', entryId: lost.entryId, qty: 1 }); expect([r.status, r.data.error]).toEqual([409, 'KEEP']); }
+  // the pickaxe in hand and in the first 빠른 칸: 버리기 (one -- no count asked) takes it out of both
+  expect((await post(request, '/api/island/quick', token, { slots: ['pickaxe', null, null, null, null] })).status).toBe(200);
+  await open('tool'); await page.locator('.islandBagSlot[data-item="pickaxe"]').click(); await menuOf('pickaxe').filter({ hasText: '들기' }).click(); await expect(bag).toBeHidden();
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().heldTool())).toBe('pickaxe');
+  await tab(); await open('tool'); await page.locator('.islandBagSlot[data-item="pickaxe"]').click(); await menuOf('pickaxe').filter({ hasText: '버리기' }).click();
+  await expect(page.locator('#discardQty')).toBeHidden(); await page.locator('#discardOk').click(); await expect(dlg).toBeHidden();
+  await expect.poll(() => have('pickaxe')).toBe(0); await expect(page.locator('.islandBagSlot[data-item="pickaxe"]')).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.PlazaDebug().heldTool())).toBeNull();
+  expect((await get(request, '/api/island/quick', token)).data.slots[0]).toBeNull();
   await expectNoScriptError(page);
   await who.context.close();
 });

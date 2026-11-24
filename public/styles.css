@@ -3276,6 +3276,12 @@ body.plazaMode #myInfoDialog .dressStage .dressCanvas{aspect-ratio:auto;height:m
 #islandBagDialog.bagPouch .bagMenu::after{content:"";position:absolute;left:calc(50% - 7px);bottom:-6px;width:14px;height:14px;background:var(--isle-paper);transform:rotate(45deg)}
 #islandBagDialog.bagPouch .islandBagSlot .bagMenu button{display:block;width:100%;min-height:36px;margin:0;padding:6px 12px;border:0;border-radius:12px;background:transparent;color:var(--isle-ink);font-size:.9rem;font-weight:700;white-space:nowrap;text-align:left}
 #islandBagDialog.bagPouch .islandBagSlot .bagMenu button:is(:hover,:focus-visible){background:var(--isle-hover);outline:none}
+#islandBagDialog.bagPouch .islandBagSlot .bagMenu button:disabled{color:var(--isle-soft);opacity:.55;cursor:not-allowed;background:transparent}
+#islandBagDialog.bagPouch .islandBagSlot .bagMenu .bagMenuWhy{display:block;max-width:180px;padding:0 12px 4px;color:var(--isle-soft);font-size:.74rem;font-weight:600;line-height:1.3;white-space:normal;text-align:left}
+.discardQty{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;margin:6px 0 10px}
+.discardQty input{width:5.5em;min-height:36px;padding:4px 8px;border:2px solid var(--isle-line);border-radius:12px;background:var(--isle-field);color:var(--isle-ink);font-size:1rem;text-align:center}
+.discardUndo{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px;margin:0}
+.discardLog{margin:6px 0 0;padding-left:1.2em;font-size:.86rem;line-height:1.5}
 .islandBagInfo{min-height:1.5em;margin:10px 0 4px;text-align:center;color:var(--isle-ink);font-weight:700;font-size:.92rem}
 .islandBagGrow{margin:0 0 6px;text-align:center;color:var(--isle-ink);font-size:.82rem}
 .islandBagFoot{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}

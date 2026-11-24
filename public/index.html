@@ -474,6 +474,7 @@
           <label>알림 글 <select id="ieTemplate" aria-label="알림 틀"></select><input id="ieText" maxlength="80" placeholder="섬에 띄울 한 줄 (알림만일 때 꼭)" /></label>
           <button class="primary" type="submit">이벤트 열기</button><p id="ieStatus" class="lookMeta" role="status"></p></form>
           <ol id="ieList" class="ieList"></ol></details>
+          <details id="discardLogBox" class="economyBox"><summary>버린 기록</summary><p class="lookMeta">가방에서 버린 물건 최근 100건(누가 · 무엇을 · 몇 개 · 언제). 「되돌림」은 10초 안에 되돌린 것이에요.</p><ol id="discardLog" class="discardLog"></ol></details>
           <details id="denAdminBox" class="economyBox"><summary>지하 도박장 오늘</summary><p class="lookMeta">오늘 암호와 쪽지가 놓인 벤치예요. 관리자에게만 보여요.</p><div id="denAdminInfo" class="lookMeta"></div></details>
           <details id="calendarBox" class="economyBox"><summary>행사 달력</summary><p class="lookMeta">행사를 끄거나 기간을 옮길 수 있어요(서울 날짜). 빈칸은 원래 날짜. 매주 대회는 토 낚시·일 곤충 10~22시.</p><div id="calendarTable"></div><button id="calendarSave" class="primary" type="button">저장</button></details>
           </section>
@@ -1464,7 +1465,15 @@
     <p id="logoutDialogMessage">접속을 종료하시겠습니까? 다시 이용하려면 로그인하세요.</p>
     <div class="logoutDialogActions"><button id="logoutCancelBtn" class="ghost" type="button">취소</button><button id="logoutConfirmBtn" class="primary" type="button">접속 종료</button></div>
   </dialog>
-  <dialog id="pointGrantDialog" class="logoutDialog pointGrantDialog isle-sheet" aria-labelledby="pointGrantTitle" aria-describedby="pointGrantTarget">
+  <!-- 1.10.432 가방 버리기 (사용자 결정 92): what goes, how many (1 · 전부 · a number), gone for good -->
+<dialog id="discardDialog" class="logoutDialog discardDialog isle-sheet" aria-labelledby="discardTitle" aria-describedby="discardText">
+<h2 id="discardTitle">버리기</h2>
+<p id="discardText"></p>
+<div id="discardQty" class="discardQty" role="group" aria-label="버릴 개수"><button type="button" class="ghost tiny" data-n="1">1개</button><button type="button" class="ghost tiny" data-n="all">전부</button><input id="discardCount" type="number" min="1" step="1" inputmode="numeric" aria-label="버릴 개수" /></div>
+<p class="lookMeta">버리면 영영 사라지고 포인트는 돌아오지 않아요. 팔려면 노점이나 상인에게 가져가요.</p>
+<div class="logoutDialogActions"><button id="discardCancel" class="ghost" type="button">취소</button><button id="discardOk" class="danger" type="button">버리기</button></div>
+</dialog>
+<dialog id="pointGrantDialog" class="logoutDialog pointGrantDialog isle-sheet" aria-labelledby="pointGrantTitle" aria-describedby="pointGrantTarget">
     <h2 id="pointGrantTitle">포인트 지급</h2>
     <p id="pointGrantTarget"></p>
     <div id="pointGrantEdit" class="pointGrantEdit">

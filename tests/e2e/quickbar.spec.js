@@ -27,7 +27,7 @@ test('빠른 칸: 가방에서 넣기 → 숫자로 들기 → SPACE로 폭죽 �
   await toSlot('bugnet', 1); await toSlot('firework', 2, !isMobile); await toSlot('balloon', 3);
   await expect(page.locator('.islandBagSlot[data-item="firework"] .bagMenu')).toHaveCount(0);
   await tap(page.locator('.islandBagSlot[data-item="fishing_rod"], .islandBagSlot[data-item="firework"]').first());
-  await expect(page.locator('.islandBagSlot[data-item="firework"] .bagMenu [role="menuitem"]')).toHaveText(['들기', '빠른 칸에']); // (사용자 「도구처럼」: no 「쓰기」)
+  await expect(page.locator('.islandBagSlot[data-item="firework"] .bagMenu [role="menuitem"]')).toHaveText(['들기', '빠른 칸에', '버리기']); // (사용자 「도구처럼」: no 「쓰기」 -- 1.10.432: 버리기 last)
   await shot('bag-set');
   await page.locator('#islandBagCloseBtn').click(); await expect(bar).toBeVisible();
   await expect(slot(2).locator('small')).toHaveText('20');

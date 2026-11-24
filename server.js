@@ -86,6 +86,7 @@ require('./lib/island-items').setPriceHook(Economy.priceOf);
 require('./lib/island-items').setSizeHook(() => [Economy.value('fish:sizeMin'), Economy.value('fish:sizeMax')]); // v1.10.231 물고기 크기
 // v1.10.195 가방 늘리기: each account's bag size (world 'bagSlots': { account: 24 | 32 }), kept here for the stores' adds
 const bagSlots = new Map();
+const discardUndos = new Map(); const DISCARD_UNDO_MS = 10000; // (1.10.432 가방 버리기: token -> { account, gone, at, used } -- 10 s, once)
 require('./lib/island-items').setSlotsHook((account) => bagSlots.get(account));
 // v1.10.297 물고기 통·곤충 채집통: each account's boxes (world 'boxSlots': { account: { fish: 30.., insect: 30.. } }), 'account|kind'
 /* (1.10.430 인벤토리 2차: a full bag says which kind's room -- and the container that makes it bigger; `kind` for the page) */
@@ -1302,6 +1303,12 @@ const errandStages = new Map(); // `<day>|<account>` -> { [errand id]: stage }
 function errandPay(e, before) {
   const asker = IslandCast.levelOf(before[e.from] || 0); const pct = asker >= 3 ? Economy.value('affinity:bestieErrand') : asker >= 2 ? Economy.value('affinity:closeErrand') : 100;
   return Math.round((Economy.value(`errand:${e.kind}`) + Economy.value('errand:far') * (e.far || 0)) * pct / 100) + (e.kind === 'buy' ? Economy.value(`good:${e.good}`) : 0) + (e.kind === 'material' ? (Economy.priceOf(e.good) ?? IslandItems.ITEMS[e.good]?.price ?? 0) * e.count : 0); /* (366 재료 부탁: what the merchant would pay for them, and more) */
+}
+// 1.10.432 가방 버리기 3A: what the errands I took today and have not brought yet ask for -- kept from 버리기
+async function errandKeep(account) {
+  const day = errandDay(); const errands = IslandErrands.errandsOf(day, errandWalkers); const stages = errandStages.get(`${day}|${account}`) || {};
+  if (!Object.values(stages).includes(1)) return [];
+  const done = new Set(await pointStore.claimedEvents(account, errands.map((e) => e.id))); return [...IslandErrands.heldGoods(errands, stages, done)];
 }
 const bagCounts = (items) => { const m = new Map(); for (const e of items || []) m.set(e.itemId, (m.get(e.itemId) || 0) + (Number(e.qty) || 0)); return m; };
 async function errandView(account) {
@@ -6583,7 +6590,7 @@ async function requestHandler(req, res) {
     if (!session) return;
     const account = pointAccountForSession(session); const grow = IslandItems.BAG_GROW.find((n) => n > IslandItems.slotsOf(account)) || null; // (v1.10.195: the next size and its price)
     const boxGrow = Object.fromEntries(IslandItems.BOXES.map((kind) => { const n = IslandItems.BOX_GROW.find((s) => s > IslandItems.boxNow(account, kind)); return [kind, n ? { slots: n, price: Economy.value(`${BOX_KEY[kind]}:${n}`) } : null]; })); // (297; 430 the free basket counted)
-    return sendJson(res, 200, { ok: true, ...await pointStore.islandBag(account, islandEvents.activeLost()), dailyCap: IslandItems.DAILY_CAP, grow: grow && { slots: grow, price: Economy.value(`bag:${grow}`) }, boxGrow, sellMults: sellMultsNow(), autoSort: (await pointStore.worldValue(`bagAuto:${account}`).catch(() => null))?.on !== false /* (431 결정 91: on unless turned off) */ });
+    return sendJson(res, 200, { ok: true, ...await pointStore.islandBag(account, islandEvents.activeLost()), dailyCap: IslandItems.DAILY_CAP, grow: grow && { slots: grow, price: Economy.value(`bag:${grow}`) }, boxGrow, sellMults: sellMultsNow(), autoSort: (await pointStore.worldValue(`bagAuto:${account}`).catch(() => null))?.on !== false /* (431 결정 91: on unless turned off) */, keep: await errandKeep(account) /* (432: an errand's things -- 버리기 greyed) */ });
   }
   // v1.10.297 물고기 통·곤충 채집통: bought (and made bigger) at the 잡화점 like the bag, 30 -> 60 -> 90 -> 120, paid once each
   if (pathname === '/api/island/box/grow' && req.method === 'POST') {
@@ -6649,6 +6656,41 @@ async function requestHandler(req, res) {
     if (req.method === 'GET') return sendJson(res, 200, { ok: true, slots: IslandItems.quickSlots((await pointStore.worldValue(`quick:${account}`)) || []) || IslandItems.quickSlots([]) });
     const slots = IslandItems.quickSlots((await parseJson(req)).slots); if (!slots) return sendError(res, 400, 'BAD_QUICK', '빠른 칸에 넣을 수 없어요.');
     await worldEdit(() => pointStore.setWorldValue(`quick:${account}`, slots)); return sendJson(res, 200, { ok: true, slots });
+  }
+  /* 1.10.432 가방 버리기 (사용자 결정 92 전부 A): one entry's qty gone for good (no points back), judged here -- a lost thing or what an errand I
+     took asks for stays; one request once (its claim); then the 빠른 칸 lose a kind with none left, the admin's record gets who · what · how many ·
+     when, and a 되돌리기 token: the same person, 10 s, once (the same things back under its own claim -- never twice) */
+  if (pathname === '/api/island/bag/discard' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
+    const keep = await errandKeep(account);
+    let out; try { out = await pointStore.islandDiscard({ userId: account, requestId: String(body.requestId || ''), entryId: String(body.entryId || ''), qty: Number(body.qty), keep }); } catch { return sendError(res, 400, 'BAD_DISCARD', '버릴 개수를 확인해 주세요.'); }
+    if (out.already) return sendJson(res, 200, { ok: true, already: true, bag: out.bag });
+    if (!out.applied) {
+      const [code, say] = out.reason === 'keep' ? ['KEEP', ['lost', 'wallet'].includes(out.itemId) ? '분실물은 버릴 수 없어요. 주인이나 관공서에 가져다주세요.' : '하고 있는 심부름에 쓸 물건이라 버릴 수 없어요.'] : out.reason === 'qty' ? ['BAD_QTY', '그만큼은 없어요. 개수를 다시 골라 주세요.'] : ['MISSING', '가방에 없는 물건이에요.'];
+      return sendError(res, 409, code, say, { bag: out.bag });
+    }
+    { const kindOf = (id) => IslandItems.TOOL_KIND[id] || (id.startsWith('bike_') ? 'bike' : id); const have = new Set(out.bag.items.map((e) => kindOf(e.itemId)));
+      const quick = IslandItems.quickSlots((await pointStore.worldValue(`quick:${account}`)) || []) || [];
+      if (quick.some((k) => k && !have.has(k))) await worldEdit(() => pointStore.setWorldValue(`quick:${account}`, quick.map((k) => (k && !have.has(k) ? null : k)))); }
+    const undo = crypto.randomUUID(); discardUndos.set(undo, { account, gone: out.gone, at: nowMs(), used: false }); setTimeout(() => discardUndos.delete(undo), DISCARD_UNDO_MS + 5000).unref?.();
+    await worldEdit(async () => { const log = (await pointStore.worldValue('discardLog')) || []; log.push({ at: nowMs(), account, name: await accountName(account).catch(() => ''), itemId: out.gone.itemId, qty: out.gone.qty }); await pointStore.setWorldValue('discardLog', log.slice(-500)); }).catch((error) => console.error('버린 기록 실패:', error.message));
+    return sendJson(res, 200, { ok: true, gone: out.gone, undo, undoMs: DISCARD_UNDO_MS, bag: out.bag });
+  }
+  if (pathname === '/api/island/bag/discard/undo' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
+    const id = String(body.undo || ''); const u = discardUndos.get(id);
+    if (!u || u.account !== account || u.used || nowMs() - u.at > DISCARD_UNDO_MS) return sendError(res, 409, 'UNDO_GONE', '되돌릴 수 있는 시간이 지났어요.');
+    u.used = true; /* (before any wait: a second press meanwhile is turned away) */
+    let out; try { out = await pointStore.islandGive({ userId: account, claimId: `discard-undo:${id}`, itemId: u.gone.itemId, qty: u.gone.qty, meta: u.gone.meta, quiet: true, note: '버리기 되돌리기' }, nowMs()); } catch (error) { u.used = false; console.error('되돌리기 실패:', error.message); return sendError(res, 503, 'UNDO_FAILED', '되돌리지 못했어요. 다시 눌러 주세요.'); }
+    if (!out.applied && out.reason === 'full') { u.used = false; return bagFull(res, u.gone.itemId); } /* (its room filled meanwhile -- room made, again within the time) */
+    discardUndos.delete(id);
+    await worldEdit(async () => { const log = (await pointStore.worldValue('discardLog')) || []; log.push({ at: nowMs(), account, name: await accountName(account).catch(() => ''), itemId: u.gone.itemId, qty: u.gone.qty, undo: true }); await pointStore.setWorldValue('discardLog', log.slice(-500)); }).catch(() => {});
+    return sendJson(res, 200, { ok: true, bag: out.bag });
+  }
+  if (pathname === '/api/admin/discards' && req.method === 'GET') {
+    if (!requireAdmin(req, res)) return;
+    const log = (await pointStore.worldValue('discardLog')) || [];
+    return sendJson(res, 200, { ok: true, items: log.slice(-100).reverse().map((e) => ({ ...e, item: IslandItems.itemDef(e.itemId)?.name || e.itemId })) });
   }
   /* 1.10.431 자동 정리 (사용자 결정 91): a person's own switch, on unless turned off -- the page sorts what it shows by it; the bag's kept
      order (my own, 정리) is never rewritten by it, so nothing moves on the server (PostgreSQL and the file alike) */
