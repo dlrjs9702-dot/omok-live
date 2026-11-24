@@ -3890,7 +3890,7 @@ body.islandMining .plazaHint{display:none}
 body.islandMining .quickBar,body.islandMining #toast{visibility:hidden}
 @media(prefers-reduced-motion:reduce){.fishArrowSeq span.pop,.fishTug.reeling .fishTugDist{animation:none}}
 /* 1.10.356 가방 개편: kind tabs (a phone's slide sideways), their counts, the 가구 창고's list, a picked thing's card */
-.islandBagTabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 6px;margin:0 0 6px;-webkit-overflow-scrolling:touch}
+.islandBagTabs{display:flex;flex-wrap:wrap;gap:6px;overflow-x:visible;scrollbar-width:none;padding:2px 2px 6px;margin:0 0 6px}
 .islandBagTabs::-webkit-scrollbar{display:none}
 .islandBagTabs.hidden{display:none}
 .bagTab{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:999px;border:2px solid rgba(120,90,50,.35);background:#fffaf0;color:#5a4330;font-weight:800;font-size:13px;cursor:pointer;white-space:nowrap}
@@ -4040,7 +4040,8 @@ body.plazaMode .isle-sheet .taxiDests .taxiDest[aria-checked="true"]{background:
 
 /* 1.10.426 U8 (검토 ui-review · stamp-overflow §3 #2 #3 #4): a bag slot's little menu on the first column from the slot's left edge, on the last to its right (in the window); on a PC (a mouse) the bag's kind tabs and the record tower's game chips wrap to a second line -- a phone keeps its one sliding row */
 #islandBagDialog.bagPouch .bagMenu.atStart{left:0;transform:none}#islandBagDialog.bagPouch .bagMenu.atStart::after{left:22px}#islandBagDialog.bagPouch .bagMenu.atEnd{left:auto;right:0;transform:none}#islandBagDialog.bagPouch .bagMenu.atEnd::after{left:auto;right:22px}
-@media (pointer:fine){.islandBagTabs{flex-wrap:wrap;overflow-x:visible}.recordTowerGames{flex-wrap:wrap;overflow-x:visible}}
+/* (1.10.431: the bag tabs wrap on every screen -- their own rule; a touch-capable PC said coarse, its tabs were cut with no way on. The tower chips wrap wherever a mouse or trackpad is, or the window is wide; a phone keeps its one sliding row) */
+@media (pointer:fine),(any-pointer:fine),(min-width:900px){.recordTowerGames{flex-wrap:wrap;overflow-x:visible}}
 /* 1.10.426 U8 (검토 stamp-overflow §3, phone bag photo): on a touch screen the bag one column no taller than the screen -- its slots (or the dex) take what is left and scroll, so the quick-slot row and the foot stay inside the pouch's waves (they spilled under its bottom edge) */
 @media (pointer:coarse){#islandBagDialog.bagPouch[open]{display:flex;flex-direction:column;max-height:calc(100dvh - 40px)}#islandBagDialog.bagPouch[open]>*{flex:0 0 auto}#islandBagDialog.bagPouch[open]>.islandBagGrid{flex:1 1 auto;min-height:120px;max-height:none}}
 /* 1.10.426 U8 (검토 ui-review D5 · A9): on the island the dress shop's points once (its head) and one close (its head ✕) -- the foot's 닫기 and points gone; the filter chips one row, the rest behind 「더 보기」 */

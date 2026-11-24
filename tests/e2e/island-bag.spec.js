@@ -30,8 +30,17 @@ test('가방 개편: 동그라미 칸·이름 줄·말풍선 메뉴, 내 순서(
   await expect(page.locator('.islandBagSlot span')).toHaveCount(0); // (the picture and count only)
   await expect(page.locator('.bagTab[data-tab="fish"] i')).toHaveText('1/10'); await expect(page.locator('.bagTab[data-tab="tool"] i')).toHaveText('4/8'); await expect(page.locator('.bagTab[data-tab="material"]')).toHaveClass(/none/);
   await expect(page.locator('.bagTab[data-tab="material"]')).toHaveText('광석·재료0/10');
-  { const [ox, wrap, fine] = await page.evaluate(() => { const s = getComputedStyle(document.getElementById('islandBagTabs')); return [s.overflowX, s.flexWrap, matchMedia('(pointer:fine)').matches]; }); expect([ox, wrap]).toEqual(fine ? ['visible', 'wrap'] : ['auto', 'nowrap']); } /* (1.10.426 U8 #3: a mouse's row wraps -- a touch screen's slides) */
-  { const over = await page.evaluate(() => { const r = document.getElementById('islandBagTabs'); const d = document.getElementById('islandBagDialog').getBoundingClientRect(); return [...r.children].filter((b) => { const x = b.getBoundingClientRect(); return x.right > d.right + 1 || x.left < d.left - 1; }).length; }); if (!isMobile) expect(over).toBe(0); } /* (notes bag-tabs 끝: every tab seen on a PC) */
+  /* (1.10.431, 총괄 · 사용자 「pc에서 봤어」: a touch-capable PC said coarse and its row was cut after 광석·재료 with no way on -- the tabs wrap on
+     every screen: nothing wider than the row, the last tab inside the window; a mouse and a touch pointer alike) */
+  const tabsFit = () => page.evaluate(() => { const r = document.getElementById('islandBagTabs'); const s = getComputedStyle(r); const d = document.getElementById('islandBagDialog').getBoundingClientRect(); const last = r.lastElementChild.getBoundingClientRect();
+    return { wrap: s.flexWrap, over: r.scrollWidth - r.clientWidth, lastIn: last.right <= d.right + 1 && last.left >= d.left - 1 && last.width > 0, outside: [...r.children].filter((b) => { const x = b.getBoundingClientRect(); return x.right > d.right + 1 || x.left < d.left - 1; }).length }; });
+  expect(await tabsFit()).toEqual({ wrap: 'wrap', over: 0, lastIn: true, outside: 0 });
+  if (!isMobile) { /* (the PC as a touch screen says it: a coarse pointer) */
+    const cdp = await page.context().newCDPSession(page); await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 }); /* (its media then (pointer:coarse), the window still 1280 wide) */
+    expect(await page.evaluate(() => [matchMedia('(pointer:coarse)').matches, matchMedia('(any-pointer:fine)').matches])).toEqual([true, false]); expect(await tabsFit()).toEqual({ wrap: 'wrap', over: 0, lastIn: true, outside: 0 });
+    expect(await page.evaluate(() => { const g = document.querySelector('.recordTowerGames'); return g ? getComputedStyle(g).flexWrap : 'wrap'; })).toBe('wrap'); /* (the tower's chips: a wide window wraps them too) */
+    await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: false }); await cdp.detach();
+  }
   await page.locator('.islandBagSlot[data-item="fish_goby"]').click(); await expect(page.locator('#islandBagInfo .bagDetailKind')).toHaveText('물고기'); await expect(page.locator('#islandBagInfo .bagDetailWords')).not.toBeEmpty();
   await expect(page.locator('.islandBagSlot[data-item="fish_goby"] .bagMenu [role="menuitem"]')).toContainText(['놓아주기']);
   // picked: its name below; bread does nothing; the net -- a bubble with 들기

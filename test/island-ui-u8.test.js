@@ -9,7 +9,10 @@ const app = fs.readFileSync(path.join(__dirname, '../public/app.js'), 'utf8');
 test('U8 가방: 칸 메뉴는 첫 열 · 끝 열에서 창 안, PC는 종류 탭 · 기록의 탑 칩 줄바꿈, 폰은 가방 한 줄 세로(빠른 칸이 물결 안)', () => {
   assert.match(app, /menu\.className = `bagMenu\$\{at < bagCols\(\) \? ' below' : ''\}\$\{col === 0 \? ' atStart' : col === bagCols\(\) - 1 \? ' atEnd' : ''\}`/); /* (430: its place in the tab shown) */
   assert.ok(css.includes('#islandBagDialog.bagPouch .bagMenu.atStart{left:0;transform:none}') && css.includes('#islandBagDialog.bagPouch .bagMenu.atEnd{left:auto;right:0;transform:none}'));
-  assert.ok(css.includes('@media (pointer:fine){.islandBagTabs{flex-wrap:wrap;overflow-x:visible}.recordTowerGames{flex-wrap:wrap;overflow-x:visible}}'));
+  /* (1.10.431: the bag tabs wrap on every screen -- a touch-capable PC said coarse and its tabs were cut; the tower chips wherever a mouse is or the window is wide) */
+  assert.ok(css.includes('.islandBagTabs{display:flex;flex-wrap:wrap;gap:6px;overflow-x:visible;'));
+  assert.ok(css.includes('@media (pointer:fine),(any-pointer:fine),(min-width:900px){.recordTowerGames{flex-wrap:wrap;overflow-x:visible}}'));
+  assert.ok(!/@media \(pointer:fine\)\{\.islandBagTabs/.test(css), 'no pointer-only rule for the bag tabs');
   assert.ok(css.includes('@media (pointer:coarse){#islandBagDialog.bagPouch[open]{display:flex;flex-direction:column;max-height:calc(100dvh - 40px)}'));
 });
 
