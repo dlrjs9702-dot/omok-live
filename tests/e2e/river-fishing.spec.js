@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, post, get, expectNoScriptError, pressFishArrows } = require('./skin-support');
+const { shopper, post, get, expectNoScriptError, pressFishArrows, bagTabFor } = require('./skin-support');
 
 // v1.10.90 낚시 도감 21종 (IDEAS #future-fishing-dex): a stream's bank is a fishing spot too -- the float lands on the
 // stream, a river fish comes in and goes to the bag (its new model in hand, its icon in the 도감). PC and phone.
@@ -153,7 +153,7 @@ test('강 낚시: 개울가에서 던지면 찌가 개울에, 강 물고기를 �
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().fishing()), { timeout: 10000 }).toBe(null);
   expect(((await get(request, '/api/island/bag', token)).data.items || []).some((e) => e.itemId === 'fish_salmon')).toBe(false);
   // the bag's ⓘ and the 도감's cell: the same 설명
-  await page.keyboard.press('KeyI'); await page.locator('.islandBagSlot[data-item="fish_catfish"]').first().click();
+  await page.keyboard.press('KeyI'); await bagTabFor(page, 'fish_catfish'); await page.locator('.islandBagSlot[data-item="fish_catfish"]').first().click();
   await page.locator('#islandBagInfo .bagInfoMore').click(); await expect(card).toHaveClass(/infoOnly/); await expect(card.locator('.catchBack .catchName')).toHaveText('메기'); await shot('bag-info'); await card.locator('#catchCloseBtn').click();
   await page.locator('#islandDexBtn').click(); await page.locator('.islandDexTab[data-tab="fresh"]').click();
   /* (265 흔들림: one not on show in the museum either -- a fish another test gave there reads as known, its name shown) */

@@ -6632,7 +6632,7 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/box/release' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
     const out = await pointStore.islandRelease({ userId: account, entryId: String((await parseJson(req)).entryId || '') });
-    if (!out.applied) return sendError(res, 409, 'NOT_IN_BOX', '통에 없어요.');
+    if (!out.applied) return sendError(res, 409, 'NOT_IN_BOX', '가방에 없는 물고기 · 곤충이에요.');
     return sendJson(res, 200, { ok: true, bag: out.bag });
   }
   // (문제 기록 1103 4) 한 번 공지: a note on the island once for each account (seen kept on the server -- not again on another

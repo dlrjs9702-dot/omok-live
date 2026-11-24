@@ -66,3 +66,14 @@ test('430 가득 말: 어느 종류 칸인지 · 늘리는 그릇, BAG_FULL은 �
   assert.match(server, /const BOX_TO = \{ fish: '물고기 통으로', insect: '곤충 채집통으로', gather: '채집 바구니로', material: '재료 상자로' \};/);
   assert.match(server, /if \(!IslandItems\.addToBag\(bag \|\| \[\], 'weed', 1, null, null, IslandItems\.capOf\(account\)\)\) return bagFull\(res, 'weed'\); \}\r?\n\s+const out = await upkeepApply\(owner/);
 });
+
+test('430 화면(결정 88): 종류 탭 여덟 · 「전체」 없음 · 마지막 본 탭, 탭마다 n/칸과 빈 칸 · 꽉 참 표시, 그 탭의 그릇 단추; 가방 늘리기 · 통 창 없음', () => {
+  const app = fs.readFileSync(path.join(__dirname, '../public/app.js'), 'utf8');
+  assert.match(app, /const BAG_SECTIONS = \[\['fish', '물고기'\], \['insect', '곤충'\], \['gather', '채집물'\], \['material', '광석·재료'\], \['tool', '도구'\], \['ride', '탈것·펫'\], \['furniture', '가구'\], \['etc', '기타'\]\];/);
+  assert.doesNotMatch(app, /bagTab === 'all'/); assert.match(app, /return BAG_SECTIONS\.some\(\(\[s\]\) => s === k\) \? k : BAG_SECTIONS\[0\]\[0\];/);
+  assert.match(app, /const room = bagRooms\?\.\[bagTab\]\?\.slots; const empties = Number\.isFinite\(room\) \? Math\.max\(0, room - shown\.length\) : 0;/);
+  assert.match(app, /b\.classList\.toggle\('full', Number\.isFinite\(room\) && n >= room\);/);
+  assert.match(app, /api\('\/api\/island\/box\/grow', \{ method: 'POST', body: JSON\.stringify\(\{ kind, to: next\.slots \}\) \}\)/);
+  assert.doesNotMatch(app, /api\('\/api\/island\/bag\/grow'/, '가방 늘리기 단추 없음(결정 88 5A)');
+  assert.match(app, /for \(const \[id\] of BOX_BTNS\) byId\(id\)\.classList\.add\('hidden'\);/);
+});

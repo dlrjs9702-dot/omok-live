@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, get, post, standAt, expectNoScriptError, spaceOn, adminToken } = require('./skin-support');
+const { shopper, get, post, standAt, expectNoScriptError, spaceOn, adminToken, bagTabFor } = require('./skin-support');
 const T = require('../../public/plaza/island-terrain.js');
 const Together = require('../../lib/island-together');
 
@@ -40,7 +40,7 @@ test('보이는 곤충: 모두에게 같은 곤충, 걸어서 다가가 잡으�
   // no net: it says so (and the prompt is a plain line)
   expect((await post(request, '/api/island/insect/catch', a.token, { id: pick(await insectsNow()).id })).data.error).toBe('NO_BUGNET');
   expect((await post(request, '/api/test/island/give', a.token, { itemId: 'bugnet', qty: 1 })).status).toBe(200);
-  await page.keyboard.press('KeyI'); await page.locator('.islandBagSlot[data-item="bugnet"]').click(); await page.locator('#islandBagGrid button', { hasText: '들기' }).first().click(); /* (v1.10.195: the slot picked, its bubble) */ // (3회차 22: the net in hand -- SPACE swings it)
+  await page.keyboard.press('KeyI'); await bagTabFor(page, 'bugnet'); await page.locator('.islandBagSlot[data-item="bugnet"]').click(); await page.locator('#islandBagGrid button', { hasText: '들기' }).first().click(); /* (v1.10.195: the slot picked, its bubble) */ // (3회차 22: the net in hand -- SPACE swings it)
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().heldTool())).toBe('bugnet');
   // too far: no
   let target = pick(await insectsNow());

@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, get, post, expectNoScriptError, spaceOn, intoMall } = require('./skin-support');
+const { shopper, get, post, expectNoScriptError, spaceOn, intoMall, bagTabFor } = require('./skin-support');
 const T = require('../../public/plaza/island-terrain.js');
 const S = require('../../public/plaza/island-store.js');
 test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
@@ -17,7 +17,7 @@ test('도구 닳기: 가방 막대·든 도구 횟수, 5회 쪽지, 0이면 툭 
   expect((await post(request, '/api/test/island/give', a.token, { itemId: 'bugnet_sturdy', qty: 1 })).status).toBe(200);
   // the bag: a bar on each (6/30 short and red-ish, the sturdy one full and ringed)
   await page.keyboard.press('KeyI');
-  const net = page.locator('.islandBagSlot[data-item="bugnet"]'); await expect(net.locator('.toolUses')).toHaveCount(1);
+  await bagTabFor(page, 'bugnet'); const net = page.locator('.islandBagSlot[data-item="bugnet"]'); await expect(net.locator('.toolUses')).toHaveCount(1);
   await expect(net).toHaveAttribute('aria-label', '잠자리채 남은 6회'); await expect(page.locator('.islandBagSlot[data-item="bugnet_sturdy"]')).toHaveClass(/sturdy/);
   await shot('bag');
   await net.click(); await page.locator('#islandBagGrid button', { hasText: '들기' }).first().click();

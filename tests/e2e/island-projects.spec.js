@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, get, post, adminToken, expectNoScriptError, spaceOn, revealTalk, holdTool } = require('./skin-support');
+const { shopper, get, post, adminToken, expectNoScriptError, spaceOn, revealTalk, holdTool, bagTabFor } = require('./skin-support');
 const P = require('../../public/plaza/island-projects.js');
 test.skip(({ isMobile }) => isMobile, 'PC 실행이 같은 확인을 함 (v1.10.269 시험 정리: docs/test-audit-20261107.md)');
 
@@ -137,7 +137,7 @@ test('섬 가꾸기 1·2·3: 기부함·공사·열림·꽃길, 시장 투표·�
       await shot('fishing', 1800);
       // (총괄 224 CI: the line still out when one walks off holds SPACE to it -- reeled in and the rod put away first)
       await expect.poll(async () => { if (!(await page.evaluate(() => window.PlazaDebug().fishing()))) return true; await spaceOn(page, 'fish:', isMobile); await page.waitForTimeout(1500); return !(await page.evaluate(() => window.PlazaDebug().fishing())); }, { timeout: 30000 }).toBe(true);
-      await page.keyboard.press('KeyI'); await page.locator('.islandBagSlot[data-item="fishing_rod"]').first().click(); await page.locator('#islandBagGrid button', { hasText: '넣기' }).first().click(); await expect.poll(() => page.evaluate(() => window.PlazaDebug().heldTool()), { timeout: 10000 }).toBeNull();
+      await page.keyboard.press('KeyI'); await bagTabFor(page, 'fishing_rod'); await page.locator('.islandBagSlot[data-item="fishing_rod"]').first().click(); await page.locator('#islandBagGrid button', { hasText: '넣기' }).first().click(); await expect.poll(() => page.evaluate(() => window.PlazaDebug().heldTool()), { timeout: 10000 }).toBeNull();
       // the lookout: SPACE at its back step -- through the telescope; Esc back
       const L = P.LOOKOUT; await page.evaluate(([x, z]) => { const g = window.PlazaDebug(); g.teleport(x + 6, z + 4); g.setCamYaw(1.0); g.setCamPitch?.(0.15); }, [L.x, L.z]);
       await shot('lookout');

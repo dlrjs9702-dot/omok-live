@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, adminToken, intoMall, liftTo, post, get, holdTool, expectNoScriptError } = require('./skin-support');
+const { shopper, adminToken, intoMall, liftTo, post, get, holdTool, expectNoScriptError, bagTabFor } = require('./skin-support');
 const T = require('../../public/plaza/island-terrain.js');
 
 // v1.10.277 시험 정리 2차 (notes docs/test-audit-20261107.md §6): the first person in one file -- controls-fp and fp-polish
@@ -91,7 +91,7 @@ test('조작·1인칭: W/A/S/D 걷기·방향키 시점·마우스 보기·감�
     expect((await d('fpHand')).shown).toBe(false);
     expect((await post(request, '/api/test/island/give', who.token, { itemId: 'bugnet', qty: 1 })).status).toBe(200);
     await page.keyboard.press('KeyI');
-    await page.locator('.islandBagSlot[data-item="bugnet"]').first().click(); await page.locator('#islandBagGrid button', { hasText: '들기' }).first().click();
+    await bagTabFor(page, 'bugnet'); await page.locator('.islandBagSlot[data-item="bugnet"]').first().click(); await page.locator('#islandBagGrid button', { hasText: '들기' }).first().click();
     await expect.poll(() => d('heldTool')).toBe('bugnet');
     await page.evaluate(() => window.PlazaWarp(30, 0)); await page.evaluate(() => window.PlazaDebug().setCamPitch?.(0));
     await expect.poll(async () => (await d('fpHand')).tool, { timeout: 20000 }).toBe(true); console.log(JSON.stringify(await page.evaluate(() => new Promise((done) => { const out = []; const t0 = performance.now(); const tick = () => { out.push(window.PlazaDebug().fpHand().fist); if (performance.now() - t0 < 1000) requestAnimationFrame(tick); else done(out); }; tick(); }))));
@@ -106,7 +106,7 @@ test('조작·1인칭: W/A/S/D 걷기·방향키 시점·마우스 보기·감�
     await page.evaluate(() => window.PlazaDebug().place('board')); await expect.poll(() => d('targetRing'), { timeout: 10000 }).toBeNull();
     // B5 again: the rod in hand; then nothing held -- nothing drawn
     expect((await post(request, '/api/test/island/give', who.token, { itemId: 'fishing_rod', qty: 1 })).status).toBe(200);
-    const hold = async (item) => { await page.keyboard.press('KeyI'); await page.locator(`.islandBagSlot[data-item="${item}"]`).first().click(); await page.locator('#islandBagGrid button', { hasText: /들기|넣기/ }).first().click(); };
+    const hold = async (item) => { await page.keyboard.press('KeyI'); await bagTabFor(page, item); await page.locator(`.islandBagSlot[data-item="${item}"]`).first().click(); await page.locator('#islandBagGrid button', { hasText: /들기|넣기/ }).first().click(); };
     await hold('fishing_rod'); await expect.poll(() => d('heldTool')).toBe('fishing_rod');
     await page.evaluate(() => window.PlazaWarp(30, 0)); await page.evaluate(() => { window.PlazaDebug().setCamPitch?.(0); });
     await expect.poll(async () => (await d('fpHand')).tool, { timeout: 20000 }).toBe(true); await pshot('fp-rod');

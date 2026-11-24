@@ -269,8 +269,16 @@ async function walkStory(page) {
 }
 module.exports.walkStory = walkStory;
 // (206 Q2 5, 사용자 「낚시대를 장착해야 할 수 있게」: a tool is used in hand only) the bag's 「들기」 on it -- in hand
+/* (1.10.430 인벤토리 2차, 결정 88: the bag shows one kind's tab -- the tab holding the thing opened first; `press` a phone's tap where a spec uses one) */
+async function bagTabFor(page, itemId, press = (l) => l.click()) {
+  const t = page.locator(`#islandBagTabs .bagTab[data-items~="${itemId}"]`).first(); await expect(t).toBeAttached({ timeout: 15000 });
+  if (!(await t.evaluate((b) => b.classList.contains('on')))) await press(t);
+  await expect(page.locator(`.islandBagSlot[data-item="${itemId}"]`).first()).toBeVisible();
+}
+module.exports.bagTabFor = bagTabFor;
 async function holdTool(page, itemId) {
   await page.keyboard.press('KeyI');
+  await bagTabFor(page, itemId);
   await page.locator(`.islandBagSlot[data-item="${itemId}"]`).first().click();
   await page.locator('#islandBagGrid button', { hasText: '들기' }).first().click();
   await expect.poll(() => page.evaluate(() => window.PlazaDebug().heldTool())).toBe(itemId);
