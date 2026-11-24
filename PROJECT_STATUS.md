@@ -13,6 +13,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.432 가방 버리기 (사용자 결정 92 전부 A)
+
+- 가방 칸 말풍선 메뉴 맨 끝 「버리기」 → 확인 창(영영 사라짐 · 포인트 없음). 묶음은 1개 · 전부 · 숫자 입력. 버린 뒤 10초 「되돌리기」(같은 사람 · 한 번).
+- 막는 것: 분실물(lost · wallet) · 받은 심부름(1단계)의 사 오기 · 재료 물건 — 버리기 흐리게 + 까닭. 도구는 버릴 수 있음.
+- 서버가 판단: `POST /api/island/bag/discard` {requestId, entryId, qty} — 개수 검사, 요청 하나는 한 번(정산 claim), 동시 요청도 가진 만큼만. JSON · PostgreSQL 같은 동작(`islandDiscard`).
+- 되돌리기 `POST /api/island/bag/discard/undo` — 메모리 토큰 10초, 누르자마자 사용 표시, 같은 물건(물고기 크기 · 도구 닳음 포함)을 자기 claim으로 돌려줌(두 번 안 됨).
+- 그 종류가 다 없어지면 빠른 칸과 손에서 뺌. 관리자 「버린 기록」(누가 · 무엇 · 몇 개 · 언제, 최근 100건, world `discardLog` 500건).
+- 시험: `bag-discard-432`(JSON·PG), e2e island-bag(PC·폰) · quickbar 메뉴 목록.
+
 ## v1.10.431 가방 자동 정리 · 탭 줄바꿈 · 관리자 창 안쪽 종이(사용자 결정 91, 실서버 430 사진 · 관리자 창 사진)
 
 - 자동 정리(결정 91): 「정리」 → 「자동 정리 켬/끔」(사람마다 서버 `bagAuto:<계정>`, 기본 켬). 탭 안에서 하위 분류 → 등급 → 이름 → 큰 묶음(notes inventory-2-plan §8); 화면의 보여 주기만이라 서버 순서 · 물건 그대로, 켜져 있으면 손으로 안 옮김.
@@ -29,10 +38,3 @@
 - 가득 말: 어느 종류 칸인지와 늘리는 그릇(`BAG_FULL` + `kind`). 마당 잡초: 자리 먼저 보고 뽑음(가득이면 잃던 것).
 - 화면(결정 88): 종류 탭 여덟 · 「전체」 없음 · 마지막 본 탭, 탭마다 n/칸 · 빈 칸 · 꽉 참, 그 탭의 그릇 단추; 통 창 · 가방 늘리기 없앰, 놓아주기는 말풍선.
 - 시험: `inventory-430` 외 칸 시험들 새 규칙으로, e2e island-bag(PC · 폰) 외 가방 쓰는 spec들 종류 탭 열기.
-
-## v1.10.429 택시 종점 마당 목책(사용자 결정 86 · 87 A, 검토 terminal-yard-20261123)
-
-- 높은 목책 15칸(14 + 부두 길 쪽문 1)으로 섬 바깥 목책과 캠핑장 목책을 이음, 이음 두 곳에 통나무 끝 기둥(코드, 막는 원 0.3 m).
-- NEW_ISLE.yard 다각형을 서버 safeAt · 화면 tigers-view에: 마당 안 쫓길 곳 0 · 호랑이 땅 0. SAFES를 지금 반지름 22.9 · 11.9로.
-- 종점 차 길: 이 종점만 손님을 마당 쪽 차선에 내리고, 왼쪽으로 크게 돌아(반지름 2.2 m) 앞으로 자리에 — 캠핑장 목책을 뚫던 반원 대신, 울타리와 1.19 m 넘게 · 쉼터와 1.6 m.
-- 시험: `terminal-yard`, camp-s1(캠핑장 고리만), e2e dalmaru-walk · 택시 정류장 · 택시 양보 · 호랑이.

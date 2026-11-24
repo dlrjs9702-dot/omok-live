@@ -2658,6 +2658,41 @@
   // 0.4 s then tapped where (a phone), Shift+arrows (keys) -- kept on the server; 정리 sorts it
   let bagNow = null; let bagPicked = null; let bagHeld = null; let bagMoveSeq = 0;
   let bagAuto = true; /* (431 자동 정리, 결정 91: a person's switch from GET /api/island/bag `autoSort`) */
+  let bagKeep = new Set(); let discardUndo = null; /* (432 버리기: the errand's things kept; the last 되돌리기 { token, name, until, timer }) */
+  /* 1.10.432 가방 버리기 (사용자 결정 92 전부 A): asked on paper -- what and how many (a stack: 1개 · 전부 · a number), gone for good; then a line
+     under the bag 「…버렸어요 · 되돌리기 (n)」 for 10 s. The server judges all of it (what may go, how many, once); out of the 빠른 칸 and the hand
+     when none of its kind is left */
+  function askDiscard(item) {
+    const dlg = byId('discardDialog'); const many = item.qty > 1; const count = byId('discardCount');
+    byId('discardText').textContent = `${item.name}${item.sizes?.length === 1 ? ` (${item.sizes[0]} cm)` : ''}${josa(item.name, '을', '를')} 버릴까요?${many ? ` 가방에 ${item.qty}개 있어요.` : ''}`;
+    byId('discardQty').classList.toggle('hidden', !many); count.max = String(item.qty); count.value = '1';
+    for (const b of byId('discardQty').querySelectorAll('button')) b.onclick = () => { count.value = b.dataset.n === 'all' ? String(item.qty) : '1'; };
+    byId('discardCancel').onclick = () => dlg.close();
+    byId('discardOk').onclick = async () => {
+      const n = many ? Math.floor(Number(count.value)) : 1; if (!Number.isSafeInteger(n) || n < 1 || n > item.qty) { showToast(`1개에서 ${item.qty}개 사이로 골라 주세요.`, 2500); return; }
+      byId('discardOk').disabled = true;
+      try {
+        const r = await api('/api/island/bag/discard', { method: 'POST', body: JSON.stringify({ entryId: item.entryId, qty: n, requestId: crypto.randomUUID() }) }); dlg.close(); bagPicked = null;
+        const kind = item.tool || item.itemId; const left = (r.bag?.items || []).some((e) => (e.tool || e.itemId) === kind || (kind.startsWith('bike_') && e.itemId.startsWith('bike_')));
+        if (!left) { quickSlots = quickSlots.map((k) => (k === kind || (k === 'bike' && kind.startsWith('bike_')) ? null : k)); quickSaved = quickSlots; if (heldTool === kind) { heldTool = null; plaza.controller?.setHeldTool?.(null); showToolGauge(); } }
+        drawIslandBag(r.bag); if (r.undo) showDiscardUndo(r.undo, `${item.name}${n > 1 ? ` ${n}개` : ''}`, r.undoMs || 10000);
+      } catch (error) { showToast(error.message, 3500); if (error.data?.bag) drawIslandBag(error.data.bag); }
+      finally { byId('discardOk').disabled = false; }
+    };
+    dlg.showModal(); (many ? count : byId('discardOk')).focus();
+  }
+  function showDiscardUndo(token, name, ms) {
+    clearInterval(discardUndo?.timer); const until = Date.now() + ms; const line = byId('islandBagInfo');
+    const draw = () => { const left = Math.ceil((until - Date.now()) / 1000); if (left <= 0 || discardUndo?.token !== token) { clearInterval(discardUndo?.timer); if (discardUndo?.token === token) { discardUndo = null; line.querySelector('.discardUndo')?.remove(); } return; }
+      let box = line.querySelector('.discardUndo'); if (!box) { box = document.createElement('p'); box.className = 'discardUndo'; box.setAttribute('role', 'status'); const t = document.createElement('span'); const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost tiny'; b.id = 'discardUndoBtn'; b.textContent = '되돌리기'; b.addEventListener('click', undoDiscard); box.append(t, ' ', b); line.replaceChildren(box); }
+      box.querySelector('span').textContent = `🗑 ${name}${josa(name, '을', '를')} 버렸어요 · ${left}초`; };
+    discardUndo = { token, name, until, timer: setInterval(draw, 250) }; draw();
+  }
+  async function undoDiscard() {
+    const u = discardUndo; if (!u) return; const b = byId('discardUndoBtn'); if (b) b.disabled = true;
+    try { const r = await api('/api/island/bag/discard/undo', { method: 'POST', body: JSON.stringify({ undo: u.token }) }); clearInterval(u.timer); discardUndo = null; showToast(`${u.name}${josa(u.name, '을', '를')} 되돌렸어요.`, 2500); drawIslandBag(r.bag); loadQuick(); }
+    catch (error) { showToast(error.message, 3000); if (b) b.disabled = false; if (error.data?.error === 'UNDO_GONE') { clearInterval(u.timer); discardUndo = null; byId('islandBagInfo').textContent = ''; } }
+  }
   function bagSortReset() { const b = byId('islandBagSort'); b.textContent = bagAuto ? '자동 정리 켬' : '자동 정리 끔'; b.setAttribute('aria-pressed', String(bagAuto)); b.classList.toggle('on', bagAuto); }
   /* (431 결정 91, notes inventory-2-plan §8: within a tab -- its sub-kind (ores before gems before seeds; bikes before pets; the tools rod,
      net, pickaxe), then the rarer first (grade), then the name, and the same thing's bigger stack -- or bigger fish -- first) */
@@ -2679,6 +2714,8 @@
     if (quickKind(item)) out.push(['빠른 칸에', () => { quickPick = quickKind(item); drawQuick(); showToast('아래 빠른 칸을 누르거나 1~5를 눌러요.', 2500); }]);
     /* (430: the old box pages' 「놓아주기」 here -- a fish or an insect let go; the 도감 keeps it) */
     if (/^(fish|insect)_/.test(item.itemId)) out.push(['놓아주기', async () => { try { const r = await api('/api/island/box/release', { method: 'POST', body: JSON.stringify({ entryId: item.entryId }) }); showToast(`${item.name}을(를) 놓아줬어요.`, 2500); bagPicked = null; drawIslandBag(r.bag); } catch (error) { showToast(error.message, 3000); } }]);
+    /* (1.10.432 사용자 결정 92: 버리기 on everything, last -- a lost thing or what an errand I took asks for greyed, with why) */
+    out.push(['버리기', () => askDiscard(item), ['lost', 'wallet'].includes(item.itemId) ? '분실물은 주인이나 관공서에 가져다줘요.' : bagKeep.has(item.itemId) ? '하고 있는 심부름에 쓸 물건이에요.' : null]);
     return out;
   }
   function pickBagSlot(i) {
@@ -2689,8 +2726,14 @@
     const acts = item ? bagActions(item) : []; const at = cells.findIndex((s) => Number(s.dataset.i) === bagPicked); if (!acts.length || at < 0) return;
     const col = at % bagCols(); /* (1.10.426 U8, 검토 stamp-overflow §3 #2: the first column's menu from the slot's left edge, the last's to its right -- in the window) */
     const menu = document.createElement('div'); menu.className = `bagMenu${at < bagCols() ? ' below' : ''}${col === 0 ? ' atStart' : col === bagCols() - 1 ? ' atEnd' : ''}`; menu.setAttribute('role', 'menu'); // (the top row's: under it, off the pouch's title)
-    for (const [label, run] of acts) { const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'menuitem'); b.textContent = label; b.addEventListener('click', (event) => { event.stopPropagation(); run(); }); menu.append(b); }
+    for (const [label, run, why] of acts) { const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'menuitem'); b.textContent = label; b.addEventListener('click', (event) => { event.stopPropagation(); run(); }); menu.append(b);
+      if (why) { b.disabled = true; b.setAttribute('aria-disabled', 'true'); b.title = why; const s = document.createElement('small'); s.className = 'bagMenuWhy'; s.textContent = why; menu.append(s); } } /* (432: greyed, and why) */
     cells[at].append(menu);
+    /* (1.10.432: 버리기 made the bubble taller -- on a phone the grid scrolls and cut a second row's bubble at its top; no room above
+       inside the grid: it opens below, and the grid scrolls to show it) */
+    const grid = byId('islandBagGrid'); const clips = getComputedStyle(grid).overflowY !== 'visible';
+    if (clips && !menu.classList.contains('below') && menu.getBoundingClientRect().top < grid.getBoundingClientRect().top) menu.classList.add('below');
+    if (clips && grid.scrollHeight > grid.clientHeight) menu.scrollIntoView({ block: 'nearest' });
   }
   async function moveBagSlot(from, to) { // onto a thing: they swap; onto an empty slot: to the end
     if (!bagNow || from === to || !bagNow.items[from]) return;
@@ -2824,6 +2867,7 @@
     boxNow = { boxes: full.boxes || boxNow.boxes, items: bag.items.filter((e) => e.box) }; for (const [id] of BOX_BTNS) byId(id).classList.add('hidden');
     drawBagGrow(full); bagNow = bag; quickItems = full.items || []; drawQuick(); /* (v1.10.236: the 빠른 칸's counts) */ if (bagHeld != null && !bag.items[bagHeld]) bagHeld = null; const grid = document.getElementById('islandBagGrid'); grid.replaceChildren(); // (C5 P2-2: one picked up stays picked up through a redraw)
     if ('autoSort' in full) { bagAuto = full.autoSort !== false; bagSortReset(); }
+    if (Array.isArray(full.keep)) bagKeep = new Set(full.keep); /* (432: an errand's things, from GET /api/island/bag) */
     const shown = bag.items.map((e, i) => (sectionOfItem(e) === bagTab ? i : -1)).filter((i) => i >= 0);
     if (bagAuto) shown.sort((x, y) => autoOrder(bag.items[x], bag.items[y])); /* (431 자동 정리: the page's showing only) */
     const room = bagRooms?.[bagTab]?.slots; const empties = Number.isFinite(room) ? Math.max(0, room - shown.length) : 0;
@@ -4738,6 +4782,10 @@
     try { await api('/api/admin/calendar', { method: 'POST', body: JSON.stringify({ override }) }); drawCalendar(await api('/api/admin/calendar')); showToast('행사 달력을 저장했습니다.'); } catch (error) { showToast(error.message, 4000); }
   });
   byId('economyBox')?.addEventListener('toggle', (event) => { if (event.target.open) api('/api/admin/economy').then(drawEconomy).catch((error) => showToast(error.message)); });
+  /* (1.10.432 버린 기록: who · what · how many · when, newest first, on opening) */
+  byId('discardLogBox')?.addEventListener('toggle', (event) => { if (!event.target.open) return;
+    api('/api/admin/discards').then((r) => { const list = byId('discardLog'); list.replaceChildren(...(r.items || []).map((e) => { const li = document.createElement('li'); li.textContent = `${new Date(e.at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · ${e.name || '이름 없음'} · ${e.item} ×${e.qty}${e.undo ? ' (되돌림)' : ''}`; return li; }));
+      if (!list.children.length) { const li = document.createElement('li'); li.className = 'lookMeta'; li.textContent = '아직 버린 물건이 없어요.'; list.append(li); } }).catch((error) => showToast(error.message)); });
   // 경제 점검 ⑥-E (관리자 「경제」 통계): the points held, the last 14 days' in and out (each day, and by reason), the ten
   // holding most -- their names hidden unless asked (the first letter only)
   let economyStatsNow = null;
