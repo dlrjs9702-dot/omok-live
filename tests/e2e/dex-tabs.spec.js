@@ -14,10 +14,10 @@ test('도감 탭: 바다·민물·곤충·기념, 찾은 것만, 창 안 스크�
   const shot = async (name) => { if (process.env.SHOT_DIR) { await page.waitForTimeout(500); await page.screenshot({ path: `${process.env.SHOT_DIR}/${isMobile ? 'phone' : 'pc'}-${name}.png` }); } };
   const sea = Object.values(F.WATER_OF).filter((w) => w === 'sea').length; const fresh = Object.values(F.WATER_OF).length - sea;
   await page.locator('#islandBagTab').click(); await expect(page.locator('#islandBagSort')).toBeVisible();
-  await expect(page.locator('#islandBagCount')).toHaveText(/^4\/\d+$/); const bagCount = await page.locator('#islandBagCount').textContent(); // (the bag drawn first)
+  await page.locator('.bagTab[data-tab="fish"]').click(); await expect(page.locator('#islandBagCount')).toHaveText(/^3\/\d+$/); const bagCount = await page.locator('#islandBagCount').textContent(); // (the bag drawn first -- 430 its fish tab: the three fish)
   await page.locator('#islandDexBtn').click();
   const tabs = page.locator('#islandDexTabs .islandDexTab'); await expect(tabs).toHaveText([`바다 2/${sea}`, `민물 1/${fresh}`, /^곤충 1\/\d+$/, /^기념 0\/\d+$/]);
-  await expect(page.locator('#islandBagSort')).toBeHidden(); await expect(page.locator('#islandBagCount')).toHaveText(/^4\/\d+$/);
+  await expect(page.locator('#islandBagSort')).toBeHidden(); await expect(page.locator('#islandBagCount')).toHaveText(/^4\/\d+$/); /* (the 도감's own: four found) */
   const cells = page.locator('#islandDexGrid .islandDexCell'); await expect(cells).toHaveCount(sea); await shot('dex-sea');
   // the cells scroll inside the window, to their end; the head and the tabs stay where they were
   const tabTop = await tabs.first().evaluate((el) => el.getBoundingClientRect().top);

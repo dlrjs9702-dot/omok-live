@@ -31,7 +31,9 @@ test('386 창고 규칙: 넣을 수 있는 것 · 한 칸 99 · 물고기 한 �
   // out: back into the bag (a fish with its size), the rest left
   const back = S.take(r.items, r.bag, r.items[0].entryId, 40, I.capOf('x')); assert.equal(back.items[0].qty, 59); assert.equal(back.bag.find((e) => e.itemId === 'crop_carrot').qty, 40);
   const fishBack = S.take(r.items, r.bag, r.items[2].entryId, 1, I.capOf('x')); assert.ok(fishBack.bag.some((e) => e.itemId === 'fish_mackerel' && e.meta?.sizes?.[0] === 40)); assert.equal(fishBack.items.length, 2);
-  const crammed = Array.from({ length: I.BAG_SLOTS }, (_, k) => ({ entryId: `b${k}`, itemId: 'ore_iron', qty: 99 })); assert.equal(S.take(r.items, crammed, r.items[0].entryId, 1, I.capOf('x')).error, 'BAG_FULL');
+  /* (1.10.430: the carrot's own room -- 채집물 -- full; ores in their room take none of its places) */
+  const crammed = Array.from({ length: I.SECTIONS.gather }, (_, k) => ({ entryId: `b${k}`, itemId: k % 2 ? 'berry' : 'herb', qty: 99 })); assert.equal(S.take(r.items, crammed, r.items[0].entryId, 1, I.capOf('x')).error, 'BAG_FULL');
+  assert.notEqual(S.take(r.items, Array.from({ length: 30 }, (_, k) => ({ entryId: `o${k}`, itemId: 'ore_iron', qty: 99 })), r.items[0].entryId, 1, I.capOf('x')).error, 'BAG_FULL');
   assert.equal(S.take(r.items, r.bag, r.items[0].entryId, 100, I.capOf('x')).error, 'MISSING', '있는 것보다 많이 꺼내기');
 });
 

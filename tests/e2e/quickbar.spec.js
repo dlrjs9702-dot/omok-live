@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, post, expectNoScriptError } = require('./skin-support');
+const { shopper, post, expectNoScriptError, bagTabFor } = require('./skin-support');
 
 // v1.10.236 빠른 칸 (gamecenter-notes docs/quickbar-20261104.md, 사용자 「숫자에 아이템 빨리 장착」 「도구처럼 장착한 후에
 // 상호작용키를 누르면 쓰는 걸로」): from the bag 「빠른 칸에」 then a slot (or a number); shut, a number holds that slot's;
@@ -20,7 +20,7 @@ test('빠른 칸: 가방에서 넣기 → 숫자로 들기 → SPACE로 폭죽 �
   await tap(page.locator('#islandBagTab')); await expect(page.locator('#quickInBag .quickSlot')).toHaveCount(5); await shot('bag-empty');
   expect(new Set(await page.locator('#quickInBag .quickSlot').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)))).size, '한 줄 다섯 칸').toBe(1);
   const toSlot = async (item, k, byKey = false) => {
-    await tap(page.locator(`.islandBagSlot[data-item="${item}"]`)); await tap(page.locator(`.islandBagSlot[data-item="${item}"] .bagMenu [role="menuitem"]`, { hasText: '빠른 칸에' }));
+    await bagTabFor(page, item, tap); await tap(page.locator(`.islandBagSlot[data-item="${item}"]`)); await tap(page.locator(`.islandBagSlot[data-item="${item}"] .bagMenu [role="menuitem"]`, { hasText: '빠른 칸에' }));
     if (byKey) await page.keyboard.press(`Digit${k}`); else await tap(inBag(k));
     await expect(inBag(k)).not.toHaveClass(/empty/);
   };

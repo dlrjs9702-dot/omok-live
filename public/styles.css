@@ -4049,3 +4049,5 @@ body.plazaMode .skinFilterBar.chipsFolded .skinChipsMore{display:none}
 /* 1.10.426 U8 (검토 ui-review C9 · C10): points on the island one way -- the bag's coin pill (its point.svg, its honey paper) for the dress shop's and the donation's heads and 내 정보's wallet; an empty list's line centred in the soft ink (the dark boards keep theirs) */
 body.plazaMode :is(#skinShopBalance,#donationBalance,#pointBalanceText):not(:empty){display:inline-block;padding:4px 12px 4px 30px;border-radius:999px;background:url("/assets/items/point.svg") 8px 50%/16px 16px no-repeat #f2e3c4;color:var(--isle-ink)!important;font-size:.85rem;font-weight:800;line-height:1.35;text-shadow:none}
 body.plazaMode .isle-sheet:not(.boardMode):not(#donationDialog) :is(.emptyState,.noticeEmpty,.rankingEmpty,.chatEmpty,.climbRankEmpty,.recordTowerEmpty){color:var(--isle-soft);text-align:center;padding:16px 8px;font-size:.9rem;font-weight:700}
+/* (1.10.430 인벤토리 2차: a kind's room full -- its count on the tab warm) */
+.bagTab.full i{background:#f6c9b8;color:#7a2a12}

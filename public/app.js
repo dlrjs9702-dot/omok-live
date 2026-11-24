@@ -2666,17 +2666,20 @@
     if (item.itemId.startsWith('bike_')) { const riding = Boolean(plaza.controller?.cycling?.()); out.push([riding ? '넣기' : '꺼내기', () => { islandBagDialog.close(); plaza.controller?.toggleBike?.(); plazaStage.focus({ preventScroll: true }); }]); } // (1.10.356 탈것·펫: out to ride, back in)
     if (SHOW_GOODS.has(item.itemId)) out.push([heldTool === item.itemId ? '넣기' : '들기', () => holdTool(item.itemId)]); // (v1.10.236 빠른 칸: held, then 상호작용 uses one -- 사용자 「도구처럼 장착한 후에」)
     if (quickKind(item)) out.push(['빠른 칸에', () => { quickPick = quickKind(item); drawQuick(); showToast('아래 빠른 칸을 누르거나 1~5를 눌러요.', 2500); }]);
+    /* (430: the old box pages' 「놓아주기」 here -- a fish or an insect let go; the 도감 keeps it) */
+    if (/^(fish|insect)_/.test(item.itemId)) out.push(['놓아주기', async () => { try { const r = await api('/api/island/box/release', { method: 'POST', body: JSON.stringify({ entryId: item.entryId }) }); showToast(`${item.name}을(를) 놓아줬어요.`, 2500); bagPicked = null; drawIslandBag(r.bag); } catch (error) { showToast(error.message, 3000); } }]);
     return out;
   }
   function pickBagSlot(i) {
     bagPicked = bagPicked === i ? null : i; const item = bagNow?.items[bagPicked];
-    for (const [k, s] of [...document.getElementById('islandBagGrid').children].entries()) { s.classList.toggle('picked', k === bagPicked); s.querySelector('.bagMenu')?.remove(); }
+    const cells = [...document.getElementById('islandBagGrid').children]; /* (430: a tab shows some of the list -- its place by the list's own index) */
+    for (const s of cells) { s.classList.toggle('picked', Number(s.dataset.i) === bagPicked && Boolean(item)); s.querySelector('.bagMenu')?.remove(); }
     byId('islandBagInfo').replaceChildren(...(item ? [bagDetail(item)] : [])); // (1.10.356 가방 개편: its card -- v1.10.231 a fish's sizes, 257 ⓘ in it)
-    const acts = item ? bagActions(item) : []; if (!acts.length) return;
-    const col = bagPicked % bagCols(); /* (1.10.426 U8, 검토 stamp-overflow §3 #2: the first column's menu from the slot's left edge, the last's to its right -- in the window) */
-    const menu = document.createElement('div'); menu.className = `bagMenu${bagPicked < bagCols() ? ' below' : ''}${col === 0 ? ' atStart' : col === bagCols() - 1 ? ' atEnd' : ''}`; menu.setAttribute('role', 'menu'); // (the top row's: under it, off the pouch's title)
+    const acts = item ? bagActions(item) : []; const at = cells.findIndex((s) => Number(s.dataset.i) === bagPicked); if (!acts.length || at < 0) return;
+    const col = at % bagCols(); /* (1.10.426 U8, 검토 stamp-overflow §3 #2: the first column's menu from the slot's left edge, the last's to its right -- in the window) */
+    const menu = document.createElement('div'); menu.className = `bagMenu${at < bagCols() ? ' below' : ''}${col === 0 ? ' atStart' : col === bagCols() - 1 ? ' atEnd' : ''}`; menu.setAttribute('role', 'menu'); // (the top row's: under it, off the pouch's title)
     for (const [label, run] of acts) { const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'menuitem'); b.textContent = label; b.addEventListener('click', (event) => { event.stopPropagation(); run(); }); menu.append(b); }
-    document.getElementById('islandBagGrid').children[bagPicked].append(menu);
+    cells[at].append(menu);
   }
   async function moveBagSlot(from, to) { // onto a thing: they swap; onto an empty slot: to the end
     if (!bagNow || from === to || !bagNow.items[from]) return;
@@ -2689,15 +2692,20 @@
   }
   /* (G3 총괄 「가방 늘리기 어디서?」: a line under the bag -- where it grows; on the 백화점 1층 (space 'store') that line is the
      button itself; at the top size 「가방이 가장 커요」. The price comes with GET /api/island/bag only -- kept from it) */
-  let bagGrowNext;
-  function drawBagGrow(bag) {
-    const line = byId('islandBagGrow'); if ('grow' in bag) bagGrowNext = bag.grow; const next = bagGrowNext;
-    if (next === null || bag.slots >= 32) { line.textContent = `가방이 가장 커요 · ${bag.slots}칸`; return; } /* ponytail: 32 = IslandItems.BAG_GROW's last */
-    if (plaza.controller?.space?.() !== 'store' || !next) { line.textContent = '가방 늘리기: 백화점 1층 잡화점'; return; }
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost tiny'; b.id = 'bagGrowHereBtn'; b.textContent = `가방 늘리기 · ${next.slots}칸 ${Number(next.price).toLocaleString('ko-KR')}P`;
+  /* (1.10.430 인벤토리 2차: under the bag, the tab's own room -- a kind with a container (물고기 통 · 곤충 채집통 · 채집 바구니 · 재료 상자):
+     its next size, on the 백화점 1층 the button itself, at 200 「가장 커요」; a fixed room says so; 전체: each kind has its own room. The old
+     「가방 늘리기」 (24 · 32) is gone -- who bought it has the 채집 바구니's 50 (결정 3A)) */
+  const ROOM_BOX = { fish: '물고기 통', insect: '곤충 채집통', gather: '채집 바구니', material: '재료 상자' };
+  function drawBagGrow() {
+    const line = byId('islandBagGrow'); const kind = bagTab; const name = ROOM_BOX[kind]; const room = bagRooms?.[kind]?.slots;
+    if (!name) { line.textContent = kind === 'ride' ? '탈것 · 펫은 칸 수 없이 가져요.' : kind === 'furniture' ? '가구는 내 집 창고에 있어요.' : `${Number.isFinite(room) ? `${room}칸` : ''} · 팔거나 쓰면 자리가 나요.`; return; }
+    const next = boxGrowNow?.[kind];
+    if (next === null) { line.textContent = `${name}이 가장 커요 · ${room}칸`; return; }
+    if (plaza.controller?.space?.() !== 'store' || !next) { line.textContent = `${name}(으)로 늘리기: 백화점 1층 잡화점${next ? ` · ${next.slots}칸 ${Number(next.price).toLocaleString('ko-KR')}P` : ''}`; return; }
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost tiny'; b.id = 'bagGrowHereBtn'; b.dataset.kind = kind; b.textContent = `${name} ${next.slots}칸 · ${Number(next.price).toLocaleString('ko-KR')}P`;
     b.addEventListener('click', async () => {
       b.disabled = true;
-      try { const r = await api('/api/island/bag/grow', { method: 'POST', body: '{}' }); showToast(`가방이 ${r.slots}칸이 됐어요!`, 4000); loadPoints(); drawIslandBag(await api('/api/island/bag')); }
+      try { const r = await api('/api/island/box/grow', { method: 'POST', body: JSON.stringify({ kind, to: next.slots }) }); showToast(`${name}이 ${r.slots}칸이 됐어요!`, 4000); loadPoints(); drawIslandBag(await api('/api/island/bag')); }
       catch (error) { showToast(error.message, 4000); b.disabled = false; }
     });
     line.replaceChildren(b);
@@ -2741,25 +2749,32 @@
   // each its count; the last one opened kept on this device; 가구: the 창고's pieces not placed yet (their own list); 도구: their
   // uses and 들기·넣기; 탈것·펫: 꺼내기·넣기. A thing picked: its picture, name, kind, its few words, where it goes, its size.
   const BAG_DATA = window.IslandBagData;
-  let bagTab = (() => { try { const t = localStorage.getItem('gc.bagTab'); return BAG_DATA?.TABS.some(([k]) => k === t) ? t : 'all'; } catch { return 'all'; } })();
+  /* (1.10.430 인벤토리 2차, 결정 1A: the tabs are the kinds' rooms -- 광석 and 재료 one room, so one tab; nine tabs, each 「n/room」) */
+  /* (사용자 결정 88 6A: no 「전체」 -- the kinds' tabs only, as a game's bag; it opens on the tab seen last, the first the first time) */
+  const BAG_SECTIONS = [['fish', '물고기'], ['insect', '곤충'], ['gather', '채집물'], ['material', '광석·재료'], ['tool', '도구'], ['ride', '탈것·펫'], ['furniture', '가구'], ['etc', '기타']];
+  const sectionOfItem = (e) => e.section || ((t) => (t === 'ore' ? 'material' : t || 'etc'))(BAG_DATA?.tabOf(e.itemId));
+  let bagRooms = null;
+  let bagTab = (() => { try { const t = localStorage.getItem('gc.bagTab'); const k = t === 'ore' ? 'material' : t; return BAG_SECTIONS.some(([s]) => s === k) ? k : BAG_SECTIONS[0][0]; } catch { return BAG_SECTIONS[0][0]; } })();
   let furnNow = null; let furnAt = 0;
   function drawBagTabs(bag) {
     const row = byId('islandBagTabs'); if (!BAG_DATA) { row.classList.add('hidden'); return; }
-    const count = {}; for (const e of bag.items) { const t = BAG_DATA.tabOf(e.itemId); count[t] = (count[t] || 0) + 1; } if (furnNow) count.furniture = furnNow.length;
-    row.replaceChildren(...BAG_DATA.TABS.map(([k, label]) => {
+    const count = {}; for (const e of bag.items) { const t = sectionOfItem(e); count[t] = (count[t] || 0) + 1; } if (furnNow) count.furniture = furnNow.length;
+    row.replaceChildren(...BAG_SECTIONS.map(([k, label]) => {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'bagTab'; b.setAttribute('role', 'tab'); b.dataset.tab = k; b.setAttribute('aria-selected', String(k === bagTab)); b.classList.toggle('on', k === bagTab);
-      const n = k === 'all' ? bag.items.length : count[k] || 0; b.append(label); if (n) b.append(Object.assign(document.createElement('i'), { textContent: String(n) })); b.classList.toggle('none', k !== 'all' && !n);
+      const n = count[k] || 0; const room = k === 'furniture' ? null : bagRooms?.[k]?.slots; b.append(label);
+      b.dataset.items = [...new Set(bag.items.filter((e) => sectionOfItem(e) === k).map((e) => e.itemId))].join(' '); /* (what is in it -- a test finds a thing's tab by it) */
+      if (n || Number.isFinite(room)) b.append(Object.assign(document.createElement('i'), { textContent: Number.isFinite(room) ? `${n}/${room}` : String(n) }));
+      b.classList.toggle('none', !n); b.classList.toggle('full', Number.isFinite(room) && n >= room);
       b.addEventListener('click', () => setBagTab(k)); return b;
     }));
     row.querySelector('.bagTab.on')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
   }
   function setBagTab(k) { bagTab = k; try { localStorage.setItem('gc.bagTab', k); } catch {} bagPicked = null; if (bagNow) drawIslandBag(bagNow); }
-  function applyBagTab(bag) {
+  function applyBagTab() {
     const grid = byId('islandBagGrid'); const furn = byId('islandFurnList'); const onPage = !byId('islandDexGrid').classList.contains('hidden') || Boolean(boxPage);
     byId('islandBagTabs').classList.toggle('hidden', onPage || !BAG_DATA); if (onPage || !BAG_DATA) { furn.classList.add('hidden'); return; }
     const furnTab = bagTab === 'furniture'; grid.classList.toggle('hidden', furnTab); furn.classList.toggle('hidden', !furnTab);
-    if (furnTab) { drawFurnList(); return; }
-    for (const s of grid.children) { const item = bag.items[Number(s.dataset.i)]; s.hidden = bagTab !== 'all' && (!item || BAG_DATA.tabOf(item.itemId) !== bagTab); }
+    if (furnTab) drawFurnList(); /* (430: the other tabs draw only their own things -- drawIslandBag) */
   }
   async function drawFurnList() {
     const list = byId('islandFurnList');
@@ -2790,13 +2805,17 @@
     card.append(pic, text); return card;
   }
   function drawIslandBag(full) {
-    const bag = full.bagOnly ? full : { ...full, items: (full.items || []).filter((e) => !e.box), bagOnly: true };
-    if ('boxGrow' in full) boxGrowNow = full.boxGrow;
-    if (!full.bagOnly) { boxNow = { boxes: full.boxes || boxNow.boxes, items: (full.items || []).filter((e) => e.box) }; for (const [id, k] of BOX_BTNS) byId(id).classList.toggle('hidden', !(boxNow.boxes[k] > 0)); }
+    /* (1.10.430 인벤토리 2차: one list, each kind its room -- the tab shows its own things and its empty places up to its room; the old
+       fish and insect boxes are their tabs now, so their pages' buttons stay hidden) */
+    const bag = { ...full, items: full.items || [] };
+    if ('boxGrow' in full) boxGrowNow = full.boxGrow; if ('sections' in full) bagRooms = full.sections;
+    boxNow = { boxes: full.boxes || boxNow.boxes, items: bag.items.filter((e) => e.box) }; for (const [id] of BOX_BTNS) byId(id).classList.add('hidden');
     drawBagGrow(full); bagNow = bag; quickItems = full.items || []; drawQuick(); /* (v1.10.236: the 빠른 칸's counts) */ if (bagHeld != null && !bag.items[bagHeld]) bagHeld = null; const grid = document.getElementById('islandBagGrid'); grid.replaceChildren(); // (C5 P2-2: one picked up stays picked up through a redraw)
-    for (let i = 0; i < (bag.slots || 16); i += 1) {
+    const shown = bag.items.map((e, i) => (sectionOfItem(e) === bagTab ? i : -1)).filter((i) => i >= 0);
+    const room = bagRooms?.[bagTab]?.slots; const empties = Number.isFinite(room) ? Math.max(0, room - shown.length) : 0;
+    [...shown, ...Array(empties).fill(bag.items.length)].forEach((i, pos) => { /* (an empty place's i: past the last -- a thing put there goes to the end) */
       const item = bag.items[i]; const slot = document.createElement('div');
-      slot.className = 'islandBagSlot'; slot.setAttribute('role', 'listitem'); slot.tabIndex = i === 0 ? 0 : -1; slot.dataset.i = i;
+      slot.className = 'islandBagSlot'; slot.setAttribute('role', 'listitem'); slot.tabIndex = pos === 0 ? 0 : -1; slot.dataset.i = i;
       if (item) {
         slot.title = item.usesMax ? `${item.name} · ${item.uses}/${item.usesMax}회` : item.name; slot.setAttribute('aria-label', item.usesMax ? `${item.name} 남은 ${item.uses}회` : `${item.name} ${item.qty}개`); slot.dataset.item = item.itemId; slot.draggable = true;
         const qty = document.createElement('small'); qty.textContent = item.qty > 1 ? `×${item.qty}` : item.sizes?.length === 1 ? `${item.sizes[0]}cm` : ''; /* (362 사용자 3A: a fish one a slot -- its size, as in its box) */ if (item.sizes?.length === 1 && item.qty === 1) { qty.classList.add('bagSize'); slot.title = `${item.name} · ${item.sizes[0]} cm`; slot.setAttribute('aria-label', `${item.name} ${item.sizes[0]} cm`); }
@@ -2810,22 +2829,22 @@
         if (event.target !== slot) return; // (a key on its bubble's button is the button's)
         const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -bagCols(), ArrowDown: bagCols() }[arrowKey(event)]; // (W/A/S/D too, Shift+ moves)
         if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); slot.click(); return; }
-        if (step == null) return; event.preventDefault(); const to = Math.max(0, Math.min(grid.children.length - 1, i + step));
-        if (event.shiftKey && item) { moveBagSlot(i, to).then(() => grid.children[Math.min(to, bagNow.items.length - 1)]?.focus()); return; }
+        if (step == null) return; event.preventDefault(); const to = Math.max(0, Math.min(grid.children.length - 1, pos + step));
+        if (event.shiftKey && item) { moveBagSlot(i, Number(grid.children[to].dataset.i)).then(() => grid.children[to]?.focus()); return; } /* (430: the place shown there -- the list's own index) */
         grid.children[to]?.focus();
       });
       if (item) {
         slot.addEventListener('dragstart', (event) => { event.dataTransfer.setData('text/plain', String(i)); event.dataTransfer.effectAllowed = 'move'; });
         let hold = 0; // (a phone: held 0.4 s, it is picked up -- the next slot tapped is where it goes)
-        slot.addEventListener('pointerdown', (event) => { if (event.pointerType !== 'touch') return; hold = setTimeout(() => { bagHeld = i; grid.children[i]?.classList.add('held'); /* (CI #351: a late answer drew the bag again meanwhile -- the slot shown now, not the one pressed) */ byId('islandBagInfo').textContent = `${item.name} · 놓을 칸을 누르세요`; }, 400); });
+        slot.addEventListener('pointerdown', (event) => { if (event.pointerType !== 'touch') return; hold = setTimeout(() => { bagHeld = i; [...grid.children].find((c) => Number(c.dataset.i) === i)?.classList.add('held'); /* (CI #351: a late answer drew the bag again meanwhile -- the slot shown now, not the one pressed) */ byId('islandBagInfo').textContent = `${item.name} · 놓을 칸을 누르세요`; }, 400); });
         for (const type of ['pointerup', 'pointercancel', 'pointerleave']) slot.addEventListener(type, () => clearTimeout(hold));
       }
       slot.addEventListener('dragover', (event) => { event.preventDefault(); slot.classList.add('dropAt'); });
       slot.addEventListener('dragleave', () => slot.classList.remove('dropAt'));
       slot.addEventListener('drop', (event) => { event.preventDefault(); slot.classList.remove('dropAt'); const from = Number(event.dataTransfer.getData('text/plain')); if (Number.isInteger(from)) moveBagSlot(from, i); });
       grid.append(slot);
-    }
-    if (byId('islandDexGrid').classList.contains('hidden')) document.getElementById('islandBagCount').textContent = `${bag.items.length}/${bag.slots}`; // (v1.10.233: on the 도감's page its own count stays)
+    });
+    if (byId('islandDexGrid').classList.contains('hidden')) document.getElementById('islandBagCount').textContent = Number.isFinite(room) ? `${shown.length}/${room}` : String(bagTab === 'furniture' ? furnNow?.length || 0 : shown.length); // (v1.10.233: on the 도감's page its own count stays; 430 the tab's room)
     byId('islandBagPoints').textContent = pointBalanceText.textContent || '';
     drawBagTabs(bag); applyBagTab(bag); /* (1.10.356 가방 개편) */
     if (bagPicked != null && bag.items[bagPicked]) { const k = bagPicked; bagPicked = null; pickBagSlot(k); } else { bagPicked = null; byId('islandBagInfo').textContent = ''; }
@@ -4460,21 +4479,15 @@
     const k = postKeeper('mall1'); // (v1.10.215: the day's 물결·다온·두리)
     const lines = [k ? k.hello : '「어서 오세요! 백화점 잡화 코너예요.」', '「진열된 물건 앞에 서서 SPACE를 누르면 보여 드릴게요.」'].map((s) => { const p = document.createElement('p'); p.className = 'lostRequestLine'; p.textContent = s; return p; });
     const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'primary'; ok.textContent = '둘러볼게요'; ok.addEventListener('click', () => plazaDialog.close());
-    // (v1.10.195 가방 늘리기: 16 -> 24 -> 32 here, once each, for good)
-    const grow = document.createElement('button'); grow.type = 'button'; grow.className = 'ghost hidden'; grow.id = 'bagGrowBtn';
-    api('/api/island/bag').then((bag) => { if (!bag.grow) return; grow.textContent = `가방 늘리기 · ${bag.grow.slots}칸 ${Number(bag.grow.price).toLocaleString('ko-KR')}P`; grow.classList.remove('hidden'); }).catch(() => {});
-    grow.addEventListener('click', async () => {
-      grow.disabled = true;
-      try { const r = await api('/api/island/bag/grow', { method: 'POST', body: '{}' }); plazaDialog.close(); showToast(`가방이 ${r.slots}칸이 됐어요!`, 4000); loadPoints(); }
-      catch (error) { showToast(error.message, 4000); grow.disabled = false; }
-    });
-    /* (297 물고기 통·곤충 채집통: bought here, then made bigger -- 362: 50 → 100 → 200) */
-    const boxBtns = BOX_BTNS.map(([, kind]) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost hidden'; b.id = `boxGrowBtn-${kind}`; b.addEventListener('click', async () => {
+    /* (297 물고기 통·곤충 채집통: bought here, then made bigger -- 362: 50 → 100 → 200; 1.10.430 인벤토리 2차: 채집 바구니 · 재료 상자 too, each
+       its kind's room in the bag; the old 「가방 늘리기」 gone -- who bought it has the 채집 바구니's 50) */
+    const grow = document.createElement('span'); grow.className = 'hidden'; grow.id = 'bagGrowBtn';
+    const boxBtns = Object.keys(ROOM_BOX).map((kind) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost hidden'; b.id = `boxGrowBtn-${kind}`; b.addEventListener('click', async () => {
       b.disabled = true;
-      try { const r = await api('/api/island/box/grow', { method: 'POST', body: JSON.stringify({ kind, to: Number(b.dataset.to) }) }); /* (Codex 291~300 #2: the size on the button -- sent again, never the one after) */ plazaDialog.close(); showToast(r.already ? `${BOX_TITLE[kind]}은 이미 ${r.slots}칸이에요.` : `${BOX_TITLE[kind]}이 ${r.slots}칸이 됐어요! 잡은 ${kind === 'fish' ? '물고기는' : '곤충은'} 통에 먼저 들어가요.`, 4500); loadPoints(); }
+      try { const r = await api('/api/island/box/grow', { method: 'POST', body: JSON.stringify({ kind, to: Number(b.dataset.to) }) }); /* (Codex 291~300 #2: the size on the button -- sent again, never the one after) */ plazaDialog.close(); showToast(r.already ? `${ROOM_BOX[kind]}은 이미 ${r.slots}칸이에요.` : `${ROOM_BOX[kind]}이 ${r.slots}칸이 됐어요! 가방의 ${BAG_SECTIONS.find(([k]) => k === kind)?.[1]} 칸이 늘었어요.`, 4500); loadPoints(); }
       catch (error) { showToast(error.message, 4000); b.disabled = false; }
     }); return b; });
-    api('/api/island/bag').then((bag) => { for (const b of boxBtns) { const kind = b.id.slice(11); const next = bag.boxGrow?.[kind]; if (!next) continue; b.dataset.to = String(next.slots); b.textContent = `${BOX_TITLE[kind]} ${bag.boxes?.[kind] ? '늘리기' : '사기'} · ${next.slots}칸 ${Number(next.price).toLocaleString('ko-KR')}P`; b.classList.remove('hidden'); } }).catch(() => {});
+    api('/api/island/bag').then((bag) => { for (const b of boxBtns) { const kind = b.id.slice(11); const next = bag.boxGrow?.[kind]; if (!next) continue; b.dataset.to = String(next.slots); b.textContent = `${ROOM_BOX[kind]} ${next.slots > 50 ? '늘리기' : '사기'} · ${next.slots}칸 ${Number(next.price).toLocaleString('ko-KR')}P`; b.classList.remove('hidden'); } }).catch(() => {});
     /* (362 광석 값, 사용자 1A: the ores and the stone sold here too, at three times what the merchant pays -- dearer than the 벼룩시장) */
     const oreBtn = document.createElement('button'); oreBtn.type = 'button'; oreBtn.className = 'ghost'; oreBtn.id = 'oreShopBtn'; oreBtn.textContent = '⛏️ 재료 사기'; oreBtn.addEventListener('click', () => openOreShop());
     lostCard.replaceChildren(...lines, ...postButtons(k, ok), grow, ...boxBtns, oreBtn); openTalk(k ? `${k.name} · 잡화·생활` : '잡화점 주인');

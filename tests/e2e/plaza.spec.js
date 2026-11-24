@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { post, get, shopper, buyAndEquip, expectNoScriptError, spaceOn, pressFishArrows } = require('./skin-support');
+const { post, get, shopper, buyAndEquip, expectNoScriptError, spaceOn, pressFishArrows, bagTabFor } = require('./skin-support');
 const { paperLooks } = require('./island-paper');
 
 // 게임 아일랜드: 방향키 이동, 시설 근처 안내, Space·클릭이 같은 시설 창을 열고, 창이 열린 동안 이동이 멈춘다.
@@ -999,7 +999,8 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   for (const [itemId, qty] of [['trash', 3], ['herb', 2], ['wallet', 1], ['trash', 1], ['fish_goby', 2]]) expect((await post(request, '/api/test/island/give', a.token, { itemId, qty })).status).toBe(200); /* (v1.10.291: and fish -- the 노점 takes them) */
   await page.keyboard.press('KeyI');
   await expect(page.locator('#islandBagDialog')).toBeVisible();
-  await expect(page.locator('#islandBagCount')).toHaveText('5/16'); /* (362: the two gobies a slot each) */
+  await bagTabFor(page, 'fish_goby'); await expect(page.locator('#islandBagCount')).toHaveText('2/10'); /* (362: the two gobies a slot each; 430 their own room) */
+  await bagTabFor(page, 'trash'); await expect(page.locator('#islandBagCount')).toHaveText('2/10'); /* (기타: the trash's stack and the wallet) */
   await expect(page.locator('#islandBagGrid [data-item="trash"]')).toContainText('×4');
   await page.locator('#islandBagCloseBtn').click();
   const before = (await get(request, '/api/points', a.token)).data.balance;
@@ -1067,7 +1068,7 @@ test('가방·관공서·상인: 가방에 쌓이고, 관공서는 쓰레기·�
   expect((await post(request, '/api/admin/island-events/end', admin, { id: islandEventOpen })).status).toBe(200); islandEventOpen = null;
   await expect(page.locator('#islandEventLine')).toBeHidden({ timeout: 30000 }); /* (ended: off the island's top) */
   await page.locator('#islandBagTab').click();
-  await expect(page.locator('#islandBagCount')).toHaveText('0/16');
+  await expect(page.locator('#islandBagTabs .bagTab:not(.none)')).toHaveCount(0); /* (430: every kind's room empty) */
   expect((await get(request, '/api/points', a.token)).data.balance).toBe(before + 14000 + stallPaid); // + 약재 4,000 × 2 and the fish
   await expectNoScriptError(page);
   await a.context.close();

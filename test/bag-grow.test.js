@@ -28,28 +28,27 @@ test('물고기 통·곤충 채집통: 통 먼저, 가득 차면 가방, 팔기�
   e = I.addToBag(e, 'fish_goby', 1, 'c3', { size: 30 }, cap); assert.deepEqual([e[3].meta.box, e[3].meta.sizes], [undefined, [30]]); // (the box full: the bag)
   e = I.addToBag(e, 'insect_ladybird', 3, 'c4', null, cap); e = I.addToBag(e, 'insect_ladybird', 2, 'c5', null, cap);
   assert.deepEqual(e.filter((x) => x.meta?.box === 'insect').map((x) => x.qty), [5]); // (stacked by kind)
-  const view = I.bagView(e, Date.now(), null, cap); assert.equal(view.slots, 16); assert.deepEqual(view.boxes, { fish: 2, insect: 30 });
+  const view = I.bagView(e, Date.now(), null, cap); assert.deepEqual(view.sections.fish, { used: 3, slots: 16 }); assert.deepEqual(view.boxes, { fish: 2, insect: 30 }); /* (430: each kind's room) */
   assert.deepEqual(view.items.map((x) => ('box' in x ? x.box : '-')), ['-', 'fish', 'fish', null, 'insect']); assert.equal(view.items[1].grade, 'common');
   assert.deepEqual(I.sellAt(e, ['merchant', 'fisher'], 0).keep.map((x) => x.itemId), ['bread']); // (모두 팔기: the boxes and the bag)
   assert.deepEqual(I.takeFromBag(e, 'fish_goby', 1, true).filter((x) => x.itemId === 'fish_goby').flatMap((x) => x.meta.sizes), [20, 25]); // (the museum: the biggest, from the bag here)
   const fishId = e[1].entryId; assert.equal(I.releaseFromBox(e, fishId).length, e.length - 1); assert.equal(I.releaseFromBox(e, 'b'), null); // (놓아주기: a box's only)
-  const bagIds = e.filter((x) => !x.meta?.box).map((x) => x.entryId);
-  assert.deepEqual(I.reorderBag(e, [...bagIds].reverse()).map((x) => x.entryId), [...[...bagIds].reverse(), ...e.filter((x) => x.meta?.box).map((x) => x.entryId)]);
-  assert.equal(I.reorderBag(e, e.map((x) => x.entryId)), null); // (the boxes' entries are not the bag's to order)
-  assert.deepEqual(I.sortBag(e).slice(-3).map((x) => x.meta?.box), ['fish', 'fish', 'insect']);
+  /* (1.10.430 인벤토리 2차: the old boxes are their kinds' rooms -- every entry ordered together; 정리 by kind: fish, insects, then 기타) */
+  const all = e.map((x) => x.entryId);
+  assert.deepEqual(I.reorderBag(e, [...all].reverse()).map((x) => x.entryId), [...all].reverse());
+  assert.equal(I.reorderBag(e, all.slice(1)), null); // (every entry once)
+  assert.deepEqual(I.sortBag(e).map((x) => I.sectionOf(x.itemId)), ['fish', 'fish', 'fish', 'insect', 'etc']);
   assert.deepEqual(I.addToBag([], 'fish_goby', 2, 'x', { sizes: [20, 25] }, 16).map((x) => [x.qty, x.meta.sizes]), [[1, [20]], [1, [25]]]); // (no box: 362 one a slot in the bag too)
-  // 가방에서 옮기기 (총괄 #447): what the bag held before -- into the box as far as it has room, the biggest first
+  // 가방에서 옮기기 (총괄 #447; 430: the kind's room is one now -- it only marks whole entries for the old box while it has room, in place)
   const before = [{ entryId: 'b', itemId: 'bread', qty: 1 }, { entryId: 'g', itemId: 'fish_goby', qty: 3, meta: { sizes: [30, 25, 20] } }, { entryId: 'l', itemId: 'insect_ladybird', qty: 4 }];
-  const f = I.fillBox(before, 'fish', { bag: 16, fish: 2, insect: 0 }); assert.equal(f.moved, 2);
-  assert.deepEqual(f.entries.map((x) => [x.itemId, x.qty, x.meta?.box || '-', x.meta?.sizes || null]), [['bread', 1, '-', null], ['fish_goby', 1, '-', [20]], ['insect_ladybird', 4, '-', null], ['fish_goby', 1, 'fish', [30]], ['fish_goby', 1, 'fish', [25]]]);
-  assert.equal(I.fillBox(f.entries, 'fish', { bag: 16, fish: 2, insect: 0 }), null); // (full: nothing moved)
+  const f = I.fillBox(before, 'fish', { bag: 16, fish: 2, insect: 0 }); assert.equal(f.moved, 3);
+  assert.deepEqual(f.entries.map((x) => [x.itemId, x.qty, x.meta?.box || '-']), [['bread', 1, '-'], ['fish_goby', 3, 'fish'], ['insect_ladybird', 4, '-']]);
+  assert.equal(I.fillBox(f.entries, 'fish', { bag: 16, fish: 2, insect: 0 }), null); // (nothing left to mark)
   assert.deepEqual(I.fillBox(before, 'insect', { bag: 16, fish: 0, insect: 30 }).entries.filter((x) => x.meta?.box).map((x) => x.qty), [4]); assert.equal(I.fillBox(before, 'insect', 16), null); // (none bought)
-  // Codex 291~300 #1: the box's last slot filled from one stack, another left in the bag named as the box's new one would be --
-  // the new box entry takes another id (never two entries of one id: 놓아주기·팔기 on the right one)
   const two = [{ entryId: 'insect_ladybird:1', itemId: 'insect_ladybird', qty: I.STACK_MAX }, { entryId: 'insect_ladybird', itemId: 'insect_ladybird', qty: 3 }];
   const g = I.fillBox(two, 'insect', { bag: 16, fish: 0, insect: 1 }); assert.equal(g.moved, I.STACK_MAX);
   const ids = g.entries.map((x) => x.entryId); assert.equal(new Set(ids).size, ids.length, ids.join());
-  assert.deepEqual(g.entries.map((x) => [x.qty, x.meta?.box || '-']), [[3, '-'], [I.STACK_MAX, 'insect']]);
+  assert.deepEqual(g.entries.map((x) => [x.qty, x.meta?.box || '-']), [[I.STACK_MAX, 'insect'], [3, '-']]);
 });
 
 test('물고기 통 사기·놓아주기: 1층에서만, 50 → 100 → 200(362), 값은 한 번씩, 잡은 물고기는 통으로', async (t) => {
@@ -57,7 +56,7 @@ test('물고기 통 사기·놓아주기: 1층에서만, 50 → 100 → 200(362)
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('통손님')); await req('/api/test/points-credit', a, { amount: 4000000 });
   const bag = async () => (await req('/api/island/bag', a)).data;
-  assert.deepEqual((await bag()).boxGrow, { fish: { slots: 50, price: 300000 }, insect: { slots: 50, price: 300000 } }); assert.deepEqual((await bag()).boxes, { fish: 0, insect: 0 });
+  assert.deepEqual((await bag()).boxGrow, { fish: { slots: 50, price: 300000 }, insect: { slots: 50, price: 300000 }, gather: { slots: 50, price: 300000 }, material: { slots: 50, price: 300000 } }); assert.deepEqual((await bag()).boxes, { fish: 0, insect: 0 }); /* (430: 채집 바구니 · 재료 상자 too) */
   assert.equal((await req('/api/island/box/grow', a, { kind: 'fish' })).data.error, 'TOO_FAR');
   await req('/api/plaza/state', a, { ...T.facilityDoor('store'), yaw: 0, moving: false }); assert.equal((await req('/api/island/store/enter', a, {})).status, 200);
   assert.equal((await req('/api/island/box/grow', a, { kind: 'shoe' })).data.error, 'BAD_BOX');
@@ -98,18 +97,19 @@ test('가방 늘리기·내 순서: 잡화점에서만, 24 → 32, 값은 한 �
   const a = await server.enter(await server.issue('가방손님'));
   await req('/api/test/points-credit', a, { amount: 300000 });
   const bag = async () => (await req('/api/island/bag', a)).data;
-  assert.equal((await bag()).slots, 16); assert.deepEqual((await bag()).grow, { slots: 24, price: 50000 });
+  /* (1.10.430 인벤토리 2차: the 채집물 room 10 -- full with ten kinds, the 11th turned away; the old 24 bought (결정 3A) gives the 채집 바구니's 50) */
+  assert.deepEqual((await bag()).sections.gather, { used: 0, slots: 10 }); assert.deepEqual((await bag()).grow, { slots: 24, price: 50000 });
   assert.equal((await req('/api/island/bag/grow', a, {})).data.error, 'TOO_FAR'); // (not in the 잡화점)
-  // 16 different things: full
-  const ids = ['herb', 'berry', 'mushroom', 'trash', 'bread', 'milk', 'bouquet', 'letter_paper', 'bulb', 'paint', 'guitar_string', 'nail_box', 'frame', 'badge', 'candy', 'bait'];
+  const ids = ['herb', 'berry', 'mushroom', 'mushroom_blue', 'branch', 'twig', 'clover_four', 'weed', 'harvest', 'stone'];
   for (const itemId of ids) assert.equal((await req('/api/test/island/give', a, { itemId, qty: 1 })).data.applied, true, itemId);
-  assert.equal((await req('/api/test/island/give', a, { itemId: 'balloon', qty: 1 })).data.reason, 'full');
+  assert.equal((await req('/api/test/island/give', a, { itemId: 'mushroom_glow', qty: 1 })).data.reason, 'full');
+  assert.equal((await req('/api/test/island/give', a, { itemId: 'bread', qty: 1 })).data.applied, true, '기타는 제 칸');
   await req('/api/plaza/state', a, { ...T.facilityDoor('store'), yaw: 0, moving: false });
   assert.equal((await req('/api/island/store/enter', a, {})).status, 200);
   const balance = async () => (await req('/api/skins', a)).data.balance; const start = await balance();
   const g1 = await req('/api/island/bag/grow', a, {}); assert.equal(g1.status, 200, JSON.stringify(g1.data)); assert.deepEqual([g1.data.slots, g1.data.next], [24, 32]);
-  assert.equal((await bag()).slots, 24); assert.equal(await balance(), start - 50000);
-  assert.equal((await req('/api/test/island/give', a, { itemId: 'balloon', qty: 1 })).data.applied, true); // (the 17th fits)
+  assert.equal((await bag()).sections.gather.slots, 50); assert.deepEqual((await bag()).boxGrow.gather, { slots: 100, price: 800000 }); assert.equal(await balance(), start - 50000);
+  assert.equal((await req('/api/test/island/give', a, { itemId: 'mushroom_glow', qty: 1 })).data.applied, true); // (the 11th fits: the free basket)
   assert.equal((await req('/api/island/bag/grow', a, {})).data.slots, 32); assert.equal(await balance(), start - 200000);
   assert.equal((await req('/api/island/bag/grow', a, {})).data.error, 'BAG_TOP'); assert.equal((await bag()).grow, null);
   // 내 순서: the last first; one left out -- turned away, the bag as it was
@@ -123,5 +123,5 @@ test('가방 늘리기·내 순서: 잡화점에서만, 24 → 32, 값은 한 �
   assert.ok(sorted.indexOf('herb') < sorted.indexOf('bread'));
   // after a restart: still 32
   await server.stop(); const again = await boot(t, dir); const b = await again.enter(await again.issue('가방손님2'));
-  assert.equal((await again.req('/api/island/bag', b)).data.slots, 16); // (another account: its own)
+  assert.equal((await again.req('/api/island/bag', b)).data.sections.gather.slots, 10); // (another account: its own)
 });

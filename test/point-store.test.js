@@ -282,12 +282,13 @@ async function exercise(t, makeStore) {
     await Promise.all([give('give-trash-02', 'trash'), give('give-trash-03', 'trash')]);
     const bag = await store.islandBag(I);
     assert.deepEqual(bag.items.map((e) => [e.itemId, e.qty]), [['trash', 5]], '같은 아이템은 한 칸에 쌓인다');
-    assert.equal(bag.slots, Items.BAG_SLOTS);
+    assert.deepEqual(bag.sections.etc, { used: 1, slots: Items.SECTIONS.etc }); /* (1.10.430: each kind's room -- trash · wallet · lost in 기타) */
     await give('give-herb-01', 'herb', 2); await give('give-wallet-1', 'wallet'); await give('give-wallet-2', 'wallet');
     assert.equal((await store.islandBag(I)).items.filter((e) => e.itemId === 'wallet').length, 2, '고유 아이템은 각각 한 칸');
-    for (let i = 0; i < Items.BAG_SLOTS - 4; i += 1) await give(`give-lost-${String(i).padStart(3, '0')}`, 'lost', 1, { owner: 'npc-1' });
-    const full = await give('give-berry-01', 'berry');
+    for (let i = 0; i < Items.SECTIONS.etc - 3; i += 1) await give(`give-lost-${String(i).padStart(3, '0')}`, 'lost', 1, { owner: 'npc-1' });
+    const full = await give('give-candy-01', 'candy');
     assert.deepEqual([full.applied, full.reason], [false, 'full']);
+    assert.equal((await give('give-berry-01', 'berry')).applied, true, '다른 종류(채집물)는 제 칸');
     assert.equal((await give('give-trash-04', 'trash')).applied, true, '가득 차도 있는 칸에는 쌓인다');
     await assert.rejects(give('give-bad-0001', 'gold'), RangeError);
 
@@ -308,7 +309,7 @@ async function exercise(t, makeStore) {
     await give('give-herb-02', 'herb', 60);
     const merchant = await store.islandSell({ userId: I, requestId: 'sell-merch-01', place: 'merchant' }, now);
     assert.equal(merchant.capped, false);
-    assert.equal(merchant.paid, 62 * Items.ITEMS.herb.price);
+    assert.equal(merchant.paid, 62 * Items.ITEMS.herb.price + Items.ITEMS.berry.price); /* (430: the berry that fit its own room) */
     assert.equal((await store.islandBag(I)).items.some((e) => e.itemId === 'herb'), false, '모두 팔린다');
   });
 

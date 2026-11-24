@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { shopper, post, expectNoScriptError } = require('./skin-support');
+const { shopper, post, expectNoScriptError, bagTabFor } = require('./skin-support');
 
 // v1.10.192 U2 메뉴 안 창도 종이 (gamecenter-notes docs/island-hud-paper-20261026.md, 사용자 「내 정보·문제 기록·가구 창고 등 UI
 // 통일」): on the island the ☰'s windows, the bag's pets, the name asked and the 접속 종료 question are one paper sheet --
@@ -45,7 +45,7 @@ test('섬 창 종이: ☰ 창·반려동물·이름 짓기·접속 종료가 종
   }
   await closeAll();
   // the pets: a face each; taken along from the bag with a name asked on paper -- 「함께 다니는 중」
-  await page.locator('#islandBagTab').click(); await page.locator('.islandBagSlot[data-item="pet_puppy"]').click(); await page.locator('.islandBagSlot[data-item="pet_puppy"] button').click();
+  await page.locator('#islandBagTab').click(); await bagTabFor(page, 'pet_puppy'); await page.locator('.islandBagSlot[data-item="pet_puppy"]').click(); await page.locator('.islandBagSlot[data-item="pet_puppy"] button').click();
   await expect(page.locator('#nameAskDialog')).toBeVisible();
   expect((await look('#nameAskDialog')).bg).toBe(paper);
   await page.locator('#nameAskInput').fill('누렁'); await page.locator('#nameAskOk').click(); await expect(page.locator('#nameAskDialog')).toBeHidden();

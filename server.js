@@ -88,6 +88,10 @@ require('./lib/island-items').setSizeHook(() => [Economy.value('fish:sizeMin'), 
 const bagSlots = new Map();
 require('./lib/island-items').setSlotsHook((account) => bagSlots.get(account));
 // v1.10.297 물고기 통·곤충 채집통: each account's boxes (world 'boxSlots': { account: { fish: 30.., insect: 30.. } }), 'account|kind'
+/* (1.10.430 인벤토리 2차: a full bag says which kind's room -- and the container that makes it bigger; `kind` for the page) */
+const BAG_SAY = { tool: '도구', fish: '물고기', insect: '곤충', gather: '채집물', material: '광석 · 재료', furniture: '가구', etc: '기타', ride: '탈것' };
+const BOX_TO = { fish: '물고기 통으로', insect: '곤충 채집통으로', gather: '채집 바구니로', material: '재료 상자로' };
+const bagFull = (res, itemId) => { const kind = require('./lib/island-items').sectionOf(itemId); return sendError(res, 409, 'BAG_FULL', `가방의 ${BAG_SAY[kind] || '기타'} 칸이 가득 찼어요.${BOX_TO[kind] ? ` 잡화점에서 ${BOX_TO[kind]} 늘릴 수 있어요.` : ' 팔거나 쓰면 자리가 나요.'}`, { kind }); };
 const boxSlots = new Map(); const BOX_KINDS = require('./lib/island-items').BOX_KINDS; /* (362: the box kinds' one table) */ const BOX_KEY = Object.fromEntries(Object.entries(BOX_KINDS).map(([k, v]) => [k, v.key])); const BOX_NAME = Object.fromEntries(Object.entries(BOX_KINDS).map(([k, v]) => [k, v.name]));
 require('./lib/island-items').setBoxHook((account, kind) => boxSlots.get(`${account}|${kind}`));
 const IslandCast = require('./public/plaza/island-cast'); // v1.10.91 주민 이름·대사
@@ -5235,7 +5239,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.429' });
+    return sendJson(res, 200, { ok: true, version: '1.10.430' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -6578,7 +6582,7 @@ async function requestHandler(req, res) {
     const session = requireSession(req, res);
     if (!session) return;
     const account = pointAccountForSession(session); const grow = IslandItems.BAG_GROW.find((n) => n > IslandItems.slotsOf(account)) || null; // (v1.10.195: the next size and its price)
-    const boxGrow = Object.fromEntries(IslandItems.BOXES.map((kind) => { const n = IslandItems.BOX_GROW.find((s) => s > IslandItems.boxOf(account, kind)); return [kind, n ? { slots: n, price: Economy.value(`${BOX_KEY[kind]}:${n}`) } : null]; })); // (297)
+    const boxGrow = Object.fromEntries(IslandItems.BOXES.map((kind) => { const n = IslandItems.BOX_GROW.find((s) => s > IslandItems.boxNow(account, kind)); return [kind, n ? { slots: n, price: Economy.value(`${BOX_KEY[kind]}:${n}`) } : null]; })); // (297; 430 the free basket counted)
     return sendJson(res, 200, { ok: true, ...await pointStore.islandBag(account, islandEvents.activeLost()), dailyCap: IslandItems.DAILY_CAP, grow: grow && { slots: grow, price: Economy.value(`bag:${grow}`) }, boxGrow, sellMults: sellMultsNow() });
   }
   // v1.10.297 물고기 통·곤충 채집통: bought (and made bigger) at the 잡화점 like the bag, 30 -> 60 -> 90 -> 120, paid once each
@@ -6590,7 +6594,7 @@ async function requestHandler(req, res) {
        charge, and never the step after it; a page from before `to` gets the next step as it did) */
     const want = body.to === undefined ? null : Number(body.to);
     return worldEdit(async () => {
-      const now = IslandItems.boxOf(account, kind); const to = IslandItems.BOX_GROW.find((n) => n > now); const name = BOX_NAME[kind];
+      const now = IslandItems.boxNow(account, kind); const to = IslandItems.BOX_GROW.find((n) => n > now); const name = BOX_NAME[kind]; /* (430: a free basket's 50 is had -- the next step 100) */
       if (want !== null && want <= now && IslandItems.BOX_GROW.includes(want)) return sendJson(res, 200, { ok: true, kind, slots: now, next: to || null, balance: null, already: true });
       if (!to) return sendError(res, 409, 'BOX_TOP', `${name}이 이미 가장 커요.`);
       if (want !== null && want !== to) return sendError(res, 409, 'STALE_BOX', `${name} 크기가 바뀌었어요. 다시 확인해 주세요.`);
@@ -6612,7 +6616,7 @@ async function requestHandler(req, res) {
     if (mallFloor(session.token) !== 1) return sendError(res, 409, 'TOO_FAR', '백화점 1층 잡화점에서 살 수 있어요.');
     let out; try { out = await pointStore.islandBuy({ userId: account, requestId: String(body.requestId || ''), itemId, qty, unit: Economy.shopOrePrice(itemId), shopOre: true }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
     if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
-    if (out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다.');
+    if (out.reason === 'full') return bagFull(res, itemId);
     if (out.applied) notifyPointsChanged([account]);
     return sendJson(res, 200, { ok: true, itemId, qty: Number.isSafeInteger(out.qty) ? out.qty : qty /* (374 Codex 봇 #523: an order asked again -- what was kept, not what was asked now) */, bag: out.bag, balance: out.balance ?? null });
   }
@@ -6628,7 +6632,7 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/box/release' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
     const out = await pointStore.islandRelease({ userId: account, entryId: String((await parseJson(req)).entryId || '') });
-    if (!out.applied) return sendError(res, 409, 'NOT_IN_BOX', '통에 없어요.');
+    if (!out.applied) return sendError(res, 409, 'NOT_IN_BOX', '가방에 없는 물고기 · 곤충이에요.');
     return sendJson(res, 200, { ok: true, bag: out.bag });
   }
   // (문제 기록 1103 4) 한 번 공지: a note on the island once for each account (seen kept on the server -- not again on another
@@ -7255,7 +7259,7 @@ async function requestHandler(req, res) {
       if (l.kind === 'piece') { if (((await pointStore.worldValue(`furniture:${account}`)) || []).length >= 300) return sendError(res, 409, 'STORAGE_FULL', '가구 창고가 가득 찼어요.'); }
       const count = l.unit ? (l.buyer === account && l.buyQty ? l.buyQty : Math.floor(Number(body.qty) || l.qty)) : l.qty; /* (1.10.347 묶음: how many -- 1 to what is left) */
       if (l.unit && (!Number.isSafeInteger(count) || count < 1 || count > l.qty)) return sendError(res, 409, 'FLEA_QTY', `남은 ${l.qty}개보다 많이 살 수 없어요. 개수를 다시 정해 주세요.`);
-      else if (l.kind !== 'piece') { const { bag } = await pointStore.questDoc(account, 'flea'); const mark = l.bought || IslandItems.boxFor(l.itemId) ? { bought: true } : null; /* (#2: as fleaHandOver) */ if (!IslandItems.addToBag(bag, l.itemId, count, `flea-${l.id}`, l.sizes ? { sizes: l.sizes, ...mark } : mark, IslandItems.capOf(account))) return sendError(res, 409, 'BAG_FULL', '가방에 자리가 없어요. 가방을 비우고 다시 와 주세요.'); }
+      else if (l.kind !== 'piece') { const { bag } = await pointStore.questDoc(account, 'flea'); const mark = l.bought || IslandItems.boxFor(l.itemId) ? { bought: true } : null; /* (#2: as fleaHandOver) */ if (!IslandItems.addToBag(bag, l.itemId, count, `flea-${l.id}`, l.sizes ? { sizes: l.sizes, ...mark } : mark, IslandItems.capOf(account))) return bagFull(res, l.itemId); }
       // (1.10.343 Codex 331~340 P1-2: kept for me first, then my own charge -- the listing id in my flea doc with it --, then handed
       // over; a stop between leaves the reservation, which the tidy finishes for me or lets go -- never another's sale on my charge)
       if (!l.buyer) { s = IslandFlea.reserve(s, l.id, account, now, l.unit ? count : null); await pointStore.setWorldValue('flea', s); }
@@ -7275,7 +7279,7 @@ async function requestHandler(req, res) {
       // (1.10.343 Codex 331~340 P1-4: off the board and kept for me first -- saved --, then handed back by the 「맡아 둔 것」 claim; a stop
       // between leaves it kept (handed over at my next look), never on the board to be sold again; no room: back on the board as it was)
       const off = IslandFlea.hold(IslandFlea.without(s, l.id), account, l); await pointStore.setWorldValue('flea', off);
-      if (!(await fleaHandOver(account, l, `flea:${l.id}:held`))) { await pointStore.setWorldValue('flea', s); return sendError(res, 409, l.kind === 'piece' ? 'STORAGE_FULL' : 'BAG_FULL', l.kind === 'piece' ? '가구 창고가 가득 찼어요.' : '가방에 자리가 없어요. 가방을 비우고 다시 거둬 주세요.'); }
+      if (!(await fleaHandOver(account, l, `flea:${l.id}:held`))) { await pointStore.setWorldValue('flea', s); return l.kind === 'piece' ? sendError(res, 409, 'STORAGE_FULL', '가구 창고가 가득 찼어요.') : bagFull(res, l.itemId); }
       await pointStore.setWorldValue('flea', IslandFlea.unhold(off, account, l.id)); broadcastIsland('flea', {});
       return sendJson(res, 200, { ok: true, name: l.name, kind: l.kind });
     });
@@ -7357,7 +7361,7 @@ async function requestHandler(req, res) {
       if ([resourcePulls.get(t), weedPulls.get(t), quarryPulls.get(t)].some((p) => p && !p.result && nowMs() - p.at < 15000)) return sendError(res, 409, 'COLLECT_BUSY', '하는 중이에요.');
       if (!IslandItems.toolCount(bag, 'pickaxe')) return sendError(res, 409, 'NO_PICKAXE', '곡괭이가 있어야 캘 수 있어요. 잡화점에서 살 수 있어요.');
       void doc; void today; /* (379 사용자 「광석 캐기 제한을 없애고」: no day's cap -- the rocks' eight pieces and their fill time stay) */
-      if (!IslandItems.addToBag(bag, `ore_${rock.ore}`, 1, null, null, IslandItems.capOf(account))) return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요.');
+      if (!IslandItems.addToBag(bag, `ore_${rock.ore}`, 1, null, null, IslandItems.capOf(account))) return bagFull(res, `ore_${rock.ore}`);
       // (1.10.342 98B: the server's plan -- each swing's crack and when it lights; the ore's light time)
       const plan = IslandQuarry.planOf(rock, () => crypto.randomInt(0, 1e9) / 1e9).map((p, i) => (quarryTestPlan?.[i] ? { ...p, ...quarryTestPlan[i] } : p)); quarryTestPlan = null;
       const pull = { rock: rock.id, spot, at: nowMs(), ms: IslandQuarry.MINE_MS, anim: 'pickaxe', pos: { x: stand.x, z: stand.z }, target: stand.S, plan };
@@ -7391,7 +7395,7 @@ async function requestHandler(req, res) {
     }
     if (wall) { /* (1.10.350 화강암 벽: granite only, its own claim a mining; the rock state and the day's count untouched) */
       const given = await pointStore.islandGive({ userId: account, claimId: `quarry-wall:${account}:${pull.at}`, itemId: 'ore_granite', qty: 1, wear: 'pickaxe', quiet: true }, nowMs()).catch(() => null);
-      if (!given || !given.applied) { quarryPulls.delete(t); collectionPose(t); return sendError(res, 409, given?.reason === 'full' ? 'BAG_FULL' : 'COLLECT_NOT_STARTED', given?.reason === 'full' ? '가방이 가득 찼어요.' : '다시 시도해 주세요.'); }
+      if (!given || !given.applied) { quarryPulls.delete(t); collectionPose(t); return given?.reason === 'full' ? bagFull(res, 'ore_granite') : sendError(res, 409, 'COLLECT_NOT_STARTED', '다시 시도해 주세요.'); }
       const { doc } = await pointStore.questDoc(account, 'quarry');
       const result = { ok: true, ore: 1, itemId: 'ore_granite', name: IslandItems.ITEMS.ore_granite?.name || '화강암', icon: IslandItems.ITEMS.ore_granite?.icon || '🪨', hits: judged.hits, bonus: judged.bonus, rounds: IslandQuarry.ROUNDS, left: null, stage: 'full', wall: true, bag: given.bag, worn: given.worn || null, daily: { n: doc?.day === today ? doc.n || 0 : 0, max: null /* (379) */ } };
       quarryPulls.set(t, { ...pull, requestId: body.requestId, result }); collectionPose(t); return sendJson(res, 200, result);
@@ -7401,7 +7405,7 @@ async function requestHandler(req, res) {
     const gem = IslandOres.drawGem(rock.ore, quarryTestGem ?? crypto.randomInt(0, 1e9) / 1e9, judged.bonus > 0, 1 /* (369 검토 #2, 사용자 A: no event on the gems -- 「채석 위 단계」 the ore's stage only) */, gemPms); quarryTestGem = null;
     const oreId = gem ? `gem_${gem}` : `ore_${IslandOres.drawOre(rock.ore, quarryTestDraw ?? crypto.randomInt(0, 1e9) / 1e9, judged.bonus > 0, catchMultNow('quarry_up'))}`; /* (364 섬 이벤트) */ quarryTestDraw = null;
     const given = await pointStore.islandGive({ userId: account, claimId: `quarry:${rock.id}:${account}:${pull.at}`, itemId: oreId, qty: 1, wear: 'pickaxe', quiet: true }, nowMs()).catch(() => null); /* (379: this mining's own claim -- the rock never runs out) */
-    if (!given || !given.applied) { quarryPulls.delete(t); collectionPose(t); return given?.reason === 'full' ? sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요.') : sendError(res, 409, 'COLLECT_NOT_STARTED', '다시 시도해 주세요.'); }
+    if (!given || !given.applied) { quarryPulls.delete(t); collectionPose(t); return given?.reason === 'full' ? bagFull(res, oreId) : sendError(res, 409, 'COLLECT_NOT_STARTED', '다시 시도해 주세요.'); }
     const counted = await pointStore.questApply(account, 'quarry', (d) => ({ doc: { day: today, n: (d.day === today ? d.n || 0 : 0) + 1 } })).catch(() => null);
     // (366 user 2A: an account's first of each gem -- its card here, and the island told once, by the name it shows)
     const stamp = nowMs(); const firstOf = gem ? await pointStore.questApply(account, 'gems', (d) => (d[gem] ? null : { doc: { ...d, [gem]: stamp } })).catch(() => null) : null;
@@ -7444,7 +7448,7 @@ async function requestHandler(req, res) {
       const c = cellOf(await farmDocOf(account)); if (!c) return sendError(res, 409, 'EMPTY', '빈 칸이에요.');
       if (!IslandFarm.ripe(c, now)) return sendError(res, 409, 'NOT_RIPE', '아직 덜 자랐어요.');
       const crop = IslandFarm.CROPS[c.crop]; const given = await pointStore.islandGive({ userId: account, claimId: `farm:${lot.id}:${bed.uid}:${c.id}`, itemId: IslandFarm.cropId(c.crop), qty: crop.yield, quiet: true }, now).catch(() => null);
-      if (!given || (!given.applied && given.reason === 'full')) return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요.');
+      if (!given || (!given.applied && given.reason === 'full')) return bagFull(res, IslandFarm.cropId(c.crop));
       const out = await farmApply(account, (d) => (cellOf(d)?.id === c.id ? { doc: put(d, null) } : null));
       broadcastIsland('homes', { lot: lot.id }); return sendJson(res, 200, { ok: true, crop: c.crop, qty: crop.yield, bag: given.bag || out?.bag, now });
     }
@@ -7512,7 +7516,7 @@ async function requestHandler(req, res) {
       };
       const owedNow = ((await pointStore.questDoc(account, 'upkeep')).doc?.owed || [])[0];
       if (owedNow) return reply(owedNow, null);
-      if (r.item) { const bag = (await pointStore.questDoc(account, 'upkeep')).bag || []; const after = IslandItems.takeFromBag(bag, itemId, qty); if (after && !IslandItems.addToBag(after, r.item, 1, null, null, IslandItems.capOf(account))) return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요.'); } /* (room for what is made, checked first) */
+      if (r.item) { const bag = (await pointStore.questDoc(account, 'upkeep')).bag || []; const after = IslandItems.takeFromBag(bag, itemId, qty); if (after && !IslandItems.addToBag(after, r.item, 1, null, null, IslandItems.capOf(account))) return bagFull(res, r.item); } /* (room for what is made, checked first) */
       const uid = `y${now.toString(36)}${crypto.randomBytes(3).toString('hex')}`;
       const takes = Object.entries(r.takes).map(([id, n]) => ({ itemId: id, qty: n })); /* (366 별 가구: a recipe of more than one -- the fragments and the shiny one -- all taken in the one step) */
       const out = await upkeepApply(account, (d, bag) => { if (takes.some((t) => bagCount(bag, t.itemId) < t.qty)) return { error: 'MISSING' }; const n = (d.crafted || 0) + 1; return { doc: { ...d, crafted: n, owed: [...(d.owed || []), { n, recipe: body.recipe, at: now, ...(r.item ? { item: r.item } : { good: r.good, uid }) }] }, take: takes.length === 1 ? takes[0] : takes }; });
@@ -7531,6 +7535,8 @@ async function requestHandler(req, res) {
     const up = await upkeepNow(owner, h); const w = up.weeds.find((x) => x.id === String(body.id)); if (!w) return sendError(res, 409, 'GONE', '방금 뽑힌 잡초예요.');
     const p = IslandYard.world(lot, w.lx, w.lz);
     if (!at || (at.space && at.space !== 'island') || Math.hypot(at.x - p.x, at.z - p.z) > IslandWeeds.REACH + 0.5) return sendError(res, 409, 'TOO_FAR', '잡초 가까이에서 다시 시도해 주세요.');
+    /* (430 인벤토리 2차, notes inventory-2-plan §4: the weed was pulled out of the yard and lost when there was no room -- room first) */
+    { const { bag } = await pointStore.questDoc(account, 'upkeep'); if (!IslandItems.addToBag(bag || [], 'weed', 1, null, null, IslandItems.capOf(account))) return bagFull(res, 'weed'); }
     const out = await upkeepApply(owner, (d) => ((d.weeds?.list || []).some((x) => x.id === w.id) ? { doc: { ...d, weeds: { ...d.weeds, list: d.weeds.list.filter((x) => x.id !== w.id) } } } : null));
     if (!out?.doc) return sendError(res, 409, 'GONE', '방금 뽑힌 잡초예요.');
     const given = await pointStore.islandGive({ userId: account, claimId: `yardweed:${lot.id}:${w.id}`, itemId: 'weed', qty: 1 }, nowMs()).catch(() => null);
@@ -7588,7 +7594,7 @@ async function requestHandler(req, res) {
       /* (383 Codex 371~380 #3: the bag's claim by the fish itself -- a tank save that failed after it, pressed again (a new request), gives no second fish
          and takes this one out of the tank) */
       const out = await pointStore.islandGive({ userId: account, claimId: `home_tank_take_${f.fid}`, itemId: f.itemId, qty: 1, quiet: true, ...(Object.keys(meta).length ? { meta } : {}) }, nowMs());
-      if (!out.applied && out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼어요. 잡화점에서 가방을 늘릴 수 있어요.');
+      if (!out.applied && out.reason === 'full') return bagFull(res, f.itemId);
       /* (Codex 361~370 #13: a mixed tank stays mixed -- take-out only -- till its last fish is out, not as soon as one kind is gone) */
       const rest = fishes.filter((x) => x.fid !== f.fid); const mixed = !T.insects && rest.length > 0 && (Boolean(h.tankMixed?.[tank.uid]) || IslandHome.tankWater(fishes) === 'mixed');
       const tankMixed = { ...(h.tankMixed || {}) }; if (mixed) tankMixed[tank.uid] = true; else delete tankMixed[tank.uid];
@@ -8078,7 +8084,7 @@ async function requestHandler(req, res) {
     let out; try { out = await pointStore.islandBuy({ userId: account, requestId: String(body.requestId || ''), itemId: s.id, qty, unit: Economy.value(`good:${s.id}`) }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
     if (out.reason === 'max') return sendError(res, 409, 'TOOL_MAX', `${{ bugnet: '잠자리채', pickaxe: '곡괭이', fishing_rod: '낚싯대' }[IslandItems.TOOL_KIND[s.id]] || '도구'}는 ${IslandItems.TOOL_MAX}개까지 가질 수 있어요.`); /* (379 「결정 6 A」: 곡괭이는 곡괭이로) */
     if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
-    if (out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다. 잡화점에서 가방을 늘릴 수 있어요.');
+    if (out.reason === 'full') return bagFull(res, s.id);
     if (out.applied) notifyPointsChanged([account]); bikesOf.delete(account); /* (자전거: a new one rides at once) */
     return sendJson(res, 200, { ok: true, itemId: s.id, qty, bag: out.bag, balance: out.balance ?? null });
   }
@@ -8504,7 +8510,7 @@ async function requestHandler(req, res) {
     if (weed && !near(weed)) { weedPulls.delete(session.token); return sendError(res, 409, 'TOO_FAR', '가까이 가서 다시 시도해 주세요.'); }
     const account = pointAccountForSession(session);
     const outcome = await pointStore.islandPullWeed({ userId: account, requestId: body.requestId, weedId }, now);
-    if (outcome.reason === 'full') { weedPulls.delete(session.token); return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다. 잡화점에서 가방을 늘릴 수 있어요.'); }
+    if (outcome.reason === 'full') { weedPulls.delete(session.token); return bagFull(res, 'weed'); }
     if (outcome.reason === 'gone' || !weed) { weedPulls.delete(session.token); broadcastIsland('islandWeed', { gone: [weedId] }); return sendError(res, 409, 'WEED_GONE', '이미 사라졌습니다.'); }
     const result = { ok: true, weedId, bag: outcome.bag, bonus: outcome.bonus || 0, balance: outcome.balance ?? null };
     weedPulls.set(session.token, { ...pull, requestId: body.requestId, result }); collectionPose(session.token);
@@ -8578,7 +8584,7 @@ async function requestHandler(req, res) {
     const itemId = `fish_${c.species}`;
     c.size ??= IslandFishing.rollSize(c.species); // v1.10.231 물고기 크기: the server's, at the catch (a test may set it)
     const outcome = await pointStore.islandGive({ userId: account, claimId: `fish:${c.id}`, itemId, qty: 1, meta: { size: c.size }, dexEntry: itemId, wear: 'fishing_rod' }, nowMs()); // (v1.10.221: the rod worn by a real catch only)
-    if (outcome.reason === 'full') { fishCasts.delete(session.token); return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다. 잡화점에서 가방을 늘릴 수 있어요.'); }
+    if (outcome.reason === 'full') { fishCasts.delete(session.token); return bagFull(res, itemId); }
     const dex = outcome.dex;
     const f = IslandFishing.SPECIES[c.species];
     let seen = null; // (my best of that fish: the 도감's, its day -- the same answer to this cast asked twice at once: its id kept)
@@ -8621,7 +8627,7 @@ async function requestHandler(req, res) {
     try {
       const itemId = `insect_${b.species}`;
       const outcome = await pointStore.islandGive({ userId: account, claimId: `insect:${id}`, itemId, qty: 1, meta: null, dexEntry: itemId, wear: 'bugnet' }, nowMs()); // (v1.10.221: the net worn by a catch)
-      if (outcome.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다. 잡화점에서 가방을 늘릴 수 있어요.');
+      if (outcome.reason === 'full') return bagFull(res, itemId);
       const s = IslandInsects.SPECIES[b.species];
       const result = { ok: true, id, species: b.species, name: s.name, grade: s.grade, price: s.price, firstTime: outcome.dex?.first || false, bag: outcome.bag, tool: outcome.worn || null };
       given = true; insectCaught.set(id, { account, result }); for (const [k, v] of insectShown) if (nowMs() - v.at > 10000) insectShown.delete(k); /* (Codex 251-260 #6: the old ones go) */ insectShown.set(session.token, { species: b.species, at: nowMs() }); broadcastIsland('insects', { gone: [id] }); questBagNow(account, outcome.bag); // (257: its 자랑 may follow)
@@ -9023,7 +9029,7 @@ async function requestHandler(req, res) {
     if (outcome.reason) {
       resourcePulls.delete(session.token);
       islandEvents.settle(claimed, false, account);
-      if (outcome.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다. 잡화점에서 가방을 늘릴 수 있어요.');
+      if (outcome.reason === 'full') return bagFull(res, claimed.item);
       if (outcome.reason === 'cap') return sendError(res, 409, 'DAILY_CAP', '오늘은 더 받을 수 없습니다.');
       return sendError(res, 409, 'EVENT_GONE', '이미 사라졌습니다.');
     }
@@ -9329,7 +9335,7 @@ async function requestHandler(req, res) {
     if (farm.stage < 3) return sendError(res, 409, 'FARM_NOT_GROWN', '아직 수확할 때가 아니에요. 농부를 도와 밭을 키워 주세요.');
     const account = pointAccountForSession(session);
     const out = await pointStore.islandGive({ userId: account, claimId: `harvest:${week}:${account}`, itemId: 'harvest', qty: 1, meta: null }, nowMs());
-    if (out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다. 잡화점에서 가방을 늘릴 수 있어요.');
+    if (out.reason === 'full') return bagFull(res, 'harvest');
     if (!out.applied) return sendError(res, 409, 'HARVESTED', '이번 주 수확은 이미 했어요. 다음 주에 다시 와 주세요.');
     return sendJson(res, 200, { ok: true, bag: out.bag });
   }
@@ -9357,7 +9363,7 @@ async function requestHandler(req, res) {
       const F = IslandTerrain.FARM; if (!at || (at.space || 'island') !== 'island' || Math.abs(at.x - F.x) > F.w / 2 + 1.5 || Math.abs(at.z - F.z) > F.d / 2 + 1.5) return sendError(res, 409, 'TOO_FAR', '밭 안에서 수확할 수 있어요.');
       const count = ((await pointStore.questDoc(account, key)).doc?.days?.[day]?.harvest || 0); if (count >= fest.tasks.harvest.perDay) return sendError(res, 409, 'TASK_DONE', fail.TASK_DONE);
       const out = await pointStore.islandGive({ userId: account, claimId: `festharvest:${fest.id}:${day}:${account}:${count + 1}`, itemId: 'harvest', qty: 1, meta: null }, nowMs());
-      if (out.reason === 'full') return sendError(res, 409, 'BAG_FULL', '가방이 가득 찼습니다. 잡화점에서 가방을 늘릴 수 있어요.');
+      if (out.reason === 'full') return bagFull(res, 'harvest');
       return sendStamp(await stamp('harvest'), { bag: out.bag });
     }
     if (action === 'cook') { // 요리 대회: three things from the bag, by the host -- judged, taken, two stamps (once a day)
@@ -11050,6 +11056,13 @@ async function main() {
     for (const [account, kinds] of Object.entries(all)) { next[account] = {}; for (const [kind, n] of Object.entries(kinds || {})) { const s = IslandItems.BOX_STEP[n] ?? n; if (s !== n) stepped += 1; next[account][kind] = s; boxSlots.set(`${account}|${kind}`, s); } }
     if (stepped) { await pointStore.setWorldValue('boxSlots', next).catch((error) => console.error('통 크기 올리기 실패:', error.message)); console.log(`[box-step] ${stepped} boxes stepped up to 50/100/200`); }
   }
+  /* 1.10.430 인벤토리 2차 (결정 3A, notes inventory-2-plan §2): who bought the bag's 24 or 32 keeps the 채집 바구니's 50 -- written once
+     (world 'bagKinds430'); IslandItems.boxNow reads it so even before. bagSlots itself kept (a step back to 1.10.429 reads it) */
+  if (!(await pointStore.worldValue('bagKinds430').catch(() => true))) {
+    const all = (await pointStore.worldValue('boxSlots')) || {}; let given = 0; const next = { ...all };
+    for (const [account, n] of bagSlots) if (n >= IslandItems.BAG_GROW[0] && !(Number(all[account]?.gather) >= IslandItems.FREE_BASKET)) { next[account] = { ...(all[account] || {}), gather: IslandItems.FREE_BASKET }; boxSlots.set(`${account}|gather`, IslandItems.FREE_BASKET); given += 1; }
+    try { if (given) await pointStore.setWorldValue('boxSlots', next); await pointStore.setWorldValue('bagKinds430', { at: Date.now(), given }); console.log(`[bag-kinds] ${given} free baskets (${IslandItems.FREE_BASKET})`); } catch (error) { console.error('채집 바구니 주기 실패:', error.message); }
+  }
   { // 362 (사용자 3A): the bags' old fish stacks, one fish a slot -- each account once (again: nothing to do), no fish lost
     let n = 0; const sum = { split: 0, toBox: 0, left: 0 };
     for (const account of await pointStore.fishStackOwners().catch(() => [])) { const r = await pointStore.islandFishSplit(account).catch((error) => { console.error('물고기 나누기 실패:', error.message); return null; }); if (!r) continue; n += 1; for (const k of Object.keys(sum)) sum[k] += r[k]; }
@@ -11150,7 +11163,7 @@ async function main() {
   bootMark('before-listen');
   /* (1.10.376 별마루섬 호랑이: their ground made after the start in 20 ms slices, as 별마루섬's open table -- the tigers wait till it is) */
   if (process.env.NODE_ENV !== 'test') setTimeout(() => { const step = () => { try { if (!tigerSim.warm(20)) setImmediate(step); } catch (error) { console.error('호랑이 땅 만들기 실패:', error.message); } }; step(); }, 6000).unref?.();
-  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.429 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); tigerPendingResume().catch(() => {}); /* (403 Codex #16: catches whose loss was not saved before the restart) */ if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.430 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); tigerPendingResume().catch(() => {}); /* (403 Codex #16: catches whose loss was not saved before the restart) */ if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

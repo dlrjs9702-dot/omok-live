@@ -14,7 +14,7 @@ test('도구 들기 규칙: 낚싯대를 들어야 낚시, 든 동안 잡초·�
   await page.evaluate(() => { localStorage.removeItem('gc.testClassic'); localStorage.setItem('gc.testIslandAssets', JSON.stringify(Object.fromEntries(Object.keys(window.IslandAssets.REGISTRY).map((id) => [id, null])))); });
   await page.reload(); await expect.poll(() => page.evaluate(() => window.PlazaDebug()?.running), { timeout: 60000 }).toBe(true);
   const hint = page.locator('#plazaHint');
-  const stow = async () => { await page.keyboard.press('KeyI'); await page.locator('.islandBagSlot.inHand').click(); await page.locator('#islandBagGrid button', { hasText: '넣기' }).first().click(); await expect.poll(() => page.evaluate(() => window.PlazaDebug().heldTool())).toBe(null); };
+  const stow = async () => { await page.keyboard.press('KeyI'); await page.locator('.bagTab[data-tab="tool"]').click(); /* (430: the tools' tab) */ await page.locator('.islandBagSlot.inHand').click(); await page.locator('#islandBagGrid button', { hasText: '넣기' }).first().click(); await expect.poll(() => page.evaluate(() => window.PlazaDebug().heldTool())).toBe(null); };
   // by the water: not in hand -- how; in hand -- a cast
   const pier = { x: T.PIER.x + T.PIER.ux * 7, z: T.PIER.z + T.PIER.uz * 7 };
   await page.evaluate((p) => window.PlazaWarp(p.x, p.z), pier); await expect.poll(() => page.evaluate(() => window.PlazaDebug().canFish())).toBe(true);
