@@ -1801,3 +1801,24 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] body.plazaMode :is(#skinShopBalance,#donationBalance,#pointBalanceText):not(:empty){background:url("/assets/items/point.svg") 8px 50%/16px 16px no-repeat #f2e3c4;color:var(--isle-ink)!important}
 :root[data-theme="light"] body.plazaMode .isle-sheet:not(.boardMode):not(#donationDialog) :is(.emptyState,.noticeEmpty,.rankingEmpty,.chatEmpty,.climbRankEmpty,.recordTowerEmpty){color:var(--isle-soft)}
 :root[data-theme="light"] .bagTab.full i{background:#f6c9b8;color:#7a2a12}
+:root[data-theme="light"] body.plazaMode :is(#adminPanel,#adminPresencePanel) :is(.adminStorage,.presenceStats>div,.presenceRow,.keyRow,.signupBand,.accountRow){background:var(--isle-card);border-color:var(--isle-line);color:var(--isle-ink)}
+:root[data-theme="light"] body.plazaMode :is(#adminPanel,#adminPresencePanel) :is(.keyDetail,#presenceOfflineDetails){background:var(--isle-paper);border-color:var(--isle-line);color:var(--isle-ink)}
+:root[data-theme="light"] body.plazaMode #adminPresencePanel .adminStorageBar{background:var(--isle-hover);border-color:var(--isle-line)}
+:root[data-theme="light"] body.plazaMode :is(#adminPanel,#adminPresencePanel) :is(#adminStorageLine,.presenceStats strong,.presenceIdentity strong,.keyRow strong,.accountRow strong){color:var(--isle-ink)}
+:root[data-theme="light"] body.plazaMode :is(#adminPanel,#adminPresencePanel) :is(.adminStorage summary span,.adminStorageTables,.presenceStats small,.presenceDetail,.keyRow small,.keyDetail,.accountId,.accountSeen,.accountPoints,.economyRow small,.accountFact span){color:var(--isle-soft)}
+:root[data-theme="light"] body.plazaMode :is(#adminPanel,#adminPresencePanel) :is(.presenceBadge,.badge){background:var(--isle-select);border-color:var(--isle-line);color:var(--isle-ink)}
+:root[data-theme="light"] body.plazaMode :is(#adminPanel,#adminPresencePanel) .badge.online{background:#dcefd6;border-color:#9cc48f;color:#2f5a24}
+:root[data-theme="light"] body.plazaMode :is(#adminPanel,#adminPresencePanel) .badge.warn{background:#f6dfc0;border-color:#d9b07a;color:#7a4a12}
+:root[data-theme="light"] body.plazaMode #adminPanel #assetInspectorTab,:root[data-theme="light"] body.plazaMode #adminPanel .noticeTab{color:var(--isle-ink)}
+:root[data-theme="light"] body.plazaMode #adminPanel .adminTabs button[aria-selected="true"]{background:var(--isle-select);border-color:var(--isle-tag);color:var(--isle-ink)}
+:root[data-theme="light"] body.plazaMode #adminPanel .accountDetail{background:var(--isle-paper);border:1px solid var(--isle-line);color:var(--isle-ink)}
+:root[data-theme="light"] body.plazaMode #adminPanel .accountDetail :is(h3,h4,b,label,p){color:var(--isle-ink)}
+:root[data-theme="light"] body.plazaMode #adminPanel .accountGroup h4{color:var(--isle-tag)}
+:root[data-theme="light"] body.plazaMode #adminPanel :is(.accountDanger,.accountJailForm){border-color:var(--isle-line)}
+:root[data-theme="light"] body.plazaMode #adminPanel .accountDetailHead>button:last-child{background:transparent;border:1px solid var(--isle-line);color:var(--isle-ink)}
+:root[data-theme="light"] body.plazaMode #adminPanel .accountDetailHead>button:last-child:hover{background:var(--isle-hover)}
+:root[data-theme="light"] body.plazaMode :is(#adminPanel,.pointGrantDialog) button.danger{background:var(--isle-danger);border-color:var(--isle-danger);color:#fff}
+:root[data-theme="light"] body.plazaMode .pointGrantDialog .pointGrantConfirm{background:var(--isle-card);border:1px solid var(--isle-line);color:var(--isle-ink)}
+:root[data-theme="light"] body.plazaMode .pointGrantDialog .pointGrantConfirm :is(p,b,strong,span){color:var(--isle-ink)}
+:root[data-theme="light"] body.plazaMode #adminPanel :is(.economyBox,.islandEnvBox,.opsSwitches,.issueCard){border-color:var(--isle-line)}
+:root[data-theme="light"] body.plazaMode #adminPanel .economyStatsTable :is(td,th){border-color:var(--isle-line)}

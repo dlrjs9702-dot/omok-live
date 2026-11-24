@@ -4052,3 +4052,30 @@ body.plazaMode :is(#skinShopBalance,#donationBalance,#pointBalanceText):not(:emp
 body.plazaMode .isle-sheet:not(.boardMode):not(#donationDialog) :is(.emptyState,.noticeEmpty,.rankingEmpty,.chatEmpty,.climbRankEmpty,.recordTowerEmpty){color:var(--isle-soft);text-align:center;padding:16px 8px;font-size:.9rem;font-weight:700}
 /* (1.10.430 인벤토리 2차: a kind's room full -- its count on the tab warm) */
 .bagTab.full i{background:#f6c9b8;color:#7a2a12}
+/* 1.10.431 관리자 창 안쪽 전부 섬 종이 (총괄 · 사용자 「이것도 고친거 아냐?」, 420 U6에 남은 남색 -- notes docs/admin-paper-20261124.md): 접속 현황(저장 공간 · 네
+   칸 · 접속자 줄 · 오프라인 목록 · 배지), 현황의 에셋 점검 단추, 계정 줄 · 탭 · 가입 띠, 열쇠 줄(가입 신청 · 구치소 · 아이디 없는 계정), 계정 자세히(가운데 판도 폰의
+   아래 판도: 종이, 머리 ✕ 하나 -- U4), 위험 단추, 포인트 지급 확인 칸, 경제 · 섬 운영 묶음의 선과 흐린 글 -- U3 토큰, 글은 4.5:1 넘게; ☰과 관리실 둘 다 (`#adminPanel` ·
+   `#adminPresencePanel`이 같은 노드) */
+body.plazaMode :is(#adminPanel,#adminPresencePanel) :is(.adminStorage,.presenceStats>div,.presenceRow,.keyRow,.signupBand,.accountRow){background:var(--isle-card);border-color:var(--isle-line);color:var(--isle-ink)}
+body.plazaMode :is(#adminPanel,#adminPresencePanel) :is(.keyDetail,#presenceOfflineDetails){background:var(--isle-paper);border-color:var(--isle-line);color:var(--isle-ink)}
+body.plazaMode #adminPresencePanel .adminStorageBar{background:var(--isle-hover);border-color:var(--isle-line)}
+body.plazaMode :is(#adminPanel,#adminPresencePanel) :is(#adminStorageLine,.presenceStats strong,.presenceIdentity strong,.keyRow strong,.accountRow strong){color:var(--isle-ink)}
+body.plazaMode :is(#adminPanel,#adminPresencePanel) :is(.adminStorage summary span,.adminStorageTables,.presenceStats small,.presenceDetail,.keyRow small,.keyDetail,.accountId,.accountSeen,.accountPoints,.economyRow small,.accountFact span){color:var(--isle-soft);opacity:1}
+body.plazaMode :is(#adminPanel,#adminPresencePanel) :is(.presenceBadge,.badge){background:var(--isle-select);border-color:var(--isle-line);color:var(--isle-ink)}
+body.plazaMode :is(#adminPanel,#adminPresencePanel) .badge.online{background:#dcefd6;border-color:#9cc48f;color:#2f5a24}
+body.plazaMode :is(#adminPanel,#adminPresencePanel) .badge.warn{background:#f6dfc0;border-color:#d9b07a;color:#7a4a12}
+body.plazaMode #adminPanel #assetInspectorTab,body.plazaMode #adminPanel .noticeTab{color:var(--isle-ink)}
+body.plazaMode #adminPanel .adminTabs button[aria-selected="true"]{background:var(--isle-select);border-color:var(--isle-tag);color:var(--isle-ink)}
+body.plazaMode #adminPanel .accountDetail{background:var(--isle-paper);border:1px solid var(--isle-line);color:var(--isle-ink)}
+body.plazaMode #adminPanel .accountDetail :is(h3,h4,b,label,p){color:var(--isle-ink);opacity:1}
+body.plazaMode #adminPanel .accountGroup h4{color:var(--isle-tag)}
+body.plazaMode #adminPanel :is(.accountDanger,.accountJailForm){border-color:var(--isle-line)}
+body.plazaMode #adminPanel .accountDetailHead>button:last-child{width:34px;height:34px;min-height:34px;padding:0;border-radius:50%;font-size:0;background:transparent;border:1px solid var(--isle-line);color:var(--isle-ink)}
+body.plazaMode #adminPanel .accountDetailHead>button:last-child::after{content:"✕";font-size:1rem;font-weight:800}
+body.plazaMode #adminPanel .accountDetailHead>button:last-child:hover{background:var(--isle-hover)}
+@media (pointer:coarse){body.plazaMode #adminPanel .accountDetailHead>button:last-child{width:40px;height:40px;min-height:40px}}
+body.plazaMode :is(#adminPanel,.pointGrantDialog) button.danger{background:var(--isle-danger);border-color:var(--isle-danger);color:#fff}
+body.plazaMode .pointGrantDialog .pointGrantConfirm{background:var(--isle-card);border:1px solid var(--isle-line);color:var(--isle-ink)}
+body.plazaMode .pointGrantDialog .pointGrantConfirm :is(p,b,strong,span){color:var(--isle-ink)}
+body.plazaMode #adminPanel :is(.economyBox,.islandEnvBox,.opsSwitches,.issueCard){border-color:var(--isle-line)}
+body.plazaMode #adminPanel .economyStatsTable :is(td,th){border-color:var(--isle-line)}

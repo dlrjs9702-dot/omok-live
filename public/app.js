@@ -7594,6 +7594,13 @@
   }
   byId('adminTabs').addEventListener('click', (e) => { const b = e.target.closest('button[data-tab]'); if (b) adminTab(b.dataset.tab); });
   adminTab(aaPref('gc.adminTab', 'accounts'));
+  /* (1.10.431 사용자 「다른 것처럼 줄여서 볼 수 있게」: every folding group in the admin window -- 섬 환경 · 매일 섬 대회 · 운영 스위치 now among
+     them -- opened or shut as it was left, on this device (a group opened so loads its list as a click would: its own toggle) */
+  { let open = {}; try { open = JSON.parse(aaPref('gc.adminOpen', '{}')) || {}; } catch { open = {}; }
+    for (const d of document.querySelectorAll('#adminPanel details[id], #adminPresencePanel details[id]')) {
+      if (Object.prototype.hasOwnProperty.call(open, d.id)) d.open = Boolean(open[d.id]);
+      d.addEventListener('toggle', () => { open[d.id] = d.open; aaKeep('gc.adminOpen', JSON.stringify(open)); });
+    } }
   // (섬 환경: the four rows, one 「저장」)
   byId('islandEnvSave').addEventListener('click', () => { for (const id of ['islandTimeForm', 'islandWeatherForm', 'islandSeasonForm', 'islandDecorForm']) byId(id).requestSubmit(); });
   // 1.10.332 크리스마스 미리 보기 (총괄): this screen only -- the decor, music, snow, lighting and time as they will be; nothing sent,

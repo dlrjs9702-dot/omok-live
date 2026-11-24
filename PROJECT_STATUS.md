@@ -13,7 +13,10 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
-## v1.10.431 가방 탭 줄바꿈 — 모든 기기(실서버 430 사진, 사용자 「pc에서 봤어」)
+## v1.10.431 가방 자동 정리 · 탭 줄바꿈 · 관리자 창 안쪽 종이(사용자 결정 91, 실서버 430 사진 · 관리자 창 사진)
+
+- 자동 정리(결정 91): 「정리」 → 「자동 정리 켬/끔」(사람마다 서버 `bagAuto:<계정>`, 기본 켬). 탭 안에서 하위 분류 → 등급 → 이름 → 큰 묶음(notes inventory-2-plan §8); 화면의 보여 주기만이라 서버 순서 · 물건 그대로, 켜져 있으면 손으로 안 옮김.
+- 관리자 창: 섬 운영의 「섬 환경」 · 「매일 섬 대회」 · 「운영 스위치」도 접히는 묶음, 모든 묶음 열림 기억(`gc.adminOpen`). 안쪽(접속 현황 · 계정 줄 · 열쇠 줄 · 계정 자세히 · 위험 단추 · 포인트 지급 확인 · 묶음 선)을 섬 종이 · U3 토큰으로, 계정 자세히 닫기는 머리 ✕(notes admin-paper-20261124).
 
 - 터치 겸용 PC는 `pointer:coarse`라 U8의 `@media (pointer:fine)` 줄바꿈이 안 먹어 탭이 잘림 → `.islandBagTabs` 자체를 줄바꿈 · 옆 넘침 없음(폰은 세 줄).
 - 기록의 탑 칩: `(pointer:fine),(any-pointer:fine),(min-width:900px)`에서 줄바꿈 — 폰은 한 줄 밀기 그대로.
