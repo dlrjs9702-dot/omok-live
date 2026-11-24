@@ -1800,3 +1800,4 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] body.plazaMode .isle-sheet .taxiDests .taxiDest[aria-checked="true"]{background:var(--isle-select);border-color:var(--isle-tag);box-shadow:inset 0 0 0 1px var(--isle-tag);color:var(--isle-ink)}
 :root[data-theme="light"] body.plazaMode :is(#skinShopBalance,#donationBalance,#pointBalanceText):not(:empty){background:url("/assets/items/point.svg") 8px 50%/16px 16px no-repeat #f2e3c4;color:var(--isle-ink)!important}
 :root[data-theme="light"] body.plazaMode .isle-sheet:not(.boardMode):not(#donationDialog) :is(.emptyState,.noticeEmpty,.rankingEmpty,.chatEmpty,.climbRankEmpty,.recordTowerEmpty){color:var(--isle-soft)}
+:root[data-theme="light"] .bagTab.full i{background:#f6c9b8;color:#7a2a12}

@@ -33,10 +33,11 @@ test('물고기 통·곤충 채집통: 통 먼저, 가득 차면 가방, 팔기�
   assert.deepEqual(I.sellAt(e, ['merchant', 'fisher'], 0).keep.map((x) => x.itemId), ['bread']); // (모두 팔기: the boxes and the bag)
   assert.deepEqual(I.takeFromBag(e, 'fish_goby', 1, true).filter((x) => x.itemId === 'fish_goby').flatMap((x) => x.meta.sizes), [20, 25]); // (the museum: the biggest, from the bag here)
   const fishId = e[1].entryId; assert.equal(I.releaseFromBox(e, fishId).length, e.length - 1); assert.equal(I.releaseFromBox(e, 'b'), null); // (놓아주기: a box's only)
-  const bagIds = e.filter((x) => !x.meta?.box).map((x) => x.entryId);
-  assert.deepEqual(I.reorderBag(e, [...bagIds].reverse()).map((x) => x.entryId), [...[...bagIds].reverse(), ...e.filter((x) => x.meta?.box).map((x) => x.entryId)]);
-  assert.equal(I.reorderBag(e, e.map((x) => x.entryId)), null); // (the boxes' entries are not the bag's to order)
-  assert.deepEqual(I.sortBag(e).slice(-3).map((x) => x.meta?.box), ['fish', 'fish', 'insect']);
+  /* (1.10.430 인벤토리 2차: the old boxes are their kinds' rooms -- every entry ordered together; 정리 by kind: fish, insects, then 기타) */
+  const all = e.map((x) => x.entryId);
+  assert.deepEqual(I.reorderBag(e, [...all].reverse()).map((x) => x.entryId), [...all].reverse());
+  assert.equal(I.reorderBag(e, all.slice(1)), null); // (every entry once)
+  assert.deepEqual(I.sortBag(e).map((x) => I.sectionOf(x.itemId)), ['fish', 'fish', 'fish', 'insect', 'etc']);
   assert.deepEqual(I.addToBag([], 'fish_goby', 2, 'x', { sizes: [20, 25] }, 16).map((x) => [x.qty, x.meta.sizes]), [[1, [20]], [1, [25]]]); // (no box: 362 one a slot in the bag too)
   // 가방에서 옮기기 (총괄 #447; 430: the kind's room is one now -- it only marks whole entries for the old box while it has room, in place)
   const before = [{ entryId: 'b', itemId: 'bread', qty: 1 }, { entryId: 'g', itemId: 'fish_goby', qty: 3, meta: { sizes: [30, 25, 20] } }, { entryId: 'l', itemId: 'insect_ladybird', qty: 4 }];
