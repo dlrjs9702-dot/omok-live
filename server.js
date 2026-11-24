@@ -5239,7 +5239,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.430' });
+    return sendJson(res, 200, { ok: true, version: '1.10.431' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -6583,7 +6583,7 @@ async function requestHandler(req, res) {
     if (!session) return;
     const account = pointAccountForSession(session); const grow = IslandItems.BAG_GROW.find((n) => n > IslandItems.slotsOf(account)) || null; // (v1.10.195: the next size and its price)
     const boxGrow = Object.fromEntries(IslandItems.BOXES.map((kind) => { const n = IslandItems.BOX_GROW.find((s) => s > IslandItems.boxNow(account, kind)); return [kind, n ? { slots: n, price: Economy.value(`${BOX_KEY[kind]}:${n}`) } : null]; })); // (297; 430 the free basket counted)
-    return sendJson(res, 200, { ok: true, ...await pointStore.islandBag(account, islandEvents.activeLost()), dailyCap: IslandItems.DAILY_CAP, grow: grow && { slots: grow, price: Economy.value(`bag:${grow}`) }, boxGrow, sellMults: sellMultsNow() });
+    return sendJson(res, 200, { ok: true, ...await pointStore.islandBag(account, islandEvents.activeLost()), dailyCap: IslandItems.DAILY_CAP, grow: grow && { slots: grow, price: Economy.value(`bag:${grow}`) }, boxGrow, sellMults: sellMultsNow(), autoSort: (await pointStore.worldValue(`bagAuto:${account}`).catch(() => null))?.on !== false /* (431 결정 91: on unless turned off) */ });
   }
   // v1.10.297 물고기 통·곤충 채집통: bought (and made bigger) at the 잡화점 like the bag, 30 -> 60 -> 90 -> 120, paid once each
   if (pathname === '/api/island/box/grow' && req.method === 'POST') {
@@ -6649,6 +6649,13 @@ async function requestHandler(req, res) {
     if (req.method === 'GET') return sendJson(res, 200, { ok: true, slots: IslandItems.quickSlots((await pointStore.worldValue(`quick:${account}`)) || []) || IslandItems.quickSlots([]) });
     const slots = IslandItems.quickSlots((await parseJson(req)).slots); if (!slots) return sendError(res, 400, 'BAD_QUICK', '빠른 칸에 넣을 수 없어요.');
     await worldEdit(() => pointStore.setWorldValue(`quick:${account}`, slots)); return sendJson(res, 200, { ok: true, slots });
+  }
+  /* 1.10.431 자동 정리 (사용자 결정 91): a person's own switch, on unless turned off -- the page sorts what it shows by it; the bag's kept
+     order (my own, 정리) is never rewritten by it, so nothing moves on the server (PostgreSQL and the file alike) */
+  if (pathname === '/api/island/bag/auto' && req.method === 'POST') {
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
+    if (typeof body.on !== 'boolean') return sendError(res, 400, 'BAD_AUTO', '켜기나 끄기를 골라 주세요.');
+    await worldEdit(() => pointStore.setWorldValue(`bagAuto:${account}`, { on: body.on })); return sendJson(res, 200, { ok: true, autoSort: body.on });
   }
   // v1.10.195 가방 내 순서: the order I set (every entry once: from another screen in between -- 'stale', the bag back) or 정리
   if (pathname === '/api/island/bag/order' && req.method === 'POST') {
@@ -11163,7 +11170,7 @@ async function main() {
   bootMark('before-listen');
   /* (1.10.376 별마루섬 호랑이: their ground made after the start in 20 ms slices, as 별마루섬's open table -- the tigers wait till it is) */
   if (process.env.NODE_ENV !== 'test') setTimeout(() => { const step = () => { try { if (!tigerSim.warm(20)) setImmediate(step); } catch (error) { console.error('호랑이 땅 만들기 실패:', error.message); } }; step(); }, 6000).unref?.();
-  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.430 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); tigerPendingResume().catch(() => {}); /* (403 Codex #16: catches whose loss was not saved before the restart) */ if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.431 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); tigerPendingResume().catch(() => {}); /* (403 Codex #16: catches whose loss was not saved before the restart) */ if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

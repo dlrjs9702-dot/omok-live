@@ -30,8 +30,17 @@ test('가방 개편: 동그라미 칸·이름 줄·말풍선 메뉴, 내 순서(
   await expect(page.locator('.islandBagSlot span')).toHaveCount(0); // (the picture and count only)
   await expect(page.locator('.bagTab[data-tab="fish"] i')).toHaveText('1/10'); await expect(page.locator('.bagTab[data-tab="tool"] i')).toHaveText('4/8'); await expect(page.locator('.bagTab[data-tab="material"]')).toHaveClass(/none/);
   await expect(page.locator('.bagTab[data-tab="material"]')).toHaveText('광석·재료0/10');
-  { const [ox, wrap, fine] = await page.evaluate(() => { const s = getComputedStyle(document.getElementById('islandBagTabs')); return [s.overflowX, s.flexWrap, matchMedia('(pointer:fine)').matches]; }); expect([ox, wrap]).toEqual(fine ? ['visible', 'wrap'] : ['auto', 'nowrap']); } /* (1.10.426 U8 #3: a mouse's row wraps -- a touch screen's slides) */
-  { const over = await page.evaluate(() => { const r = document.getElementById('islandBagTabs'); const d = document.getElementById('islandBagDialog').getBoundingClientRect(); return [...r.children].filter((b) => { const x = b.getBoundingClientRect(); return x.right > d.right + 1 || x.left < d.left - 1; }).length; }); if (!isMobile) expect(over).toBe(0); } /* (notes bag-tabs 끝: every tab seen on a PC) */
+  /* (1.10.431, 총괄 · 사용자 「pc에서 봤어」: a touch-capable PC said coarse and its row was cut after 광석·재료 with no way on -- the tabs wrap on
+     every screen: nothing wider than the row, the last tab inside the window; a mouse and a touch pointer alike) */
+  const tabsFit = () => page.evaluate(() => { const r = document.getElementById('islandBagTabs'); const s = getComputedStyle(r); const d = document.getElementById('islandBagDialog').getBoundingClientRect(); const last = r.lastElementChild.getBoundingClientRect();
+    return { wrap: s.flexWrap, over: r.scrollWidth - r.clientWidth, lastIn: last.right <= d.right + 1 && last.left >= d.left - 1 && last.width > 0, outside: [...r.children].filter((b) => { const x = b.getBoundingClientRect(); return x.right > d.right + 1 || x.left < d.left - 1; }).length }; });
+  expect(await tabsFit()).toEqual({ wrap: 'wrap', over: 0, lastIn: true, outside: 0 });
+  if (!isMobile) { /* (the PC as a touch screen says it: a coarse pointer) */
+    const cdp = await page.context().newCDPSession(page); await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 }); /* (its media then (pointer:coarse), the window still 1280 wide) */
+    expect(await page.evaluate(() => [matchMedia('(pointer:coarse)').matches, matchMedia('(any-pointer:fine)').matches])).toEqual([true, false]); expect(await tabsFit()).toEqual({ wrap: 'wrap', over: 0, lastIn: true, outside: 0 });
+    expect(await page.evaluate(() => { const g = document.querySelector('.recordTowerGames'); return g ? getComputedStyle(g).flexWrap : 'wrap'; })).toBe('wrap'); /* (the tower's chips: a wide window wraps them too) */
+    await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: false }); await cdp.detach();
+  }
   await page.locator('.islandBagSlot[data-item="fish_goby"]').click(); await expect(page.locator('#islandBagInfo .bagDetailKind')).toHaveText('물고기'); await expect(page.locator('#islandBagInfo .bagDetailWords')).not.toBeEmpty();
   await expect(page.locator('.islandBagSlot[data-item="fish_goby"] .bagMenu [role="menuitem"]')).toContainText(['놓아주기']);
   // picked: its name below; bread does nothing; the net -- a bubble with 들기
@@ -43,8 +52,16 @@ test('가방 개편: 동그라미 칸·이름 줄·말풍선 메뉴, 내 순서(
   await tab(); await expect(bag).toBeHidden(); await tab(); await expect(bag).toBeVisible(); await expect(page.locator('.bagTab.on')).toHaveAttribute('data-tab', 'tool');
   await open('furniture'); await expect(page.locator('#islandFurnList')).toBeVisible(); await expect(page.locator('#islandBagGrid')).toBeHidden(); await expect(page.locator('#islandFurnList')).toContainText('아직 놓지 않은 가구가 없어요');
   if (process.env.ZZ_SHOT) { await open('fish'); await page.locator('.islandBagSlot[data-item="fish_goby"]').click(); await page.waitForTimeout(400); await page.screenshot({ path: `${process.env.ZZ_SHOT}-bag-tabs-${isMobile ? 'phone' : 'pc'}.png` }); }
-  // my order inside a tab (the tools): Shift+D (keys, 문제 기록 1103 10: W/A/S/D as the arrows) -- the first one a place on
+  /* (1.10.431 자동 정리, 사용자 결정 91: on the first time -- the tab shows its things sorted (rod, net, the sturdy net, pickaxe: sub-kind, then
+     name), nothing moved by hand and the kept order untouched; the switch off: my own order back, moved by hand as before) */
   await open('tool'); await expect(page.locator('.islandBagSlot:not(.empty)')).toHaveCount(4);
+  const sortBtn = page.locator('#islandBagSort'); const shownIds = () => page.locator('.islandBagSlot:not(.empty)').evaluateAll((els) => els.map((e) => e.dataset.item));
+  await expect(sortBtn).toHaveText('자동 정리 켬'); await expect(sortBtn).toHaveAttribute('aria-pressed', 'true');
+  expect(await shownIds()).toEqual(['fishing_rod', 'bugnet', 'bugnet_sturdy', 'pickaxe']);
+  { const kept = await order(); await page.locator('.islandBagSlot').first().focus(); await page.keyboard.press('Shift+KeyD'); await page.waitForTimeout(600); expect(await order()).toEqual(kept); expect(await shownIds()).toEqual(['fishing_rod', 'bugnet', 'bugnet_sturdy', 'pickaxe']); }
+  await sortBtn.click(); await expect(sortBtn).toHaveText('자동 정리 끔'); await expect(sortBtn).toHaveAttribute('aria-pressed', 'false');
+  expect(await shownIds()).toEqual(TOOLS); /* (the order they were given in -- the bag's own) */
+  // my order inside a tab (the tools): Shift+D (keys, 문제 기록 1103 10: W/A/S/D as the arrows) -- the first one a place on
   const toolsAt = (list) => list.map((id, i) => (TOOLS.includes(id) ? i : -1)).filter((i) => i >= 0);
   const swapped = (list, a, b) => { const l = list.slice(); [l[a], l[b]] = [l[b], l[a]]; return l; };
   { const first = await order(); const t = toolsAt(first); await page.locator('.islandBagSlot').first().focus(); await page.keyboard.press('Shift+KeyD'); await expect.poll(order).toEqual(swapped(first, t[0], t[1])); }
@@ -62,16 +79,18 @@ test('가방 개편: 동그라미 칸·이름 줄·말풍선 메뉴, 내 순서(
     }
     await expect.poll(order).toEqual(swapped(now, t[0], t[3]));
   }
-  if (isMobile) { // (Codex 검토 5차 P3-1) one held by a finger as 정리 comes: let go -- its slot names another thing after
+  if (isMobile) { // (Codex 검토 5차 P3-1) one held by a finger as 자동 정리 comes on: let go -- its slot names another thing after
     await page.waitForTimeout(800); await page.locator('.islandBagSlot').nth(0).dispatchEvent('pointerdown', { pointerType: 'touch', isPrimary: true });
     await expect(page.locator('.islandBagSlot.held')).toHaveCount(1, { timeout: 10000 }); /* (v1.10.240 3b: the 0.4 s hold reached before the finger lifts -- a slow runner's timer came after a fixed 0.6 s) */ await page.locator('.islandBagSlot').nth(0).dispatchEvent('pointerup', { pointerType: 'touch', isPrimary: true });
     await expect(page.locator('.islandBagSlot.held')).toHaveCount(1);
   }
-  // 정리: asked once, then by kind -- the tools, the fish, 채집물, the rest
-  const kinds = (list) => list.map((id) => (TOOLS.includes(id) ? 'tool' : id));
-  await page.locator('#islandBagSort').click(); await expect(page.locator('#islandBagSort')).toHaveText('순서를 바꿀까요?');
-  await page.locator('#islandBagSort').click(); await expect.poll(async () => kinds(await order())).toEqual(['tool', 'tool', 'tool', 'tool', 'fish_goby', 'weed', 'bread']);
-  if (isMobile) { await expect(page.locator('.islandBagSlot.held')).toHaveCount(0); const before = await order(); await page.locator('.islandBagSlot').nth(3).click(); await page.waitForTimeout(800); expect(await order()).toEqual(before); } // (a tap after: nothing moved)
+  // 자동 정리 on again: sorted in the tab, my kept order not rewritten; kept on the server (a reload still on); a thing coming in takes its place
+  const mine = await order(); await sortBtn.click(); await expect(sortBtn).toHaveText('자동 정리 켬');
+  expect(await shownIds()).toEqual(['fishing_rod', 'bugnet', 'bugnet_sturdy', 'pickaxe']); expect(await order()).toEqual(mine);
+  if (isMobile) { await expect(page.locator('.islandBagSlot.held')).toHaveCount(0); await page.locator('.islandBagSlot').nth(3).click(); await page.waitForTimeout(800); expect(await order()).toEqual(mine); } // (a tap after: nothing moved)
+  expect((await get(request, '/api/island/bag', token)).data.autoSort).toBe(true);
+  expect((await post(request, '/api/test/island/give', token, { itemId: 'fishing_rod_sturdy', qty: 1 })).data.applied).toBe(true);
+  await tab(); await expect(bag).toBeHidden(); await tab(); await open('tool'); await expect.poll(shownIds).toEqual(['fishing_rod', 'fishing_rod_sturdy', 'bugnet', 'bugnet_sturdy', 'pickaxe']);
   // the bag again: shut; a click outside: shut
   await tab(); await expect(bag).toBeHidden();
   await tab(); await expect(bag).toBeVisible(); await page.mouse.click(5, 5); await expect(bag).toBeHidden();

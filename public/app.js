@@ -2657,6 +2657,17 @@
   // its name under the pouch and, when it can do something, a small bubble of those; my own order -- dragged (PC), held
   // 0.4 s then tapped where (a phone), Shift+arrows (keys) -- kept on the server; 정리 sorts it
   let bagNow = null; let bagPicked = null; let bagHeld = null; let bagMoveSeq = 0;
+  let bagAuto = true; /* (431 자동 정리, 결정 91: a person's switch from GET /api/island/bag `autoSort`) */
+  function bagSortReset() { const b = byId('islandBagSort'); b.textContent = bagAuto ? '자동 정리 켬' : '자동 정리 끔'; b.setAttribute('aria-pressed', String(bagAuto)); b.classList.toggle('on', bagAuto); }
+  /* (431 결정 91, notes inventory-2-plan §8: within a tab -- its sub-kind (ores before gems before seeds; bikes before pets; the tools rod,
+     net, pickaxe), then the rarer first (grade), then the name, and the same thing's bigger stack -- or bigger fish -- first) */
+  const SUB_ORDER = [/^fishing_rod/, /^bugnet/, /^pickaxe/, /^ore_/, /^gem_/, /^seed_/, /^sapling/, /^(fertilizer|compost)/, /^bait/, /^mushroom/, /^crop_/, /^bike_/, /^pet_/];
+  const GRADE_RANK = { big: 0, rare: 1, normal: 2, common: 3 };
+  const subOf = (id) => { const k = SUB_ORDER.findIndex((r) => r.test(id)); return k < 0 ? SUB_ORDER.length : k; };
+  function autoOrder(a, b) {
+    return subOf(a.itemId) - subOf(b.itemId) || (GRADE_RANK[a.grade] ?? 4) - (GRADE_RANK[b.grade] ?? 4) || String(a.name || a.itemId).localeCompare(String(b.name || b.itemId), 'ko')
+      || String(a.itemId).localeCompare(String(b.itemId)) || (b.sizes?.[0] || 0) - (a.sizes?.[0] || 0) || b.qty - a.qty || String(a.entryId).localeCompare(String(b.entryId));
+  }
   const bagCols = () => (matchMedia('(max-width: 640px), (pointer: coarse)').matches ? 4 : 8); // (총괄 검토: a phone 4 a row -- 16, 24, 32 fill their rows)
   function bagActions(item) {
     const out = [];
@@ -2683,6 +2694,7 @@
   }
   async function moveBagSlot(from, to) { // onto a thing: they swap; onto an empty slot: to the end
     if (!bagNow || from === to || !bagNow.items[from]) return;
+    if (bagAuto) { showToast('자동 정리를 끄면 손으로 옮길 수 있어요.', 2500); return; } /* (431: a drop onto a place with 자동 정리 on) */
     const items = bagNow.items.slice(); const target = Math.min(to, items.length - 1);
     if (to < items.length) [items[from], items[target]] = [items[target], items[from]]; else items.push(items.splice(from, 1)[0]);
     const before = bagNow; bagPicked = null; bagHeld = null; drawIslandBag({ ...bagNow, items }); // (at once; the server's answer after)
@@ -2807,17 +2819,19 @@
   function drawIslandBag(full) {
     /* (1.10.430 인벤토리 2차: one list, each kind its room -- the tab shows its own things and its empty places up to its room; the old
        fish and insect boxes are their tabs now, so their pages' buttons stay hidden) */
-    const bag = { ...full, items: full.items || [] };
+    const { autoSort: _autoSort, ...rest } = full; const bag = { ...rest, items: full.items || [] }; /* (431: the switch read once from the server's answer -- a redraw from bagNow never sets it back) */
     if ('boxGrow' in full) boxGrowNow = full.boxGrow; if ('sections' in full) bagRooms = full.sections;
     boxNow = { boxes: full.boxes || boxNow.boxes, items: bag.items.filter((e) => e.box) }; for (const [id] of BOX_BTNS) byId(id).classList.add('hidden');
     drawBagGrow(full); bagNow = bag; quickItems = full.items || []; drawQuick(); /* (v1.10.236: the 빠른 칸's counts) */ if (bagHeld != null && !bag.items[bagHeld]) bagHeld = null; const grid = document.getElementById('islandBagGrid'); grid.replaceChildren(); // (C5 P2-2: one picked up stays picked up through a redraw)
+    if ('autoSort' in full) { bagAuto = full.autoSort !== false; bagSortReset(); }
     const shown = bag.items.map((e, i) => (sectionOfItem(e) === bagTab ? i : -1)).filter((i) => i >= 0);
+    if (bagAuto) shown.sort((x, y) => autoOrder(bag.items[x], bag.items[y])); /* (431 자동 정리: the page's showing only) */
     const room = bagRooms?.[bagTab]?.slots; const empties = Number.isFinite(room) ? Math.max(0, room - shown.length) : 0;
     [...shown, ...Array(empties).fill(bag.items.length)].forEach((i, pos) => { /* (an empty place's i: past the last -- a thing put there goes to the end) */
       const item = bag.items[i]; const slot = document.createElement('div');
       slot.className = 'islandBagSlot'; slot.setAttribute('role', 'listitem'); slot.tabIndex = pos === 0 ? 0 : -1; slot.dataset.i = i;
       if (item) {
-        slot.title = item.usesMax ? `${item.name} · ${item.uses}/${item.usesMax}회` : item.name; slot.setAttribute('aria-label', item.usesMax ? `${item.name} 남은 ${item.uses}회` : `${item.name} ${item.qty}개`); slot.dataset.item = item.itemId; slot.draggable = true;
+        slot.title = item.usesMax ? `${item.name} · ${item.uses}/${item.usesMax}회` : item.name; slot.setAttribute('aria-label', item.usesMax ? `${item.name} 남은 ${item.uses}회` : `${item.name} ${item.qty}개`); slot.dataset.item = item.itemId; slot.draggable = !bagAuto; /* (431: sorted by itself -- moved by hand only with 자동 정리 off) */
         const qty = document.createElement('small'); qty.textContent = item.qty > 1 ? `×${item.qty}` : item.sizes?.length === 1 ? `${item.sizes[0]}cm` : ''; /* (362 사용자 3A: a fish one a slot -- its size, as in its box) */ if (item.sizes?.length === 1 && item.qty === 1) { qty.classList.add('bagSize'); slot.title = `${item.name} · ${item.sizes[0]} cm`; slot.setAttribute('aria-label', `${item.name} ${item.sizes[0]} cm`); }
         slot.append(itemIcon(item), qty);
         if ((item.tool || item.itemId) === heldTool) slot.classList.add('inHand');
@@ -2830,13 +2844,13 @@
         const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -bagCols(), ArrowDown: bagCols() }[arrowKey(event)]; // (W/A/S/D too, Shift+ moves)
         if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); slot.click(); return; }
         if (step == null) return; event.preventDefault(); const to = Math.max(0, Math.min(grid.children.length - 1, pos + step));
-        if (event.shiftKey && item) { moveBagSlot(i, Number(grid.children[to].dataset.i)).then(() => grid.children[to]?.focus()); return; } /* (430: the place shown there -- the list's own index) */
+        if (event.shiftKey && item && !bagAuto) { moveBagSlot(i, Number(grid.children[to].dataset.i)).then(() => grid.children[to]?.focus()); return; } /* (430: the place shown there -- the list's own index) */
         grid.children[to]?.focus();
       });
       if (item) {
         slot.addEventListener('dragstart', (event) => { event.dataTransfer.setData('text/plain', String(i)); event.dataTransfer.effectAllowed = 'move'; });
         let hold = 0; // (a phone: held 0.4 s, it is picked up -- the next slot tapped is where it goes)
-        slot.addEventListener('pointerdown', (event) => { if (event.pointerType !== 'touch') return; hold = setTimeout(() => { bagHeld = i; [...grid.children].find((c) => Number(c.dataset.i) === i)?.classList.add('held'); /* (CI #351: a late answer drew the bag again meanwhile -- the slot shown now, not the one pressed) */ byId('islandBagInfo').textContent = `${item.name} · 놓을 칸을 누르세요`; }, 400); });
+        slot.addEventListener('pointerdown', (event) => { if (event.pointerType !== 'touch' || bagAuto) return; hold = setTimeout(() => { bagHeld = i; [...grid.children].find((c) => Number(c.dataset.i) === i)?.classList.add('held'); /* (CI #351: a late answer drew the bag again meanwhile -- the slot shown now, not the one pressed) */ byId('islandBagInfo').textContent = `${item.name} · 놓을 칸을 누르세요`; }, 400); });
         for (const type of ['pointerup', 'pointercancel', 'pointerleave']) slot.addEventListener(type, () => clearTimeout(hold));
       }
       slot.addEventListener('dragover', (event) => { event.preventDefault(); slot.classList.add('dropAt'); });
@@ -3192,17 +3206,14 @@
     if (event.target !== islandBagDialog) return; const r = islandBagDialog.getBoundingClientRect();
     if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) islandBagDialog.close();
   });
-  // 정리: asked once (「지금 순서를 바꿀까요?」), then sorted on the server. (v1.10.210 CI, the island raining: on a busy page
-  // the two clicks came 5 s apart and the second only asked again -- the question now stands 8 s, counted by when each
-  // click was made; the bag shut lets it go)
-  const BAG_SORT_ASK_MS = 8000; let bagSortAsk = null;
-  const bagSortReset = () => { bagSortAsk = null; byId('islandBagSort').textContent = '정리'; };
-  byId('islandBagSort').addEventListener('click', async (event) => {
-    const b = byId('islandBagSort');
-    if (bagSortAsk == null || event.timeStamp - bagSortAsk > BAG_SORT_ASK_MS) { const at = event.timeStamp; bagSortAsk = at; b.textContent = '순서를 바꿀까요?'; setTimeout(() => { if (bagSortAsk === at) bagSortReset(); }, BAG_SORT_ASK_MS + 100); return; }
-    bagSortReset(); bagHeld = null; bagPicked = null; byId('islandBagGrid').querySelector('.held')?.classList.remove('held'); // (Codex 검토 5차 P3-1: the slot held by a finger names another thing once sorted -- let go)
-    const mine = ++bagMoveSeq; // (CI #351: a move's late answer drew the old order over the sorted one -- the latest asked wins)
-    try { const r = await api('/api/island/bag/order', { method: 'POST', body: JSON.stringify({ sort: true }) }); if (mine === bagMoveSeq) drawIslandBag(r.bag); } catch (error) { if (mine === bagMoveSeq) showToast(error.message); }
+  /* 1.10.431 자동 정리 (사용자 결정 91): the old 「정리」 is a switch now -- on (the first time, and kept on the server a person), each tab
+     shows its things sorted (autoOrder) as they come and go; off, the places I set by hand as before. Only the page's showing: the bag's
+     kept order is untouched (nothing to lose, the same on PostgreSQL and the file) */
+  byId('islandBagSort').addEventListener('click', async () => {
+    const was = bagAuto; bagAuto = !bagAuto; bagSortReset(); bagHeld = null; bagPicked = null; byId('islandBagGrid').querySelector('.held')?.classList.remove('held');
+    if (bagNow) drawIslandBag(bagNow);
+    try { await api('/api/island/bag/auto', { method: 'POST', body: JSON.stringify({ on: bagAuto }) }); showToast(bagAuto ? '자동 정리를 켰어요. 같은 것끼리 차례대로 놓여요.' : '자동 정리를 껐어요. 손으로 옮긴 자리가 그대로예요.', 3000); }
+    catch (error) { bagAuto = was; bagSortReset(); if (bagNow) drawIslandBag(bagNow); showToast(error.message); }
   });
   document.getElementById('islandBagCloseBtn').addEventListener('click', () => islandBagDialog.close());
   islandBagDialog.addEventListener('close', () => { bagSortReset(); quickPick = null; quickMenu = null; drawQuick(); }); // (v1.10.236: a slot-to-be let go)
@@ -7583,6 +7594,13 @@
   }
   byId('adminTabs').addEventListener('click', (e) => { const b = e.target.closest('button[data-tab]'); if (b) adminTab(b.dataset.tab); });
   adminTab(aaPref('gc.adminTab', 'accounts'));
+  /* (1.10.431 사용자 「다른 것처럼 줄여서 볼 수 있게」: every folding group in the admin window -- 섬 환경 · 매일 섬 대회 · 운영 스위치 now among
+     them -- opened or shut as it was left, on this device (a group opened so loads its list as a click would: its own toggle) */
+  { let open = {}; try { open = JSON.parse(aaPref('gc.adminOpen', '{}')) || {}; } catch { open = {}; }
+    for (const d of document.querySelectorAll('#adminPanel details[id], #adminPresencePanel details[id]')) {
+      if (Object.prototype.hasOwnProperty.call(open, d.id)) d.open = Boolean(open[d.id]);
+      d.addEventListener('toggle', () => { open[d.id] = d.open; aaKeep('gc.adminOpen', JSON.stringify(open)); });
+    } }
   // (섬 환경: the four rows, one 「저장」)
   byId('islandEnvSave').addEventListener('click', () => { for (const id of ['islandTimeForm', 'islandWeatherForm', 'islandSeasonForm', 'islandDecorForm']) byId(id).requestSubmit(); });
   // 1.10.332 크리스마스 미리 보기 (총괄): this screen only -- the decor, music, snow, lighting and time as they will be; nothing sent,

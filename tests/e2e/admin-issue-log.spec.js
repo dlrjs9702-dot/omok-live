@@ -55,6 +55,40 @@ test('문제 기록: 관리자 메뉴에서 적으면 화면 정보·사진과 �
   await page.locator('.issueItem', { hasText: '광장 벤치가 공중에 떠 있음' }).getByRole('button', { name: '지우기' }).click();
   await expect.poll(async () => (await get(request, '/api/admin/issues', admin)).data.issues.some((i) => i.id === mine.id)).toBe(false);
   expect((await get(request, `/api/admin/issues/${mine.id}/shot`, admin)).status).toBe(404); // (its picture went with it)
+  /* (1.10.431 사용자 「이것도 고친거 아냐?」 · 계정 자세히 사진: every inner part of the admin window on the island's paper -- each tab with its groups
+     open, the account's panel (and as a phone's bottom sheet), the point grant: each word against what is really behind it >= 4.5, no navy face, the
+     account's close the head's ✕) */
+  const paperCheck = (sel) => page.evaluate((sel) => {
+    const lum = (c) => { const [r, g, b] = c.match(/[\d.]+/g).slice(0, 3).map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+    const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+    const root = document.querySelector(sel); const opaque = (c) => !/rgba\(.*,\s*0\)$/.test(c) && c !== 'transparent';
+    const bgOf = (e) => { for (let n = e; n && n !== document; n = n.parentElement) { const c = getComputedStyle(n).backgroundColor; if (opaque(c)) return c; } return 'rgb(255, 255, 255)'; };
+    const words = [...root.querySelectorAll('h2,h3,h4,p,label,span,strong,small,b,button,summary,td,th,li,legend')].filter((e) => e.offsetParent && [...e.childNodes].some((c) => c.nodeType === 3 && c.textContent.trim()) && !e.closest('.presenceBadge,.badge,input,select,textarea'));
+    const low = words.map((e) => ({ t: e.textContent.trim().slice(0, 16), r: +ratio(getComputedStyle(e).color, bgOf(e)).toFixed(2) })).filter((w) => w.r < 4.5);
+    const NAVY = ['rgb(15, 23, 42)', 'rgb(17, 24, 39)', 'rgb(30, 41, 59)', 'rgb(51, 65, 85)', 'rgb(17, 26, 46)', 'rgb(11, 19, 36)'];
+    const navy = [...root.querySelectorAll('*:not(input[type="checkbox"]):not(input[type="radio"])')].filter( /* (a checkbox the browser draws -- its accent, as island-paper-windows) */(e) => e.offsetParent && NAVY.includes(getComputedStyle(e).backgroundColor)).map((e) => e.id || e.className || e.tagName);
+    return { low: low.slice(0, 6), navy: navy.slice(0, 6) };
+  }, sel);
+  const openAll = () => page.evaluate(() => { for (const d of document.querySelectorAll('#plazaDialog .adminTab:not([hidden]) details, #plazaDialog #adminPresencePanel:not(.tabOff) details')) d.open = true; });
+  for (const tabName of ['status', 'accounts', 'island', 'economy']) {
+    await page.locator(`#adminTabs [data-tab="${tabName}"]`).click(); await openAll(); await page.waitForTimeout(800);
+    expect(await paperCheck('#plazaDialog'), tabName).toEqual({ low: [], navy: [] });
+  }
+  /* (the 섬 운영 groups fold as the others, and stay as they were left: 섬 환경 shut, opened again after the window is shut and opened) */
+  await page.locator('#adminTabs [data-tab="island"]').click();
+  for (const id of ['islandEnvBox', 'contestBox', 'opsSwitchBox']) await expect(page.locator(`#${id} > summary`)).toBeVisible();
+  await page.locator('#islandEnvBox > summary').click(); await expect(page.locator('#islandEnvBox')).not.toHaveAttribute('open', '');
+  await page.locator('#plazaCloseBtn').click(); await page.keyboard.press('Escape'); await page.locator('#adminWindowBtn').click(); await page.locator('#adminTabs [data-tab="island"]').click();
+  await expect(page.locator('#islandEnvBox')).not.toHaveAttribute('open', ''); await expect(page.locator('#contestBox')).toHaveAttribute('open', '');
+  // 계정 자세히: on the paper, its close the head's ✕ (no 「닫기」 word); as a phone's bottom sheet too
+  await page.locator('#adminTabs [data-tab="accounts"]').click(); await page.locator('.accountRow').first().click(); await expect(page.locator('#accountDetail')).toBeVisible();
+  const closeMark = () => page.evaluate(() => { const b = document.querySelector('#accountDetail .accountDetailHead > button:last-child'); return b ? [b.textContent.trim(), getComputedStyle(b, '::after').content, getComputedStyle(b).fontSize] : null; });
+  expect(await closeMark()).toEqual(['닫기', '"✕"', '0px']); expect(await paperCheck('#accountDetail')).toEqual({ low: [], navy: [] });
+  await page.setViewportSize({ width: 700, height: 900 }); await page.waitForTimeout(500);
+  expect(await page.evaluate(() => getComputedStyle(document.getElementById('accountDetail')).position)).toBe('fixed'); expect(await paperCheck('#accountDetail')).toEqual({ low: [], navy: [] });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.locator('#accountDetail button', { hasText: '포인트 지급' }).click(); await expect(page.locator('#pointGrantDialog')).toBeVisible();
+  expect(await paperCheck('#pointGrantDialog')).toEqual({ low: [], navy: [] });
   await expectNoScriptError(page);
   await context.close();
 });
