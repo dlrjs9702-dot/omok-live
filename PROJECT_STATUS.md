@@ -13,6 +13,15 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.435 A 배·부두 (notes docs/issue-plan-20261128.md 1번 묶음)
+
+- 7f7ee860 승무원 없음: 배 모델은 그대로, 선장 캐릭터 4명 뺌(무인 운영).
+- 9fc80a32 걸어 타기: 탄 자리에서 발판 → 배 옆문 → 가운데 통로 → 자리 앞 → 앉기(3.36 m/s). 문 안부터는 배 기준 좌표라 배가 떠나도 같이 감. 문 전에 배가 떠나면 바로 앉음. 서버(island-boat `walkMsOf`)가 걸어 올 시간만큼 배를 붙잡음(혼자 · 다 찬 배 · 줄 선 사람, 시험 속도 배율과 무관).
+- 95bff217 모자: 배 문을 지나면 모자 넣기(택시와 같은 `assets.hat`), 내리면 다시.
+- 3faca5e1 펫: 주인이 앉으면 배 뒤 갑판(자리별 칸)에 앉아 함께 감 — 배를 그린 뒤 자리 잡아 한 프레임 늦지 않음.
+- 1b9f6edf 부두 앞 T자: 칠만 T자(island-paths buildRoadMap `TEES`) — 곧은 물가 길 · 줄기 끝 · 입구(B MOUTH)는 선 없음 · 건널목 줄기에 반듯이(0.59,-14.4). L2를 반대 방향으로 칠해(`PAINT_FLIP`) 노란 선 지렁이 없앰. 차 길 · 정류장 · 요금은 434 그대로. T자 아래 땅 둔덕 · 비움도 T자로(dalmaru-island).
+- 시험: 유닛 `boat-dock-435`, e2e island-boat(걸어 타기 · 모자) · dalmaru-walk · island-taxi-stops · island-taxi-yield · island-pets(PC · 폰).
+
 ## v1.10.434 Codex 401~432 검토 P2 10건 · P3 1건 고침 (결정 93)
 
 - 행사 밭·채석장·도구(P2-11~14): 행사 밭 수확을 `questApply`(`bagNext`) 한 거래로 묶어 동시 첫 수확의 횟수 이중 소진 차단. 채석장 `islandGive`에 `requireTool: true`를 적용하고 실패 작은 돌 보상을 `questApply` 한 거래로 원자화(채집물 꽉 참·곡괭이 없음 시 횟수/내구도 미변경). 도구 구매 `islandBuy`가 복구 대기(`island_discard_undo`) 중인 같은 종류 도구도 `TOOL_MAX`에 합산.
@@ -26,12 +35,3 @@
 - 통·가방·잡초·수조(P1-4·5·7·8): 옛 `/api/island/bag/grow`는 결제 전 `BAG_RETIRED`로 거절(기존 24/32칸 무료 바구니 이력은 유지). 통 구매 `growBox`를 포인트 차감+`boxSlots` 한 거래로 묶고 시작 시 미완료 구매 자동 복구(`paidBoxClaims`). 마당 잡초 뽑기 `pullYardWeed`를 마당 제거+가방 지급 한 거래로 원자화. 수조 넣기 완료를 `home_tank_done:<claim>` 영구 정산으로 기록해 `tankPuts` 만료 후 재도착 시 복사 차단.
 - 혼자 게임·택시(P1-2·9·10): `/api/solo/reflex/finish`는 `fast` 판정을 `soloClear` 전에 `400 TOO_FAST`로 거절(개인·주간 순위·트로피 미반영), 저장 실패(`503`) 시 판을 유지해 자동·수동 재전송 허용. 택시 단건 승차권은 경로·금액·`used`를 정산에 저장해 `useTaxiTicket`으로 1회만 전환(재시작 후 재사용·경로 위조 차단).
 - 시험: `codex-p1-433`(JSON·PG·서버 재시작 포함) 추가, `bag-discard-432`·`bag-grow`·`inventory-430`·`reflex-server`·e2e `island-bag` 갱신.
-
-## v1.10.432 가방 버리기 (사용자 결정 92 전부 A)
-
-- 가방 칸 말풍선 메뉴 맨 끝 「버리기」 → 확인 창(영영 사라짐 · 포인트 없음). 묶음은 1개 · 전부 · 숫자 입력. 버린 뒤 10초 「되돌리기」(같은 사람 · 한 번).
-- 막는 것: 분실물(lost · wallet) · 받은 심부름(1단계)의 사 오기 · 재료 물건 — 버리기 흐리게 + 까닭. 도구는 버릴 수 있음.
-- 서버가 판단: `POST /api/island/bag/discard` {requestId, entryId, qty} — 개수 검사, 요청 하나는 한 번(정산 claim), 동시 요청도 가진 만큼만. JSON · PostgreSQL 같은 동작(`islandDiscard`).
-- 되돌리기 `POST /api/island/bag/discard/undo` — 메모리 토큰 10초, 누르자마자 사용 표시, 같은 물건(물고기 크기 · 도구 닳음 포함)을 자기 claim으로 돌려줌(두 번 안 됨).
-- 그 종류가 다 없어지면 빠른 칸과 손에서 뺌. 관리자 「버린 기록」(누가 · 무엇 · 몇 개 · 언제, 최근 100건, world `discardLog` 500건).
-- 시험: `bag-discard-432`(JSON·PG), e2e island-bag(PC·폰) · quickbar 메뉴 목록.
