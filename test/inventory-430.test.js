@@ -64,7 +64,8 @@ test('430 결정 3A: 가방 24 · 32칸을 산 사람은 채집 바구니 50 무
 test('430 가득 말: 어느 종류 칸인지 · 늘리는 그릇, BAG_FULL은 모두 bagFull로; 마당 잡초는 자리 먼저 보고 뽑음(잃지 않음)', () => {
   assert.equal((server.match(/'BAG_FULL'/g) || []).length, 2, 'bagFull 하나 + 공방 빚(만든 물건 이름)'); assert.ok((server.match(/bagFull\(res, /g) || []).length >= 16);
   assert.match(server, /const BOX_TO = \{ fish: '물고기 통으로', insect: '곤충 채집통으로', gather: '채집 바구니로', material: '재료 상자로' \};/);
-  assert.match(server, /if \(!IslandItems\.addToBag\(bag \|\| \[\], 'weed', 1, null, null, IslandItems\.capOf\(account\)\)\) return bagFull\(res, 'weed'\); \}\r?\n\s+const out = await upkeepApply\(owner/);
+  assert.match(server, /const out = await pointStore\.pullYardWeed\(\{ owner, userId: account/);
+  assert.match(server, /if \(!out\.applied\) return out\.reason === 'full' \? bagFull\(res, 'weed'\)/);
 });
 
 test('430 화면(결정 88): 종류 탭 여덟 · 「전체」 없음 · 마지막 본 탭, 탭마다 n/칸과 빈 칸 · 꽉 참 표시, 그 탭의 그릇 단추; 가방 늘리기 · 통 창 없음', () => {

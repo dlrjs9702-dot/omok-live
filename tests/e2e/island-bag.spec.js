@@ -113,7 +113,18 @@ test('가방 개편: 동그라미 칸·이름 줄·말풍선 메뉴, 내 순서(
   if (process.env.ZZ_SHOT) await page.screenshot({ path: `${process.env.ZZ_SHOT}-bag-grow-${isMobile ? 'phone' : 'pc'}.png` });
   await here.click(); await expect(page.locator('#islandBagCount')).toHaveText('2/100'); await expect(page.locator('#bagGrowHereBtn')).toHaveText('물고기 통 200칸 · 2,000,000P');
   await page.locator('.islandBagSlot[data-item="fish_mackerel"]').click(); await page.locator('.islandBagSlot[data-item="fish_mackerel"] .bagMenu [role="menuitem"]', { hasText: '놓아주기' }).click();
+  await expect(page.locator('#discardDialog')).toBeVisible(); await expect(page.locator('#discardTitle')).toHaveText('놓아주기'); await page.locator('#discardOk').click(); await expect(page.locator('#discardDialog')).toBeHidden();
   await expect(page.locator('#islandBagCount')).toHaveText('1/100'); await expect(page.locator('.islandBagSlot[data-item="fish_mackerel"]')).toHaveCount(0);
+  await expect(page.locator('#islandBagInfo .discardUndo')).toContainText(/놓아줬어요 · \d+초/);
+  /* 1.10.433 Codex P1-3: insect stack release asks qty (never wipes whole 20-stack in one click) and supports 10 s 되돌리기 */
+  expect((await post(request, '/api/test/island/give', token, { itemId: 'insect_ladybird', qty: 10 })).data.applied).toBe(true);
+  await tab(); await expect(bag).toBeHidden(); await tab(); await open('insect');
+  await page.locator('.islandBagSlot[data-item="insect_ladybird"]').click(); await page.locator('.islandBagSlot[data-item="insect_ladybird"] .bagMenu [role="menuitem"]', { hasText: '놓아주기' }).click();
+  await expect(page.locator('#discardDialog')).toBeVisible(); await expect(page.locator('#discardQty')).toBeVisible();
+  await page.locator('#discardCount').fill('3'); await page.locator('#discardOk').click(); await expect(page.locator('#discardDialog')).toBeHidden();
+  await expect.poll(async () => (await get(request, '/api/island/bag', token)).data.items.filter((e) => e.itemId === 'insect_ladybird').reduce((n, e) => n + e.qty, 0)).toBe(7);
+  await page.locator('#discardUndoBtn').click();
+  await expect.poll(async () => (await get(request, '/api/island/bag', token)).data.items.filter((e) => e.itemId === 'insect_ladybird').reduce((n, e) => n + e.qty, 0)).toBe(10);
   /* 1.10.432 가방 버리기 (사용자 결정 92 전부 A): 버리기 last in the bubble; a stack asks how many (1개 · 전부 · a number), gone for good; a line
      「…버렸어요 · n초」 with 되돌리기 for 10 s (once: the server judges it); a lost thing greyed with why; a tool in hand and in a 빠른 칸 --
      out of both when none of it is left */

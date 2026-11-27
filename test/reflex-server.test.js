@@ -117,7 +117,8 @@ test('순발력 API: 판을 열고 한 번만 보고, 포인트 없이 기록만
   };
   const start = await balance();
   const quick = await round('whack', 'hard', 0);
-  assert.deepEqual((await req('/api/solo/reflex/finish', sa, { id: quick, score: 500 })).data.verdict, 'fast');
+  const quickRes = await req('/api/solo/reflex/finish', sa, { id: quick, score: 500 });
+  assert.deepEqual([quickRes.status, quickRes.data.verdict], [400, 'fast'], 'fast 기록은 저장 전 거절(433 Codex P1-2)');
   assert.equal(await balance(), start);
   const fake = await round('whack', 'hard', 31000);
   assert.equal((await req('/api/solo/reflex/finish', sa, { id: fake, score: 1e9 })).status, 400);
@@ -133,5 +134,5 @@ test('순발력 API: 판을 열고 한 번만 보고, 포인트 없이 기록만
   assert.equal((await req('/api/solo/reflex/finish', other, { id: mine, score: 250 })).status, 409, '남의 판');
   const after = (await req('/api/solo/reflex', sa)).data;
   assert.equal(await balance(), start);
-  assert.deepEqual(after.records.whack, { hard: { best: 500, clears: 2 } });
+  assert.deepEqual(after.records.whack, { hard: { best: 500, clears: 1 } });
 });

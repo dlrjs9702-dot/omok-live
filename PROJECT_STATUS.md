@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.433 Codex 401~432 검토 P1 10건 고침 (결정 93)
+
+- 가방 버리기·놓아주기(P1-1·3·6): 확인 창마다 요청 ID 한 번, 되돌리기 토큰과 버리기 직전 칸 수를 `point_settlements`에 영구 저장(재시도·서버 재시작 유지, 10칸 초과 보유자도 직전 수량까지 복원). 곤충·물고기 놓아주기도 확인 창·수량 선택(기본 1)·10초 되돌리기 적용(`islandRelease`→`islandDiscard` 경로 통일).
+- 통·가방·잡초·수조(P1-4·5·7·8): 옛 `/api/island/bag/grow`는 결제 전 `BAG_RETIRED`로 거절(기존 24/32칸 무료 바구니 이력은 유지). 통 구매 `growBox`를 포인트 차감+`boxSlots` 한 거래로 묶고 시작 시 미완료 구매 자동 복구(`paidBoxClaims`). 마당 잡초 뽑기 `pullYardWeed`를 마당 제거+가방 지급 한 거래로 원자화. 수조 넣기 완료를 `home_tank_done:<claim>` 영구 정산으로 기록해 `tankPuts` 만료 후 재도착 시 복사 차단.
+- 혼자 게임·택시(P1-2·9·10): `/api/solo/reflex/finish`는 `fast` 판정을 `soloClear` 전에 `400 TOO_FAST`로 거절(개인·주간 순위·트로피 미반영), 저장 실패(`503`) 시 판을 유지해 자동·수동 재전송 허용. 택시 단건 승차권은 경로·금액·`used`를 정산에 저장해 `useTaxiTicket`으로 1회만 전환(재시작 후 재사용·경로 위조 차단).
+- 시험: `codex-p1-433`(JSON·PG·서버 재시작 포함) 추가, `bag-discard-432`·`bag-grow`·`inventory-430`·`reflex-server`·e2e `island-bag` 갱신.
+
 ## v1.10.432 가방 버리기 (사용자 결정 92 전부 A)
 
 - 가방 칸 말풍선 메뉴 맨 끝 「버리기」 → 확인 창(영영 사라짐 · 포인트 없음). 묶음은 1개 · 전부 · 숫자 입력. 버린 뒤 10초 「되돌리기」(같은 사람 · 한 번).
@@ -30,11 +37,3 @@
 - 터치 겸용 PC는 `pointer:coarse`라 U8의 `@media (pointer:fine)` 줄바꿈이 안 먹어 탭이 잘림 → `.islandBagTabs` 자체를 줄바꿈 · 옆 넘침 없음(폰은 세 줄).
 - 기록의 탑 칩: `(pointer:fine),(any-pointer:fine),(min-width:900px)`에서 줄바꿈 — 폰은 한 줄 밀기 그대로.
 - 시험: `island-ui-u8`, e2e island-bag — 탭 scrollWidth ≤ clientWidth · 마지막 탭이 창 안, PC는 터치 흉내(coarse)로 한 번 더, 폰.
-
-## v1.10.430 인벤토리 2차 — 종류별 칸(결정 「1A 2A 3A」 · 결정 88, notes inventory-2-plan-20261124)
-
-- 서버: 종류 표 하나(가방 탭 표 + 서버가 아는 물고기 · 곤충 · 도구 · 탈것), 칸 — 도구 8 · 물고기 · 곤충 · 채집물 · 광석·재료 10(그릇 50 · 100 · 200) · 기타 10 · 탈것 · 펫 없음. 같은 물건 묶음은 넘쳐도 쌓임, 새 칸만 막음. 물건 행은 그대로(옛 통 표시 `meta.box` 유지 — 429로 되돌려도 같은 통).
-- 새 그릇: 채집 바구니 · 재료 상자(경제 값 `basket:*` · `matbox:*` 30만 · 80만 · 200만P), 결정 3A — 가방 24 · 32칸 산 사람 채집 바구니 50 무료(읽을 때 + 시작 때 한 번 `bagKinds430`).
-- 가득 말: 어느 종류 칸인지와 늘리는 그릇(`BAG_FULL` + `kind`). 마당 잡초: 자리 먼저 보고 뽑음(가득이면 잃던 것).
-- 화면(결정 88): 종류 탭 여덟 · 「전체」 없음 · 마지막 본 탭, 탭마다 n/칸 · 빈 칸 · 꽉 참, 그 탭의 그릇 단추; 통 창 · 가방 늘리기 없앰, 놓아주기는 말풍선.
-- 시험: `inventory-430` 외 칸 시험들 새 규칙으로, e2e island-bag(PC · 폰) 외 가방 쓰는 spec들 종류 탭 열기.
