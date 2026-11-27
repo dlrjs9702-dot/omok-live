@@ -55,7 +55,7 @@
   // ROAD (T1 171A): two lanes of 2.3 m and a walk of 1.6 m each side -- 3.9 m from the middle to the walk's outer edge; the
   // ground's road map (island-paths buildRoadMap) paints it, nothing solid stands in it (dalmaru-island roadClear)
   // (1.10.389 N3-a: the high bridge's two -- its ramps now stand where they were -- each more than 5 m off its ends, on the road: (88.4, 138.9) -> (92.8, 135.6), (36.4, 140.5) -> (25.5, 140.6))
-  const CROSSINGS = Object.freeze([[2.4,-52.4],[0.8,-13.7],[92.7,55.1],[102.5,101],[92.8,135.6],[25.5,140.6],[-10.9,141.1],[-19.3,146.5],[-19.7,168],[96.7,129.7],[100.1,119.3],
+  const CROSSINGS = Object.freeze([[2.4,-52.4],[0.59,-14.4] /* (435: on ROUTE's line where the T's painted stem is, clear of the shore road's band -- its bars square across the paint) */,[92.7,55.1],[102.5,101],[92.8,135.6],[25.5,140.6],[-10.9,141.1],[-19.3,146.5],[-19.7,168],[96.7,129.7],[100.1,119.3],
     /* (1.10.395 N4-c: on the new road -- the neck before the corner (the west street's walk to its east side) and the village street where
        each yard's walk comes to it, -14 (at -12: off the corner's bend) · 14 · 42 · 70 · 98) */
     [-20,224],[-12,236],[14,236],[42,236],[70,236],[98,236],
@@ -67,6 +67,12 @@
     [-91.9,134.9],[-25.5,140.6],
     /* (and on the east waterfront, 9.5 m on from its mirror -- clear of 물가 거리's curbs: the bench there by the bay (40.1, 3.3) a round's stop now) */
     [50.9,5.5]].map(([x, z]) => Object.freeze({ x, z })));
+  /* 1.10.435 문제 기록 1b9f6edf 「부두 앞 Y자 갈림 → 일반 도로처럼 T자 + 건널목」: in front of 배 타는 곳 the road from 대청마당 meets the shore road
+     square -- painted so (island-paths buildRoadMap): the shore road straight across (`bar`), the stem up to its middle and squared off there, no
+     yellow or edge line across the mouth, square kerb corners, its crossing straight across the stem; the ground banked and kept clear under it
+     (dalmaru-island). The cars keep 434's ways (ROUTE · L2 as they were): the stops, the rides and the fares unchanged */
+  const TEES = Object.freeze([Object.freeze({ x: 0.4, z: -7.8, ux: 0, uz: -1, bar: Object.freeze([[-7.8, -7.3], [-4, -7.7], [0.4, -7.8], [4, -7.7], [7.8, -7.3]]), stem: Object.freeze([[0.4, -16.2], [0.4, -7.8]]) /* (from the junction -- the cars' Y under it; the crossing on it) */ })]);
+  const PAINT_FLIP = Object.freeze([L2]); /* (435: painted as if run east, as ROUTE across the dock's T -- island-paths buildRoadMap) */
   const CROSS_CLEAR = 5;
   const CROSS_HALF = 2.2;
   const ROAD = Object.freeze({ lane: 2.3, walk: 1.6, half: 3.9 });
@@ -564,6 +570,6 @@
     ...[0, 1].map((k) => Array.from({ length: 41 }, (_, i) => { const p = parkPose(id, k, i / 40); return [p.x, p.z]; })),
     homeTail({ from: id, to: STOPS[id].to, startedAt: 0 }, tableOf(id, undefined, STOPS[id].to)).pts]));
   return { GRAPH, RING, loopWay, loopLenOf, LOOP_LABEL, /* (412 「섬 한 바퀴」) */ footOn, BANKED, PARK_PATHS, boardOf, arriveSide, leaveSide, FAR, /* (410 결정 65-3 A; 411 the far sides' table, for the checks) */ ROADSTOPS, ROAD_LEN, sOf, atS, curbOf, driveBetween, distanceOf, fareByRoad, PLACE_IDS, isTerminal, labelOf, toOf, sendCar, WAIT, nearestRoom, /* (392 N4-b) */
-    LANE, PLACES, BACK, placeOf, laneOffs, createFleet, takeCar, settle, etaAt, fleetView, countAt, standingAt, onBridgeBox: (x, z, m = 0) => bridgeOf(x, z, m) >= 0, bridgeOf, BRIDGES, /* (391 N4-a; 397 both one-lane bridges) */ TRUNK, TRUNK_LEN, SPUR,
+    TEES, PAINT_FLIP, /* (435) */ LANE, PLACES, BACK, placeOf, laneOffs, createFleet, takeCar, settle, etaAt, fleetView, countAt, standingAt, onBridgeBox: (x, z, m = 0) => bridgeOf(x, z, m) >= 0, bridgeOf, BRIDGES, /* (391 N4-a; 397 both one-lane bridges) */ TRUNK, TRUNK_LEN, SPUR,
     CROSSINGS, CROSS_HALF, CROSS_CLEAR, ROAD, TURN_PADS, /* (412) */ LEAD, RAMP, sideAt, ghostAt, shifted, roadNow, rateOf, warpTo, realAt, rideOver, timeless, PULL_AFTER, PARK, parkPose, TURN, backOf, carAt, easeClock, ROUTE, EXT, ROADS, STREET, ROAD_ENDS: Object.freeze([ROUTE[0], ROUTE[ROUTE.length - 1], EXT[EXT.length - 1]]) /* (395: the stops at the roads' ends -- kept clear round, as the two were) */, STOPS, BRIDGE, ENTER, EXIT, EASE, FAST, SLOW, FARE, DAY_PASS, EXTRA, BOARD, ALIGHT, SEAT, roadOf, stopOf, dropOf, driveOf, tableOf, durationOf, poseAt, arrivalOf, doorOf, fareOf };
 }));

@@ -400,8 +400,10 @@ float zb = smoothstep(0.46, 0.54, rd.b);
 // (1.10.423 다듬기 164: the bars measured across the nearest crossing's straight line -- straight from walk to walk on a turning road too)
 float across = off; if (zb > 0.0) { float bd = 1e12; for (int i = 0; i < ${CROSS_N}; i++) { vec2 cd = vGroundXZ - uCross[i].xy; float dd = dot(cd, cd); if (dd < bd) { bd = dd; across = dot(cd, uCross[i].zw); } } }
 float zebra = zb * (1.0 - smoothstep(2.0, 2.06, ao)) * smoothstep(0.42, 0.47, abs(fract(across / 0.9) - 0.5) * 2.0 - 0.0);
-col = mix(col, vec3(0.94, 0.93, 0.89), max(zebra, (1.0 - zb) * (1.0 - smoothstep(0.05, 0.08, abs(ao - 2.1)))));
-col = mix(col, vec3(0.96, 0.78, 0.26), (1.0 - zb) * (1.0 - smoothstep(0.06, 0.09, ao)));
+// (1.10.435: a T's mouth -- B ${(globalThis.IslandPaths.MOUTH / 255).toFixed(2)}, under a crossing's -- plain asphalt: no middle or edge line there)
+float mo = smoothstep(0.06, 0.12, rd.b) * (1.0 - smoothstep(0.38, 0.46, rd.b)); float lines = (1.0 - zb) * (1.0 - mo);
+col = mix(col, vec3(0.94, 0.93, 0.89), max(zebra, lines * (1.0 - smoothstep(0.05, 0.08, abs(ao - 2.1)))));
+col = mix(col, vec3(0.96, 0.78, 0.26), lines * (1.0 - smoothstep(0.06, 0.09, ao)));
 } else if (ao < 2.45) { col = vec3(0.80, 0.78, 0.74); }
 else {
 vec2 q = vGroundXZ / 0.5; vec2 f = fract(q); float h = fract(sin(dot(floor(q), vec2(12.9898, 78.233))) * 43758.5453);

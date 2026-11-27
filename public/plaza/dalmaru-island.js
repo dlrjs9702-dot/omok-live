@@ -120,7 +120,8 @@
   // the nearest point on the middle, the road's left-hand normal there, which side the point is on)
   const TX = (typeof self !== 'undefined' && self.IslandTaxi) || (typeof require === 'function' ? require('./island-taxi.js') : null);
   const ROAD = TX?.ROAD || { lane: 2.3, walk: 1.6, half: 3.9 };
-  const ROADS = TX ? (TX.ROADS || [TX.ROUTE]) : []; /* (1.10.395 N4-c: the road on to 별마루섬 too) */
+  const TEE_LINES = TX ? (TX.TEES || []).flatMap((t) => [t.bar, t.stem]) : []; /* (1.10.435: the dock's T as painted -- its square corners banked, kept clear and walked as the road) */
+  const ROADS = TX ? [...(TX.ROADS || [TX.ROUTE]), ...TEE_LINES] : []; /* (1.10.395 N4-c: the road on to 별마루섬 too) */
   const roadDist = (x, z) => { let d = Infinity; for (const r of ROADS) d = Math.min(d, lineDist(x, z, r)); return d; };
   const roadClear = (o, r) => roadDist(o.x, o.z) > ROAD.half + r + 0.1;
   function roadFoot(x, z) {
@@ -321,7 +322,7 @@
     if (!bankGrid) {
       /* (1.10.405 L0: the roads the taxi banks (island-taxi BANKED) -- the first road, the island's loop to come; the road on to 별마루섬 not: banked it would
          fill 8 m of the village's east shore by the bridge. A piece is [ax, az, bx, bz]) */
-      bankGrid = new Map(); for (const R of TX.BANKED || [TX.ROUTE]) for (let i = 1; i < R.length; i += 1) { const [ax, az] = R[i - 1]; const [bx, bz] = R[i]; const seg = [ax, az, bx, bz];
+      bankGrid = new Map(); for (const R of [...(TX.BANKED || [TX.ROUTE]), ...TEE_LINES]) for (let i = 1; i < R.length; i += 1) { const [ax, az] = R[i - 1]; const [bx, bz] = R[i]; const seg = [ax, az, bx, bz];
         for (let cx = Math.floor((Math.min(ax, bx) - BANK_REACH) / 8); cx <= Math.floor((Math.max(ax, bx) + BANK_REACH) / 8); cx += 1) for (let cz = Math.floor((Math.min(az, bz) - BANK_REACH) / 8); cz <= Math.floor((Math.max(az, bz) + BANK_REACH) / 8); cz += 1) { const k = `${cx},${cz}`; if (!bankGrid.has(k)) bankGrid.set(k, []); bankGrid.get(k).push(seg); } }
     }
     const segs = bankGrid.get(`${Math.floor(x / 8)},${Math.floor(z / 8)}`); if (!segs) return h;

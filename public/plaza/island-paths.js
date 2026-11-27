@@ -110,7 +110,7 @@
   //         G where it is painted (1 within MASK of the middle)   B a 건널목 (1 within CROSS_HALF of one, along)
   // A filtered texel between the road and none reads a mixed R -- so where, is told by G alone. Not painted on a bridge or
   // 대청마당's paving (each has its own floor) nor out on the sea
-  const ROAD_RANGE = 5; const MASK = 4.4; /* (±5 m in 8 bits: 3.9 cm a step -- 10 m showed steps along a bend's lines) */
+  const ROAD_RANGE = 5; const MASK = 4.4; const MOUTH = 64; /* (435: B 0.25 -- a T's mouth, under a 건널목's 0.46) */ /* (±5 m in 8 bits: 3.9 cm a step -- 10 m showed steps along a bend's lines) */
   function buildRoadMap(T, X, res = 1024, at = null) {
     const size = at?.size ?? T.GROUND.size; const x0 = at?.x0 ?? -size / 2; const z0 = at?.z0 ?? -size / 2; const cell = size / res; const n = res * res;
     const out = new Uint8Array(n * 3); const best = new Float32Array(n).fill(Infinity); for (let k = 0; k < n; k += 1) out[k * 3] = 255;
@@ -124,7 +124,16 @@
     const alongPlaza = (p, q) => P && Math.abs(plazaDist(p[0], p[1])) < 2 && Math.abs(plazaDist(q[0], q[1])) < 2;
     /* (1.10.412: a road ending at a round place (X.TURN_PADS) ends square there -- no rounded cap of lines beside the place) */
     const padEnd = (pt) => (X.TURN_PADS || []).some((pad) => Math.hypot(pt[0] - pad.x, pt[1] - pad.z) < pad.r + 0.5);
-    (X.ROADS || [X.ROUTE]).forEach((route, r) => { let total = 0; for (let i = 1; i < route.length; i += 1) { const p = route[i - 1]; const q = route[i]; const len = Math.hypot(q[0] - p[0], q[1] - p[1]); if (!alongPlaza(p, q)) segs.push({ p, q, len, at: total, r, ...(i === route.length - 1 && padEnd(q) ? { square: true } : {}) }); total += len; } });
+    /* (1.10.435 문제 기록 1b9f6edf: a T (X.TEES) -- the cars' corner curves not painted; the shore road straight across and the stem squared off at its
+       middle painted instead; in the mouth no yellow or edge line, after) */
+    const teeAt = (t, x, z) => { const dx = x - t.x; const dz = z - t.z; return { a: dx * t.ux + dz * t.uz, l: dx * t.uz - dz * t.ux }; };
+    const inCorner = (pt) => (X.TEES || []).some((t) => { const { a, l } = teeAt(t, pt[0], pt[1]); return a >= -0.3 && a <= 9 && Math.abs(l) <= 4.5; }); /* (the cars' Y from the junction 8.4 m down the stem) */
+    /* (435: a road drawn the other way from one it meets (X.PAINT_FLIP: L2 · L1 run west from where ROUTE · EXT run east) has its sides told the
+       other way round -- the middle's sign the same either side of the joint; a flip there filtered to 0, a squiggle of yellow over the lanes) */
+    const flips = new Set(X.PAINT_FLIP || []); const seen = new Set(); /* (435: a piece another road has painted already -- the T's stem is ROUTE's and L2's both -- once, the first road's: its crossing and side) */
+    const again = (p, q) => { const k = `${p}>${q}`; const back = `${q}>${p}`; if (seen.has(k) || seen.has(back)) return true; seen.add(k); return false; };
+    (X.ROADS || [X.ROUTE]).forEach((route, r) => { let total = 0; const flip = flips.has(route) ? -1 : 1; for (let i = 1; i < route.length; i += 1) { const p = route[i - 1]; const q = route[i]; const len = Math.hypot(q[0] - p[0], q[1] - p[1]); if (!alongPlaza(p, q) && !(inCorner(p) && inCorner(q)) && !again(p, q)) segs.push({ p, q, len, at: total, r, flip, ...(i === route.length - 1 && padEnd(q) ? { square: true } : {}) }); total += len; } });
+    (X.TEES || []).forEach((t, k) => { for (const [n, line, square] of [[0, t.bar, false], [1, t.stem, true]]) { const r = (X.ROADS || [X.ROUTE]).length + k * 2 + n; let total = 0; /* (its own road each -- a crossing on the stem not along the bar) */ for (let i = 1; i < line.length; i += 1) { const p = line[i - 1]; const q = line[i]; const len = Math.hypot(q[0] - p[0], q[1] - p[1]); segs.push({ p, q, len, at: total, r, ...(square && i === line.length - 1 ? { square: true } : {}) }); total += len; } } });
     const footOf = (x, z) => { let b = null; for (const s of segs) { const dx = s.q[0] - s.p[0]; const dz = s.q[1] - s.p[1]; const t = Math.max(0, Math.min(1, ((x - s.p[0]) * dx + (z - s.p[1]) * dz) / (s.len * s.len || 1e-9))); const d = Math.hypot(x - s.p[0] - dx * t, z - s.p[1] - dz * t); if (!b || d < b.d) b = { d, along: s.at + s.len * t, r: s.r }; } return b; };
     for (const c of X.CROSSINGS || []) { const f = footOf(c.x, c.z); crossAlong.push({ r: f.r, along: f.along }); }
     const reach = ROAD_RANGE;
@@ -137,7 +146,7 @@
         const tr = ((x - s.p[0]) * dx + (z - s.p[1]) * dz) / (s.len * s.len); if (s.square && tr > 1) continue; const t = Math.max(0, Math.min(1, tr));
         const d = Math.hypot(x - s.p[0] - dx * t, z - s.p[1] - dz * t); if (d >= best[k] || d >= reach) continue;
         best[k] = d;
-        const side = Math.sign((x - s.p[0]) * dz - (z - s.p[1]) * dx) || 1; /* (+: the road's right, heading p -> q) */
+        const side = (Math.sign((x - s.p[0]) * dz - (z - s.p[1]) * dx) || 1) * (s.flip || 1); /* (+: the road's right, heading p -> q; 435 a flipped road's left) */
         const along = s.at + s.len * t; const cross = crossAlong.reduce((w, a) => (a.r !== s.r ? w : Math.max(w, 1 - Math.max(0, Math.min(1, (Math.abs(along - a.along) - (X.CROSS_HALF ?? 2.2)) / 0.4)))), 0);
         out[k * 3] = Math.max(0, Math.min(255, Math.round(((side * d) / ROAD_RANGE * 0.5 + 0.5) * 255)));
         out[k * 3 + 1] = d < MASK ? 255 : 0; out[k * 3 + 2] = d < MASK ? Math.round(cross * 255) : 0;
@@ -149,6 +158,12 @@
       for (let j = j0; j <= j1; j += 1) for (let i = i0; i <= i1; i += 1) { const x = x0 + (i + 0.5) * cell; const z = z0 + (j + 0.5) * cell; const k = j * res + i; const r = Math.hypot(x - pad.x, z - pad.z); if (r >= pad.r) continue;
         const off = r <= inner ? 0.2 + (r * 2.1) / inner : 2.3 + (r - inner); const was = out[k * 3 + 1] ? Math.abs((out[k * 3] / 255 - 0.5) * 2 * ROAD_RANGE) : Infinity; if (off >= was) continue;
         out[k * 3] = Math.round((off / ROAD_RANGE * 0.5 + 0.5) * 255); out[k * 3 + 1] = 255; out[k * 3 + 2] = 0; } }
+    /* (435: a T's mouth -- from 0.12 m off the shore road's middle to the stem's own, within the stem's lanes: plain asphalt (B MOUTH: no yellow, no
+       edge line -- the stem's middle and the shore road's edge end there; island.js), the shore road's own side's sign kept) */
+    for (const t of X.TEES || []) { const i0 = Math.max(0, Math.floor((t.x - 4 - x0) / cell)); const i1 = Math.min(res - 1, Math.ceil((t.x + 4 - x0) / cell)); const j0 = Math.max(0, Math.floor((t.z - 4 - z0) / cell)); const j1 = Math.min(res - 1, Math.ceil((t.z + 4 - z0) / cell));
+      for (let j = j0; j <= j1; j += 1) for (let i = i0; i <= i1; i += 1) { const { a, l } = teeAt(t, x0 + (i + 0.5) * cell, z0 + (j + 0.5) * cell); if (a <= 0.12 || a > 3.9 || Math.abs(l) >= 2.3) continue;
+        const x = x0 + (i + 0.5) * cell; const z = z0 + (j + 0.5) * cell; const [p, q] = t.stem; const sd = Math.sign((x - p[0]) * (q[1] - p[1]) - (z - p[1]) * (q[0] - p[0])) || 1; /* (the stem's own side: the sign turns inside the mouth and at the shore road's middle, never at a kerb) */
+        const k = j * res + i; out[k * 3] = Math.round(((sd * Math.max(Math.abs(l), 0.3)) / ROAD_RANGE * 0.5 + 0.5) * 255); out[k * 3 + 1] = 255; out[k * 3 + 2] = MOUTH; } } /* (the stem's own distance on, so its kerbs meet it smoothly -- its lines hidden by MOUTH) */
     for (let j = 0; j < res; j += 1) for (let i = 0; i < res; i += 1) { const k = j * res + i; if (out[k * 3 + 1] && !keep(x0 + (i + 0.5) * cell, z0 + (j + 0.5) * cell)) { out[k * 3 + 1] = 0; out[k * 3 + 2] = 0; } }
     return out;
   }
@@ -157,10 +172,13 @@
   function crossFrames(X) {
     const out = [];
     for (const c of X?.CROSSINGS || []) {
-      let b = null; for (const route of X.ROADS || [X.ROUTE]) for (let i = 1; i < route.length; i += 1) { const p = route[i - 1]; const q = route[i]; const dx = q[0] - p[0]; const dz = q[1] - p[1]; const L = Math.hypot(dx, dz); if (!L) continue; const t = Math.max(0, Math.min(1, ((c.x - p[0]) * dx + (c.z - p[1]) * dz) / (L * L))); const fx = p[0] + dx * t; const fz = p[1] + dz * t; const d = Math.hypot(c.x - fx, c.z - fz); if (!b || d < b.d) b = { d, x: fx, z: fz, nx: dz / L, nz: -dx / L }; }
+      /* (435: a T's painted stem or shore road within 0.5 m first -- its crossing square across the paint, not along the cars' Y under it) */
+      const tees = (X.TEES || []).flatMap((t) => [t.stem, t.bar]); let b = null;
+      for (const route of [...tees, ...(X.ROADS || [X.ROUTE])]) { if (b?.tee && b.d < 0.5) break; const tee = tees.includes(route);
+        for (let i = 1; i < route.length; i += 1) { const p = route[i - 1]; const q = route[i]; const dx = q[0] - p[0]; const dz = q[1] - p[1]; const L = Math.hypot(dx, dz); if (!L) continue; const t = Math.max(0, Math.min(1, ((c.x - p[0]) * dx + (c.z - p[1]) * dz) / (L * L))); const fx = p[0] + dx * t; const fz = p[1] + dz * t; const d = Math.hypot(c.x - fx, c.z - fz); if (!b || d < b.d) b = { d, x: fx, z: fz, nx: dz / L, nz: -dx / L, tee }; } }
       if (b) out.push([b.x, b.z, b.nx, b.nz]);
     }
     return out;
   }
-  return { EDGE_RANGE, ALONG_PERIOD, TIER, ROAD_RANGE, buildPathField, junctionsOf, buildJunctionField, paintedWalks, buildPathMaps, buildRoadMap, crossFrames };
+  return { EDGE_RANGE, ALONG_PERIOD, TIER, ROAD_RANGE, MOUTH, buildPathField, junctionsOf, buildJunctionField, paintedWalks, buildPathMaps, buildRoadMap, crossFrames };
 }));
