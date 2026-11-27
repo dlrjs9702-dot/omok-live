@@ -23,10 +23,19 @@
   const ROOTS = Object.freeze({ dal: Object.freeze({ x: 0, z: 2, yaw: 0 }), byeol: Object.freeze({ x: 223.1, z: 197, yaw: -PI / 2 }) });
   const MODEL = Object.freeze({ berths: [[-6.5, 3.75, -PI / 2], [2.5, 3.75, -PI / 2], [12.75, 7.5, PI]], offshore: [13.75, 34, PI], exits: [[-6.5, 1], [2.5, 1], [9.5, 7.5]] /* (the third's: the arm's middle) */ });
   const toWorld = (id, mx, mz) => { const d = ROOTS[id]; const c = Math.cos(d.yaw); const s = Math.sin(d.yaw); return { x: d.x + mx * c + mz * s, z: d.z - mx * s + mz * c }; };
+  const fromWorld = (id, wx, wz) => { const d = ROOTS[id]; const dx = wx - d.x; const dz = wz - d.z; const c = Math.cos(d.yaw); const s = Math.sin(d.yaw); return { x: dx * c - dz * s, z: dx * s + dz * c }; };
   const poseW = (id, [mx, mz, psi]) => Object.freeze({ ...toWorld(id, mx, mz), yaw: Math.atan2(Math.sin(psi + ROOTS[id].yaw), Math.cos(psi + ROOTS[id].yaw)) });
   const dockOf = (id, label, other, along) => Object.freeze({ id, label, other, float: Object.freeze({ x: ROOTS[id].x, z: ROOTS[id].z, half: 11, w: 4, along }), lane: id === 'dal' ? 0 : LANE.length - 1,
     berths: Object.freeze(MODEL.berths.map((b) => poseW(id, b))), offshore: poseW(id, MODEL.offshore) });
   const DOCKS = Object.freeze({ dal: dockOf('dal', '배 타는 곳', 'byeol', 'x'), byeol: dockOf('byeol', '별마루섬 부두', 'dal', 'z') });
+  /* (1.10.434 Codex P3-21: shared boarding region covering the entire 22 x 4 m float and its 3 x 10 m arm, with margin -- client and server agree) */
+  function nearDock(id, x, z, margin = 2.0) {
+    const d = DOCKS[id]; if (!d || !Number.isFinite(x) || !Number.isFinite(z)) return false;
+    const loc = fromWorld(id, x, z);
+    const onFloat = Math.abs(loc.x) <= d.float.half + margin && Math.abs(loc.z) <= d.float.w / 2 + margin;
+    const onArm = loc.x >= 8 - margin && loc.x <= 12.5 + margin && loc.z >= -margin && loc.z <= 10 + margin;
+    return onFloat || onArm;
+  }
   const OUTER = 0; const INNER = 1; const UNLOAD_BERTH = 2;
   // the model's marks (assets 134 ferry.json), in the model's own frame (bow -Z); turned into the boat's frame (bow +Z) by (-x, -z)
   const NODES = Object.freeze({ seats: Object.freeze([[-0.55, 0.8, -0.63], [0.55, 0.8, -0.63], [-0.55, 0.8, 0.42], [0.55, 0.8, 0.42]]), captain: Object.freeze([0.72, 0.35, -1.7]), deck: 0.35, gateZ: 1.45, beam: 3.0, length: 8.0 });
@@ -93,7 +102,7 @@
     for (let i = 1; i < pts.length; i += 1) { const [ax, az] = pts[i - 1]; const [bx, bz] = pts[i]; const L = Math.hypot(bx - ax, bz - az); const n = Math.max(1, Math.ceil(L)); for (let k = 1; k <= n; k += 1) { const x = ax + ((bx - ax) * k) / n; const z = az + ((bz - az) * k) / n; lane.push({ x, z, kind: 'lane', slow: Math.hypot(x - BRIDGE.x, z - BRIDGE.z) < BRIDGE.r }); } }
     lane.pop(); /* (its last the way in's first) */ const all = [j0, ...lane, Bw[0]]; /* (the lane's bow by the way 1.5 m either side -- round its corners, never off it by 15°) */
     for (let i = 1; i < all.length - 1; i += 1) { const a = all[i - 1]; const b = all[i + 1]; const k = Math.hypot(b.x - a.x, b.z - a.z) > 0.5 ? 1 : 2; const a2 = all[Math.max(0, i - k)]; const b2 = all[Math.min(all.length - 1, i + k)]; all[i].yaw = Math.atan2(b2.x - a2.x, b2.z - a2.z); }
-    const out = { key, ...timed([...A, ...lane, ...Bw].map((s, i) => ({ ...s, kind: i === A.length + lane.length ? 'ahead' : s.kind }) /* (the way in's first: still going ahead, no stop where the lane meets it) */)), endYaw: Bw[Bw.length - 1].yaw, clearMs: 0 }; out.clearMs = out.samples[A.length - 1].t; paths.set(key, out); return out;
+    const out = { key, ...timed([...A, ...lane, ...Bw].map((s, i) => ({ ...s, kind: i === A.length + lane.length ? 'ahead' : s.kind }) /* (the way in's first: still going ahead, no stop where the lane meets it) */)), endYaw: Bw[Bw.length - 1].yaw, clearMs: 0, inMs: Infinity }; out.clearMs = out.samples[A.length - 1].t; if (bTo === UNLOAD_BERTH) out.inMs = out.samples[A.length + lane.length].t; paths.set(key, out); return out;
   }
   const moorPath = (id) => { const key = `moor:${id}`; if (!paths.has(key)) paths.set(key, { key, ...timed(placed(id, TEMPLATES.in)) }); return paths.get(key); };
   const shiftPath = (id, k) => { const key = `shift:${id}:${k}`; if (!paths.has(key)) paths.set(key, { key, ...timed(placed(id, TEMPLATES.shift[k])) }); return paths.get(key); };
@@ -136,12 +145,16 @@
   /* (an empty boat off the unloading berth: the inner boarding berth first, the outer if the inner is taken -- none while the outer is: the inner's way
      in and out passes it) */
   const shiftTarget = (fleet, dock, b) => { const used = usedBerths(fleet, dock, b); return used.has(OUTER) ? -1 : used.has(INNER) ? OUTER : INNER; };
-  // the water in front of a dock one boat's at a time: one leaving there (till it is out on its way), one shifting, one about to leave
+  // the water in front of a dock one boat's at a time (1.10.434 Codex P2-20): leaving, shifting, mooring, and final approach share one dock-water reservation
   const leaving = (fleet, dock, b, now) => fleet.boats.some((o) => o !== b && o.phase === 'sail' && o.from === dock && now < (o.clearAt ?? 0));
   const shifting = (fleet, dock, b) => fleet.boats.some((o) => o !== b && o.at === dock && o.phase === 'shift');
-  const busyForShift = (fleet, dock, b, now) => leaving(fleet, dock, b, now) || shifting(fleet, dock, b) || fleet.boats.some((o) => o !== b && o.at === dock && (o.phase === 'hold' || o.phase === 'back'));
-  const busyForLeave = (fleet, dock, b, now) => leaving(fleet, dock, b, now) || shifting(fleet, dock, b);
-  function depart(fleet, b, now) { b.from = b.at; b.to = DOCKS[b.at].other; b.berthFrom = b.berth; b.berthTo = freeBerth(fleet, b.to, b); b.phase = 'sail'; b.t0 = now; b.at = null; b.berth = -1; const p = pathOf(b.from, b.berthFrom, b.to, b.berthTo); b.until = now + p.ms / fleet.scale; b.clearAt = now + p.clearMs / fleet.scale; }
+  const mooring = (fleet, dock, b) => fleet.boats.some((o) => o !== b && o.at === dock && o.phase === 'moor');
+  const arriving = (fleet, dock, b, now) => fleet.boats.some((o) => o !== b && o.phase === 'sail' && o.to === dock && o.berthTo === UNLOAD_BERTH && now >= (o.inAt ?? Infinity));
+  const dockWaterBusy = (fleet, dock, b, now) => leaving(fleet, dock, b, now) || shifting(fleet, dock, b) || mooring(fleet, dock, b) || arriving(fleet, dock, b, now);
+  const busyForShift = (fleet, dock, b, now) => dockWaterBusy(fleet, dock, b, now) || fleet.boats.some((o) => o !== b && o.at === dock && (o.phase === 'hold' || o.phase === 'back'));
+  const busyForLeave = (fleet, dock, b, now) => dockWaterBusy(fleet, dock, b, now);
+  const busyForMoor = (fleet, dock, b, now) => dockWaterBusy(fleet, dock, b, now);
+  function depart(fleet, b, now) { b.from = b.at; b.to = DOCKS[b.at].other; b.berthFrom = b.berth; b.berthTo = freeBerth(fleet, b.to, b); b.phase = 'sail'; b.t0 = now; b.at = null; b.berth = -1; const p = pathOf(b.from, b.berthFrom, b.to, b.berthTo); b.until = now + p.ms / fleet.scale; b.clearAt = now + p.clearMs / fleet.scale; b.inAt = Number.isFinite(p.inMs) ? now + p.inMs / fleet.scale : Infinity; }
   /* (boardable: the outer boarding berth's boat first; the inner's only while the outer is empty and nothing shifting into it -- its way out passes
      there. Never one at the unloading berth: a rider's boat never backs out) */
   const boardable = (fleet, dock) => fleet.boats.filter((b) => b.at === dock && (b.phase === 'hold' || b.phase === 'docked') && (b.berth === OUTER || (b.berth === INNER && !usedBerths(fleet, dock, b).has(OUTER)))).sort((a, c) => a.berth - c.berth);
@@ -205,8 +218,8 @@
           if (b.berth < 0) { b.phase = 'wait'; b.t0 = arrive; } else if (riders) { b.phase = 'unload'; b.until = arrive + UNLOAD / fleet.scale; } else rest(fleet, b, arrive);
           moved = true; continue;
         }
-        /* (the waiting spot is on the unloading berth's way in: in ahead once it is free -- the same way's last 27.5 m) */
-        if (b.phase === 'wait') { if (freeBerth(fleet, b.at, b) === UNLOAD_BERTH) { b.berth = UNLOAD_BERTH; b.phase = 'moor'; b.t0 = now; b.until = now + moorPath(b.at).ms / fleet.scale; moved = true; } continue; }
+        /* (the waiting spot is on the unloading berth's way in: in ahead once the berth and dock water are free -- 434 P2-20) */
+        if (b.phase === 'wait') { if (freeBerth(fleet, b.at, b) === UNLOAD_BERTH && !busyForMoor(fleet, b.at, b, now)) { b.berth = UNLOAD_BERTH; b.phase = 'moor'; b.t0 = now; b.until = now + moorPath(b.at).ms / fleet.scale; moved = true; } continue; }
         if (b.phase === 'moor' && now >= b.until) { if (b.seats.some(Boolean)) { b.phase = 'unload'; b.until += UNLOAD / fleet.scale; } else rest(fleet, b, now); moved = true; continue; }
         if (b.phase === 'unload' && now >= b.until) {
           for (let k = 0; k < SEATS; k += 1) if (b.seats[k]) { out.released.push({ token: b.seats[k], dock: b.at, ...exitOf(b.at, b.berth) }); b.seats[k] = null; } b.n += 1;
@@ -237,7 +250,7 @@
     const eta = Math.max(0, Math.ceil(((v.eta?.[dock] ?? 0) - (now - v.at)) / 1000));
     return `배 오는 중 · ${eta}초${myPlace ? ` · 내 순서 ${myPlace}번째` : ''}`;
   }
-  return { SEATS, HOLD, UNLOAD, MOOR, FAST, SLOW, BOATS, BRIDGE, SIDE, LANE, DOCKS, NODES, SEAT_DROP, worldOf, seatAt, captainAt, exitOf, laneSide, pathOf, poseAt, sailMs,
+  return { SEATS, HOLD, UNLOAD, MOOR, FAST, SLOW, BOATS, BRIDGE, SIDE, LANE, DOCKS, NODES, SEAT_DROP, worldOf, seatAt, captainAt, exitOf, nearDock, laneSide, pathOf, poseAt, sailMs,
     ROOTS, MODEL, OUTER, INNER, UNLOAD_BERTH, moorPath, shiftPath, boardable, shiftTarget, /* (409 결정 75) */
     createFleet, riderOf, countAt, freeBerth, board, leave, drop, etaOf, tick, view, signOf };
 }));

@@ -542,7 +542,8 @@
       if (h === stop || (h === null && (c.ride.from === stop || toOf(c.ride) === stop))) best = Math.min(best, (h === null && c.ride.from !== stop ? realAt(c.ride, c.ride.startedAt + durationOf(c.ride) + TURN, now) : backOf(c.ride, now)) - now); }
     return Number.isFinite(best) ? Math.max(1, best) : 1000;
   }
-  const fleetView = (fleet) => ({ cars: fleet.cars.map((c) => ({ id: c.id, at: c.at, place: c.place, pulledAt: c.pulledAt || 0, ride: c.ride })) });
+  /* (1.10.434 Codex P2-19: include standing car's `curb` so road stops across the street draw at the actual side) */
+  const fleetView = (fleet) => ({ cars: fleet.cars.map((c) => ({ id: c.id, at: c.at, place: c.place, pulledAt: c.pulledAt || 0, ride: c.ride, ...(c.curb === 1 || c.curb === -1 ? { curb: c.curb } : {}) })) });
   // where the rider stands once out (and where a ride cut off counts them): beside the car as it stands at the other stop
   const arrivalOf = (ride) => { const t = tableOf(ride.from, ride.runMs, toOf(ride), ride.curb); const p = along(t, t.total); return beside(p.x, p.z, p.yaw, ALIGHT); };
   // the door's opening (0 shut .. 1 open) through a getting in or out (motion-utils doorAngle: in 0..0.14 open, 0.86..1 shut;

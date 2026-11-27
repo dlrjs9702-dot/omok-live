@@ -2268,20 +2268,37 @@ async function tigerLoseOnce(account, id, defId, at) {
   if (r?.error === 'DONE') { const d = (await pointStore.questDoc(account, 'tiger').catch(() => ({ doc: null }))).doc || {}; return { lost: d.lost?.[id] || (d.lastId === id ? d.lastLost : null) || [] }; } /* (a try that had saved before its answer was lost: what it took) */
   return r?.error ? { lost: [] } : r;
 }
-/* (1.10.403 Codex 391~400 #16: a catch whose loss is not saved yet is kept (world 'tigerPending', by its id) and tried again -- quickly at first, then
-   every half minute, a day at most -- across a restart too (tigerPendingResume at boot), with the same id: taken once, never lost) */
-const tigerPending = new Map(); let tigerPendingSaving = Promise.resolve();
-const tigerPendingSave = () => { tigerPendingSaving = tigerPendingSaving.then(() => pointStore.setWorldValue('tigerPending', Object.fromEntries(tigerPending))).catch((error) => console.error('호랑이 미처리 저장 실패:', error.message)); return tigerPendingSaving; };
-function tigerLoseLater(account, id, defId, at) {
-  if (tigerPending.has(id)) return; tigerPending.set(id, { account, defId, at }); tigerPendingSave();
+/* (1.10.403 Codex #16 · 1.10.434 Codex P2-17: mutate tigerPending by catch id inside worldEdit without clobbering unloaded entries, and retry startup recovery until the initial read succeeds) */
+const tigerPending = new Map(); let tigerResumed = false; let tigerResumeTimer = null;
+const tigerPendingMutate = (id, entry) => worldEdit(async () => {
+  const cur = (await pointStore.worldValue('tigerPending')) || {};
+  const next = { ...cur };
+  if (entry) next[id] = entry; else delete next[id];
+  await pointStore.setWorldValue('tigerPending', next);
+}).catch((error) => console.error('호랑이 미처리 저장 실패:', error.message));
+function tigerLoseLater(account, id, defId, at, { persist = true } = {}) {
+  if (tigerPending.has(id)) return; const entry = { account, defId, at }; tigerPending.set(id, entry);
+  if (persist) tigerPendingMutate(id, entry);
   (async () => {
     let late = null; let k = 0;
     while (!late && nowMs() - at < 24 * 3600000) { k += 1; await new Promise((r) => { setTimeout(r, k < 5 ? 2000 * k : 30000).unref?.(); }); late = await tigerLoseOnce(account, id, defId, at); }
-    tigerPending.delete(id); tigerPendingSave(); const def = IslandTigers.TIGERS.find((d) => d.id === defId);
+    tigerPending.delete(id); tigerPendingMutate(id, null); const def = IslandTigers.TIGERS.find((d) => d.id === defId);
     console.log(`[tiger] caught by=${defId} lost=${late?.lost?.length ?? 0}${late ? ' late' : ' unsaved'}`); notifyAccount(account, 'tigerLost', { id, by: def?.name || '호랑이', lost: late?.lost || [], ...(late?.bag ? { bag: late.bag } : {}), ...(late ? {} : { unsaved: true }) });
   })();
 }
-async function tigerPendingResume() { const saved = await pointStore.worldValue('tigerPending').catch(() => null); for (const [id, p] of Object.entries(saved || {})) if (p?.account && p.defId && Number.isFinite(p.at)) tigerLoseLater(p.account, id, p.defId, p.at); }
+async function tigerPendingResume() {
+  if (tigerResumed) return true;
+  let saved;
+  try { saved = await pointStore.worldValue('tigerPending'); }
+  catch (error) {
+    console.error('호랑이 미처리 복구 읽기 실패:', error.message);
+    if (!tigerResumeTimer) { tigerResumeTimer = setTimeout(() => { tigerResumeTimer = null; tigerPendingResume().catch(() => {}); }, 5000); tigerResumeTimer.unref?.(); }
+    return false;
+  }
+  tigerResumed = true;
+  for (const [id, p] of Object.entries(saved || {})) if (p?.account && p.defId && Number.isFinite(p.at)) tigerLoseLater(p.account, id, p.defId, p.at, { persist: false });
+  return true;
+}
 /* (tiger review #4: a screen that was shut or away when it was caught -- told once it is back (its lobby stream opens), till it says it saw it) */
 async function tigerCaughtReplay(account) {
   if (!account) return; const doc = (await pointStore.questDoc(account, 'tiger').catch(() => ({ doc: null }))).doc;
@@ -2834,7 +2851,7 @@ const taxiSignNear = (stop, p) => { const a = { ...IslandTaxi.curbOf(stop, 1).si
 /* (the side a road stop's car stands or will stand on -- one standing there, else the one sent: its own way's side -- and whether that is across the road from `p`) */
 const taxiAcross = (stop, p) => { const standing = IslandTaxi.standingAt(taxiFleet, stop)[0]; const sent = taxiFleet.cars.find((c) => c.ride?.empty && c.ride.to === stop && c.ride.stay === true);
   const side = standing ? (standing.curb ?? 1) : sent ? IslandTaxi.arriveSide(sent.ride.from, stop) : null; return side ? { side, across: side !== taxiSignNear(stop, p).side } : {}; };
-const boatAtDock = (p, dock) => Boolean(p) && (p.space || 'island') === 'island' && Math.hypot(p.x - IslandBoat.DOCKS[dock].float.x, p.z - IslandBoat.DOCKS[dock].float.z) <= BOAT_NEAR && !(nowMs() - (p.leapAt || 0) < BOAT_LEAP_MS);
+const boatAtDock = (p, dock) => Boolean(p) && (p.space || 'island') === 'island' && IslandBoat.nearDock(dock, p.x, p.z, 2.5) && !(nowMs() - (p.leapAt || 0) < BOAT_LEAP_MS); /* (1.10.434 Codex P3-21: shared 22 m float + arm region) */
 /* (1.10.395 Codex 11: who may board -- the same for the board button and the queue: not in a taxi, not fishing, seated, on the train or in a room, not on a bike) */
 const boatRefusal = (session, here) => (taxiRides.has(session.token) ? 'taxi' : (taxiBusyOf(session, here)?.reason || (here?.bike ? 'bike' : null)));
 const boatsView = (now = nowMs()) => IslandBoat.view(boatFleet, now);
@@ -5246,7 +5263,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.433' });
+    return sendJson(res, 200, { ok: true, version: '1.10.434' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -6675,9 +6692,25 @@ async function requestHandler(req, res) {
       return sendError(res, 409, code, say, { bag: out.bag });
     }
     if (out.applied) {
-      { const kindOf = (id) => IslandItems.TOOL_KIND[id] || (id.startsWith('bike_') ? 'bike' : id); const have = new Set(out.bag.items.map((e) => kindOf(e.itemId)));
-        const quick = IslandItems.quickSlots((await pointStore.worldValue(`quick:${account}`)) || []) || [];
-        if (quick.some((k) => k && !have.has(k))) await worldEdit(() => pointStore.setWorldValue(`quick:${account}`, quick.map((k) => (k && !have.has(k) ? null : k)))); }
+      /* (1.10.434 Codex P2-15: re-read quickbar inside worldEdit and drop only the newly exhausted kind so concurrent edits are never clobbered) */
+      { const kindOf = (id) => IslandItems.TOOL_KIND[id] || (id.startsWith('bike_') ? 'bike' : id);
+        const goneKind = kindOf(out.gone.itemId);
+        if (!out.bag.items.some((e) => kindOf(e.itemId) === goneKind)) {
+          await worldEdit(async () => {
+            const cur = IslandItems.quickSlots((await pointStore.worldValue(`quick:${account}`)) || []) || [];
+            if (cur.includes(goneKind)) await pointStore.setWorldValue(`quick:${account}`, cur.map((k) => (k === goneKind ? null : k)));
+          });
+        } }
+      /* (1.10.434 Codex P2-16: discarding the last bag pet also stops walking it and clears its cache/presence) */
+      if (out.gone.itemId.startsWith('pet_') && !out.bag.items.some((e) => e.itemId === out.gone.itemId)) {
+        const petKind = out.gone.itemId.slice(4);
+        const cleared = await pointStore.questApply(account, 'pet', (d) => (!d.uid && d.kind === petKind ? { doc: {} } : null)).catch(() => null);
+        if (cleared?.doc) {
+          petOf.set(account, null);
+          for (const [token, e] of plazaPresence) if (e.account === account) { e.pet = null; plazaPresence.set(token, e); }
+          plazaDirty = true;
+        }
+      }
       await worldEdit(async () => { const log = (await pointStore.worldValue('discardLog')) || []; log.push({ at: nowMs(), account, name: await accountName(account).catch(() => ''), itemId: out.gone.itemId, qty: out.gone.qty }); await pointStore.setWorldValue('discardLog', log.slice(-500)); }).catch((error) => console.error('버린 기록 실패:', error.message));
     }
     const leftMs = Math.max(0, (out.until || 0) - nowMs());
@@ -7428,19 +7461,28 @@ async function requestHandler(req, res) {
     const judged = IslandQuarry.judge(pull.plan, quarryTaps(pull)); /* (1.10.351 Codex P1: the presses the server timed -- body.taps not read) */
     if (process.env.NODE_ENV === 'test') quarryLastJudged.set(t, { at: pull.at, shownAt: pull.shownAt ?? null, finishAt: nowMs(), plan: pull.plan, presses: pull.presses || [], taps: quarryTaps(pull), judged }); /* (385 총괄: what the server saw each round -- /api/test/quarry/last) */
     if (!judged.done) {
-      // (1.10.351 Codex 341-350 #5: at the 화강암 벽 -- outside the day's count -- a miss gives nothing (nor wears the pickaxe), else
-      // missing on purpose was endless 작은 돌)
-      /* (362 Codex 351-360 P1 #1: a 작은 돌 (300P) for a pickaxe use (2,000P / 40) -- missing on purpose was +250P each, endless; it counts in the day's 60 now.
-         Codex 361~370 #8: the day's count kept first, the stone only then -- a count not kept had still given the stone, past the limit) */
-      const counted = wall ? null : await pointStore.questApply(account, 'quarry', (d) => ({ doc: { day: today, n: (d.day === today ? d.n || 0 : 0) + 1 } })).catch(() => null);
-      if (!wall && !counted?.doc) { quarryPulls.delete(t); collectionPose(t); return sendError(res, 503, 'COLLECT_RETRY', '잠시 후 다시 해 주세요.'); }
-      const missed = wall ? null : await pointStore.islandGive({ userId: account, claimId: `quarry-miss:${account}:${pull.at}`, itemId: 'stone', qty: 1, wear: 'pickaxe', quiet: true }, nowMs()).catch(() => null);
-      const result = { ok: true, ore: 0, itemId: missed?.applied ? 'stone' : null, hits: judged.hits, rounds: IslandQuarry.ROUNDS, left: wall ? null : kept.left, stage: kept.left > 0 ? 'full' : 'mined', bag: missed?.bag || null, worn: missed?.worn || null, ...(wall ? { wall: true } : {}), ...(counted ? { daily: { n: counted.doc?.n ?? null, max: null /* (379) */ } } : {}) };
+      // (1.10.351 Codex #5: at the 화강암 벽 -- outside the day's count -- a miss gives nothing nor wears the pickaxe)
+      // (1.10.434 Codex P2-12·P2-13: normal rock miss atomically checks pickaxe + gather room for 'stone', wears pickaxe, grants stone, and increments daily count together)
+      if (wall) {
+        const result = { ok: true, ore: 0, itemId: null, hits: judged.hits, rounds: IslandQuarry.ROUNDS, left: null, stage: 'full', bag: null, worn: null, wall: true };
+        quarryPulls.set(t, { ...pull, requestId: body.requestId, result }); collectionPose(t); return sendJson(res, 200, result);
+      }
+      const r = await pointStore.questApply(account, 'quarry', (d, bag) => {
+        const wore = IslandItems.wearTool(bag || [], 'pickaxe');
+        if (!wore) return { error: 'NO_PICKAXE' };
+        const bagNext = IslandItems.addToBag(wore.entries, 'stone', 1, `quarry-miss:${pull.at}`, null, IslandItems.capOf(account));
+        if (!bagNext) return { error: 'FULL' };
+        return { doc: { day: today, n: (d.day === today ? d.n || 0 : 0) + 1 }, bagNext, worn: wore.worn };
+      }).catch(() => null);
+      if (!r) { quarryPulls.delete(t); collectionPose(t); return sendError(res, 503, 'COLLECT_RETRY', '잠시 후 다시 해 주세요.'); }
+      if (r.error === 'NO_PICKAXE') { quarryPulls.delete(t); collectionPose(t); return sendError(res, 409, 'NO_PICKAXE', '곡괭이가 있어야 캘 수 있어요. 잡화점에서 살 수 있어요.'); }
+      if (r.error === 'FULL') { quarryPulls.delete(t); collectionPose(t); return bagFull(res, 'stone'); }
+      const result = { ok: true, ore: 0, itemId: 'stone', hits: judged.hits, rounds: IslandQuarry.ROUNDS, left: kept.left, stage: kept.left > 0 ? 'full' : 'mined', bag: r.bag || null, worn: r.worn || null, daily: { n: r.doc?.n ?? null, max: null /* (379) */ } };
       quarryPulls.set(t, { ...pull, requestId: body.requestId, result }); collectionPose(t); return sendJson(res, 200, result);
     }
-    if (wall) { /* (1.10.350 화강암 벽: granite only, its own claim a mining; the rock state and the day's count untouched) */
-      const given = await pointStore.islandGive({ userId: account, claimId: `quarry-wall:${account}:${pull.at}`, itemId: 'ore_granite', qty: 1, wear: 'pickaxe', quiet: true }, nowMs()).catch(() => null);
-      if (!given || !given.applied) { quarryPulls.delete(t); collectionPose(t); return given?.reason === 'full' ? bagFull(res, 'ore_granite') : sendError(res, 409, 'COLLECT_NOT_STARTED', '다시 시도해 주세요.'); }
+    if (wall) { /* (1.10.350 화강암 벽: granite only, its own claim a mining; 434 P2-12: pickaxe required at commit) */
+      const given = await pointStore.islandGive({ userId: account, claimId: `quarry-wall:${account}:${pull.at}`, itemId: 'ore_granite', qty: 1, wear: 'pickaxe', requireTool: true, quiet: true }, nowMs()).catch(() => null);
+      if (!given || !given.applied) { quarryPulls.delete(t); collectionPose(t); return given?.reason === 'full' ? bagFull(res, 'ore_granite') : given?.reason === 'no-tool' ? sendError(res, 409, 'NO_PICKAXE', '곡괭이가 있어야 캘 수 있어요. 잡화점에서 살 수 있어요.') : sendError(res, 409, 'COLLECT_NOT_STARTED', '다시 시도해 주세요.'); }
       const { doc } = await pointStore.questDoc(account, 'quarry');
       const result = { ok: true, ore: 1, itemId: 'ore_granite', name: IslandItems.ITEMS.ore_granite?.name || '화강암', icon: IslandItems.ITEMS.ore_granite?.icon || '🪨', hits: judged.hits, bonus: judged.bonus, rounds: IslandQuarry.ROUNDS, left: null, stage: 'full', wall: true, bag: given.bag, worn: given.worn || null, daily: { n: doc?.day === today ? doc.n || 0 : 0, max: null /* (379) */ } };
       quarryPulls.set(t, { ...pull, requestId: body.requestId, result }); collectionPose(t); return sendJson(res, 200, result);
@@ -7449,8 +7491,8 @@ async function requestHandler(req, res) {
     const gemPms = Object.fromEntries(IslandOres.GEMS.map((g) => [g.id, [Economy.value(Economy.gemKey(g)), Economy.value(Economy.gemKey(g, true))]])); /* (383 #11: the ‱ gems' own keys) */
     const gem = IslandOres.drawGem(rock.ore, quarryTestGem ?? crypto.randomInt(0, 1e9) / 1e9, judged.bonus > 0, 1 /* (369 검토 #2, 사용자 A: no event on the gems -- 「채석 위 단계」 the ore's stage only) */, gemPms); quarryTestGem = null;
     const oreId = gem ? `gem_${gem}` : `ore_${IslandOres.drawOre(rock.ore, quarryTestDraw ?? crypto.randomInt(0, 1e9) / 1e9, judged.bonus > 0, catchMultNow('quarry_up'))}`; /* (364 섬 이벤트) */ quarryTestDraw = null;
-    const given = await pointStore.islandGive({ userId: account, claimId: `quarry:${rock.id}:${account}:${pull.at}`, itemId: oreId, qty: 1, wear: 'pickaxe', quiet: true }, nowMs()).catch(() => null); /* (379: this mining's own claim -- the rock never runs out) */
-    if (!given || !given.applied) { quarryPulls.delete(t); collectionPose(t); return given?.reason === 'full' ? bagFull(res, oreId) : sendError(res, 409, 'COLLECT_NOT_STARTED', '다시 시도해 주세요.'); }
+    const given = await pointStore.islandGive({ userId: account, claimId: `quarry:${rock.id}:${account}:${pull.at}`, itemId: oreId, qty: 1, wear: 'pickaxe', requireTool: true, quiet: true }, nowMs()).catch(() => null); /* (379: this mining's own claim; 434 P2-12: pickaxe required at commit) */
+    if (!given || !given.applied) { quarryPulls.delete(t); collectionPose(t); return given?.reason === 'full' ? bagFull(res, oreId) : given?.reason === 'no-tool' ? sendError(res, 409, 'NO_PICKAXE', '곡괭이가 있어야 캘 수 있어요. 잡화점에서 살 수 있어요.') : sendError(res, 409, 'COLLECT_NOT_STARTED', '다시 시도해 주세요.'); }
     const counted = await pointStore.questApply(account, 'quarry', (d) => ({ doc: { day: today, n: (d.day === today ? d.n || 0 : 0) + 1 } })).catch(() => null);
     // (366 user 2A: an account's first of each gem -- its card here, and the island told once, by the name it shows)
     const stamp = nowMs(); const firstOf = gem ? await pointStore.questApply(account, 'gems', (d) => (d[gem] ? null : { doc: { ...d, [gem]: stamp } })).catch(() => null) : null;
@@ -8134,7 +8176,7 @@ async function requestHandler(req, res) {
       // (v1.10.221 도구 닳기: a rod or a net -- up to three of a kind, counted inside the buy itself (two at once: one); a bike once)
       if (!IslandItems.TOOL_KIND[s.id] && ((await pointStore.islandBag(account, [])).items || []).some((e) => e.itemId === s.id && e.qty > 0)) return sendError(res, 409, 'ALREADY_HAVE', '이미 가지고 있어요.');
     }
-    let out; try { out = await pointStore.islandBuy({ userId: account, requestId: String(body.requestId || ''), itemId: s.id, qty, unit: Economy.value(`good:${s.id}`) }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
+    let out; try { out = await pointStore.islandBuy({ userId: account, requestId: String(body.requestId || ''), itemId: s.id, qty, unit: Economy.value(`good:${s.id}`), now: nowMs() }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
     if (out.reason === 'max') return sendError(res, 409, 'TOOL_MAX', `${{ bugnet: '잠자리채', pickaxe: '곡괭이', fishing_rod: '낚싯대' }[IslandItems.TOOL_KIND[s.id]] || '도구'}는 ${IslandItems.TOOL_MAX}개까지 가질 수 있어요.`); /* (379 「결정 6 A」: 곡괭이는 곡괭이로) */
     if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
     if (out.reason === 'full') return bagFull(res, s.id);
@@ -9446,12 +9488,19 @@ async function requestHandler(req, res) {
     const fail = { BAD_TASK: '알 수 없는 할 일이에요.', TASK_CLOSED: '지금은 할 수 없는 일이에요.', TASK_DONE: '오늘은 이만큼이면 충분해요. 내일 또 와 주세요!', BAD_GOOD: '그런 물건은 없어요.', OWNED: '이미 받은 물건이에요.', NOT_ENOUGH: '도장이 모자라요.', GIFT_HELD: '들고 있는 선물부터 배달해 주세요.', NO_GIFT: '먼저 행사 주민에게서 선물을 받아 와요.', WRONG_RESIDENT: '이 선물은 다른 이웃 몫이에요.', NO_RESIDENT: '지금은 선물 받을 이웃이 없어요.', NOT_ROLLING: '먼저 눈덩이를 굴려 주세요.', TOO_SHORT: '조금 더 굴려 주세요.', SNOW_STACKED: '눈덩이 셋을 다 쌓았어요. 꾸며 주세요!', SNOW_NOT_STACKED: '눈덩이 셋을 먼저 굴려 쌓아 주세요.', NOT_ROLLED: '걸어 다니며 굴려요 — 3 m 넘게 굴려 주세요.', SNOW_BARE: '하나라도 붙여 꾸며 주세요.' };
     const stamp = async (task, n = null) => { const r = await pointStore.questApply(account, key, (doc) => { const a = IslandFestival.award(fest, doc, task, now, n); return a.error ? { error: a.error } : { doc: a.doc, added: a.added }; }); return r?.error ? { error: r.error } : { added: r.added, view: IslandFestival.view(fest, (await pointStore.questDoc(account, key)).doc, now) }; };
     const sendStamp = (r, extra = {}) => (r.error ? sendError(res, 409, r.error, fail[r.error] || '할 수 없어요.') : sendJson(res, 200, { ok: true, added: r.added, festival: r.view, ...extra }));
-    if (action === 'harvest') { // 밭 수확: at the farm's field, a vegetable and a stamp (three a day)
+    if (action === 'harvest') { // 밭 수확 · 1.10.434 Codex P2-11: vegetable grant, stamp, and daily count committed in one atomic questApply
       const F = IslandTerrain.FARM; if (!at || (at.space || 'island') !== 'island' || Math.abs(at.x - F.x) > F.w / 2 + 1.5 || Math.abs(at.z - F.z) > F.d / 2 + 1.5) return sendError(res, 409, 'TOO_FAR', '밭 안에서 수확할 수 있어요.');
-      const count = ((await pointStore.questDoc(account, key)).doc?.days?.[day]?.harvest || 0); if (count >= fest.tasks.harvest.perDay) return sendError(res, 409, 'TASK_DONE', fail.TASK_DONE);
-      const out = await pointStore.islandGive({ userId: account, claimId: `festharvest:${fest.id}:${day}:${account}:${count + 1}`, itemId: 'harvest', qty: 1, meta: null }, nowMs());
-      if (out.reason === 'full') return bagFull(res, 'harvest');
-      return sendStamp(await stamp('harvest'), { bag: out.bag });
+      const r = await pointStore.questApply(account, key, (doc, bag) => {
+        const a = IslandFestival.award(fest, doc, 'harvest', now);
+        if (a.error) return { error: a.error };
+        const n = a.doc.days?.[day]?.harvest || 1;
+        const bagNext = IslandItems.addToBag(bag || [], 'harvest', 1, `festharvest:${fest.id}:${day}:${n}`, null, IslandItems.capOf(account));
+        if (!bagNext) return { error: 'FULL' };
+        return { doc: a.doc, added: a.added, bagNext };
+      });
+      if (r?.error === 'FULL') return bagFull(res, 'harvest');
+      if (r?.error) return sendError(res, 409, r.error, fail[r.error] || '할 수 없어요.');
+      return sendJson(res, 200, { ok: true, added: r.added, festival: IslandFestival.view(fest, r.doc, now), bag: r.bag });
     }
     if (action === 'cook') { // 요리 대회: three things from the bag, by the host -- judged, taken, two stamps (once a day)
       if (!near(P.host, P.REACH + 1)) return sendError(res, 409, 'TOO_FAR', '행사 주민 곁에서 요리를 내 주세요.');
@@ -11255,7 +11304,7 @@ async function main() {
   bootMark('before-listen');
   /* (1.10.376 별마루섬 호랑이: their ground made after the start in 20 ms slices, as 별마루섬's open table -- the tigers wait till it is) */
   if (process.env.NODE_ENV !== 'test') setTimeout(() => { const step = () => { try { if (!tigerSim.warm(20)) setImmediate(step); } catch (error) { console.error('호랑이 땅 만들기 실패:', error.message); } }; step(); }, 6000).unref?.();
-  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.433 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); tigerPendingResume().catch(() => {}); /* (403 Codex #16: catches whose loss was not saved before the restart) */ if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.434 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); tigerPendingResume().catch(() => {}); /* (403 Codex #16: catches whose loss was not saved before the restart) */ if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had
