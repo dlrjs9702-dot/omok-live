@@ -2679,7 +2679,7 @@
         const r = await api(release ? '/api/island/box/release' : '/api/island/bag/discard', { method: 'POST', body: JSON.stringify({ entryId: item.entryId, qty: n, requestId: reqId }) }); dlg.close(); bagPicked = null;
         if (!release) {
           const kind = item.tool || item.itemId; const left = (r.bag?.items || []).some((e) => (e.tool || e.itemId) === kind || (kind.startsWith('bike_') && e.itemId.startsWith('bike_')));
-          if (!left) { quickSlots = quickSlots.map((k) => (k === kind || (k === 'bike' && kind.startsWith('bike_')) ? null : k)); quickSaved = quickSlots; if (heldTool === kind) { heldTool = null; plaza.controller?.setHeldTool?.(null); showToolGauge(); } }
+          if (!left) { quickSlots = quickSlots.map((k) => (k === kind || (k === 'bike' && kind.startsWith('bike_')) ? null : k)); quickSaved = quickSlots; if (heldTool === kind) { heldTool = null; plaza.controller?.setHeldTool?.(null); showToolGauge(); } if (kind.startsWith('pet_') && myPet && !myPet.uid && myPet.kind === kind.slice(4)) { myPet = null; plaza.controller?.setMyPet?.(null); } }
         }
         drawIslandBag(r.bag); if (r.undo) showDiscardUndo(r.undo, `${item.name}${n > 1 ? ` ${n}개` : ''}`, r.undoMs || 10000, release ? '놓아줬어요' : '버렸어요');
       } catch (error) { showToast(error.message, 3500); if (error.data?.bag) drawIslandBag(error.data.bag); }

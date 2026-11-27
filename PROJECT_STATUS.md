@@ -13,6 +13,13 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.434 Codex 401~432 검토 P2 10건 · P3 1건 고침 (결정 93)
+
+- 행사 밭·채석장·도구(P2-11~14): 행사 밭 수확을 `questApply`(`bagNext`) 한 거래로 묶어 동시 첫 수확의 횟수 이중 소진 차단. 채석장 `islandGive`에 `requireTool: true`를 적용하고 실패 작은 돌 보상을 `questApply` 한 거래로 원자화(채집물 꽉 참·곡괭이 없음 시 횟수/내구도 미변경). 도구 구매 `islandBuy`가 복구 대기(`island_discard_undo`) 중인 같은 종류 도구도 `TOOL_MAX`에 합산.
+- 가방·펫·호랑이·롤백(P2-15~18): 버리기 뒤 빠른 칸 정리를 `worldEdit` 안에서 최신 배열을 다시 읽어 해당 종류만 제거. 산책 중인 가방 펫을 마지막까지 버리면 `pet` 문서와 캐시·presence를 함께 해제. `tigerPending`을 잡힘 ID별 `worldEdit` 갱신(`tigerPendingMutate`)과 초기 읽기 재시도로 변경. `bagView`·`visibleSlots`가 보유 칸 수 이상을 보장해 롤백 호환 유지.
+- 택시·탐방선(P2-19·20, P3-21): `IslandTaxi.fleetView`에 정차 `curb` 포함 및 `island-taxi-scene` 좌표 전달. `IslandBoat`의 출항·이동·접안·입항이 공통 부두 앞 수역 예약(`dockWaterBusy`)을 공유. `IslandBoat.nearDock` 공통 22 m 발판+팔 영역을 화면(`plaza-scene`)과 서버(`boatAtDock`)가 함께 사용.
+- 시험: `codex-p2-434`(JSON·PG·서버·규칙) 추가 및 연관 단위 테스트 통과.
+
 ## v1.10.433 Codex 401~432 검토 P1 10건 고침 (결정 93)
 
 - 가방 버리기·놓아주기(P1-1·3·6): 확인 창마다 요청 ID 한 번, 되돌리기 토큰과 버리기 직전 칸 수를 `point_settlements`에 영구 저장(재시도·서버 재시작 유지, 10칸 초과 보유자도 직전 수량까지 복원). 곤충·물고기 놓아주기도 확인 창·수량 선택(기본 1)·10초 되돌리기 적용(`islandRelease`→`islandDiscard` 경로 통일).
@@ -28,12 +35,3 @@
 - 되돌리기 `POST /api/island/bag/discard/undo` — 메모리 토큰 10초, 누르자마자 사용 표시, 같은 물건(물고기 크기 · 도구 닳음 포함)을 자기 claim으로 돌려줌(두 번 안 됨).
 - 그 종류가 다 없어지면 빠른 칸과 손에서 뺌. 관리자 「버린 기록」(누가 · 무엇 · 몇 개 · 언제, 최근 100건, world `discardLog` 500건).
 - 시험: `bag-discard-432`(JSON·PG), e2e island-bag(PC·폰) · quickbar 메뉴 목록.
-
-## v1.10.431 가방 자동 정리 · 탭 줄바꿈 · 관리자 창 안쪽 종이(사용자 결정 91, 실서버 430 사진 · 관리자 창 사진)
-
-- 자동 정리(결정 91): 「정리」 → 「자동 정리 켬/끔」(사람마다 서버 `bagAuto:<계정>`, 기본 켬). 탭 안에서 하위 분류 → 등급 → 이름 → 큰 묶음(notes inventory-2-plan §8); 화면의 보여 주기만이라 서버 순서 · 물건 그대로, 켜져 있으면 손으로 안 옮김.
-- 관리자 창: 섬 운영의 「섬 환경」 · 「매일 섬 대회」 · 「운영 스위치」도 접히는 묶음, 모든 묶음 열림 기억(`gc.adminOpen`). 안쪽(접속 현황 · 계정 줄 · 열쇠 줄 · 계정 자세히 · 위험 단추 · 포인트 지급 확인 · 묶음 선)을 섬 종이 · U3 토큰으로, 계정 자세히 닫기는 머리 ✕(notes admin-paper-20261124).
-
-- 터치 겸용 PC는 `pointer:coarse`라 U8의 `@media (pointer:fine)` 줄바꿈이 안 먹어 탭이 잘림 → `.islandBagTabs` 자체를 줄바꿈 · 옆 넘침 없음(폰은 세 줄).
-- 기록의 탑 칩: `(pointer:fine),(any-pointer:fine),(min-width:900px)`에서 줄바꿈 — 폰은 한 줄 밀기 그대로.
-- 시험: `island-ui-u8`, e2e island-bag — 탭 scrollWidth ≤ clientWidth · 마지막 탭이 창 안, PC는 터치 흉내(coarse)로 한 번 더, 폰.
