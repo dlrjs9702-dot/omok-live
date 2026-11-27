@@ -91,14 +91,14 @@ test('물고기 통 사기·놓아주기: 1층에서만, 50 → 100 → 200(362)
   assert.equal((await req('/api/island/box/fill', a, { kind: 'insect' })).status, 409); // (no 곤충 채집통)
 });
 
-test('가방 늘리기·내 순서: 잡화점에서만, 24 → 32, 값은 한 번씩, 늘린 만큼 더 담김; 순서는 내가 정한 대로', async (t) => {
+test('옛 가방 늘리기 거절(433 Codex P1-4) · 내 순서: 잡화점에서 옛 24/32칸 결제는 막고, 통 구매로 늘림; 순서는 내가 정한 대로', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'baggrow-')); rmAtExit(dir); /* (after the servers stop: test-support/rm-at-exit) */
   const server = await boot(t, dir); const { req } = server;
   const a = await server.enter(await server.issue('가방손님'));
-  await req('/api/test/points-credit', a, { amount: 300000 });
+  await req('/api/test/points-credit', a, { amount: 400000 });
   const bag = async () => (await req('/api/island/bag', a)).data;
-  /* (1.10.430 인벤토리 2차: the 채집물 room 10 -- full with ten kinds, the 11th turned away; the old 24 bought (결정 3A) gives the 채집 바구니's 50) */
-  assert.deepEqual((await bag()).sections.gather, { used: 0, slots: 10 }); assert.deepEqual((await bag()).grow, { slots: 24, price: 50000 });
+  /* (1.10.430 인벤토리 2차 · 1.10.433 P1-4: the 채집물 room 10 -- old bag/grow retired before charging; 채집 바구니 grows gather to 50) */
+  assert.deepEqual((await bag()).sections.gather, { used: 0, slots: 10 }); assert.equal((await bag()).grow, null);
   assert.equal((await req('/api/island/bag/grow', a, {})).data.error, 'TOO_FAR'); // (not in the 잡화점)
   const ids = ['herb', 'berry', 'mushroom', 'mushroom_blue', 'branch', 'twig', 'clover_four', 'weed', 'harvest', 'stone'];
   for (const itemId of ids) assert.equal((await req('/api/test/island/give', a, { itemId, qty: 1 })).data.applied, true, itemId);
@@ -107,11 +107,10 @@ test('가방 늘리기·내 순서: 잡화점에서만, 24 → 32, 값은 한 �
   await req('/api/plaza/state', a, { ...T.facilityDoor('store'), yaw: 0, moving: false });
   assert.equal((await req('/api/island/store/enter', a, {})).status, 200);
   const balance = async () => (await req('/api/skins', a)).data.balance; const start = await balance();
-  const g1 = await req('/api/island/bag/grow', a, {}); assert.equal(g1.status, 200, JSON.stringify(g1.data)); assert.deepEqual([g1.data.slots, g1.data.next], [24, 32]);
-  assert.equal((await bag()).sections.gather.slots, 50); assert.deepEqual((await bag()).boxGrow.gather, { slots: 100, price: 800000 }); assert.equal(await balance(), start - 50000);
-  assert.equal((await req('/api/test/island/give', a, { itemId: 'mushroom_glow', qty: 1 })).data.applied, true); // (the 11th fits: the free basket)
-  assert.equal((await req('/api/island/bag/grow', a, {})).data.slots, 32); assert.equal(await balance(), start - 200000);
-  assert.equal((await req('/api/island/bag/grow', a, {})).data.error, 'BAG_TOP'); assert.equal((await bag()).grow, null);
+  const retired = await req('/api/island/bag/grow', a, {}); assert.equal(retired.status, 409); assert.equal(retired.data.error, 'BAG_RETIRED'); assert.equal(await balance(), start, '결제 전 거절');
+  const g1 = await req('/api/island/box/grow', a, { kind: 'gather', to: 50 }); assert.equal(g1.status, 200, JSON.stringify(g1.data)); assert.deepEqual([g1.data.slots, g1.data.next], [50, 100]);
+  assert.equal((await bag()).sections.gather.slots, 50); assert.deepEqual((await bag()).boxGrow.gather, { slots: 100, price: 800000 }); assert.equal(await balance(), start - 300000);
+  assert.equal((await req('/api/test/island/give', a, { itemId: 'mushroom_glow', qty: 1 })).data.applied, true); // (the 11th fits: the basket)
   // 내 순서: the last first; one left out -- turned away, the bag as it was
   const now = (await bag()).items.map((e) => e.entryId);
   const order = [now.at(-1), ...now.slice(0, -1)];
@@ -121,7 +120,7 @@ test('가방 늘리기·내 순서: 잡화점에서만, 24 → 32, 값은 한 �
   // 정리: the materials (herb …) before the rest (bread …)
   const sorted = (await req('/api/island/bag/order', a, { sort: true })).data.bag.items.map((e) => e.itemId);
   assert.ok(sorted.indexOf('herb') < sorted.indexOf('bread'));
-  // after a restart: still 32
+  // after a restart: still 50 for a, 10 for another account
   await server.stop(); const again = await boot(t, dir); const b = await again.enter(await again.issue('가방손님2'));
   assert.equal((await again.req('/api/island/bag', b)).data.sections.gather.slots, 10); // (another account: its own)
 });

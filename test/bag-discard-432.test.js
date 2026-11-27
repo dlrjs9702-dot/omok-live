@@ -82,12 +82,11 @@ test('432 심부름 물건: 받은 심부름(1단계)의 사 오기 · 재료만
   assert.deepEqual([...held].sort(), ['herb', 'ore_iron']);
 });
 
-test('432 서버 · 화면: 버리기 · 되돌리기(같은 사람 10초 한 번) · 빠른 칸 정리 · 관리자 기록', () => {
+test('432 서버 · 화면: 버리기 · 되돌리기(같은 사람 10초 한 번 · 영구 저장) · 빠른 칸 정리 · 관리자 기록', () => {
   assert.match(server, /pathname === '\/api\/island\/bag\/discard' && req\.method === 'POST'/);
   assert.match(server, /const DISCARD_UNDO_MS = 10000;/);
-  assert.match(server, /if \(!u \|\| u\.account !== account \|\| u\.used \|\| nowMs\(\) - u\.at > DISCARD_UNDO_MS\) return sendError\(res, 409, 'UNDO_GONE'/);
-  assert.match(server, /u\.used = true; \/\* \(before any wait/);
-  assert.match(server, /claimId: `discard-undo:\$\{id\}`/);
+  assert.match(server, /pointStore\.islandDiscardUndo\(\{ userId: account, undo: id, now: nowMs\(\) \}\)/);
+  assert.match(server, /if \(!out\.applied\) return sendError\(res, 409, 'UNDO_GONE'/);
   assert.match(server, /pathname === '\/api\/admin\/discards' && req\.method === 'GET'\) \{\r?\n\s+if \(!requireAdmin\(req, res\)\) return;/);
   assert.match(server, /log\.push\(\{ at: nowMs\(\), account, name: await accountName\(account\)/);
   assert.match(server, /keep: await errandKeep\(account\)/);

@@ -2659,33 +2659,39 @@
   let bagNow = null; let bagPicked = null; let bagHeld = null; let bagMoveSeq = 0;
   let bagAuto = true; /* (431 자동 정리, 결정 91: a person's switch from GET /api/island/bag `autoSort`) */
   let bagKeep = new Set(); let discardUndo = null; /* (432 버리기: the errand's things kept; the last 되돌리기 { token, name, until, timer }) */
-  /* 1.10.432 가방 버리기 (사용자 결정 92 전부 A): asked on paper -- what and how many (a stack: 1개 · 전부 · a number), gone for good; then a line
-     under the bag 「…버렸어요 · 되돌리기 (n)」 for 10 s. The server judges all of it (what may go, how many, once); out of the 빠른 칸 and the hand
-     when none of its kind is left */
-  function askDiscard(item) {
+  /* 1.10.432 가방 버리기 (사용자 결정 92 전부 A) · 1.10.433 Codex P1-1·P1-3: asked on paper -- what and how many (a stack: 1개 · 전부 · a number),
+     gone for good (버리기) or let go (놓아주기); one requestId kept per confirmation so a lost response never deducts twice; then a 10 s 되돌리기 bar */
+  function askDiscard(item, { release = false } = {}) {
     const dlg = byId('discardDialog'); const many = item.qty > 1; const count = byId('discardCount');
-    byId('discardText').textContent = `${item.name}${item.sizes?.length === 1 ? ` (${item.sizes[0]} cm)` : ''}${josa(item.name, '을', '를')} 버릴까요?${many ? ` 가방에 ${item.qty}개 있어요.` : ''}`;
+    byId('discardTitle').textContent = release ? '놓아주기' : '버리기';
+    byId('discardText').textContent = `${item.name}${item.sizes?.length === 1 ? ` (${item.sizes[0]} cm)` : ''}${josa(item.name, '을', '를')} ${release ? '놓아줄까요?' : '버릴까요?'}${many ? ` 가방에 ${item.qty}개 있어요.` : ''}`;
+    const note = dlg.querySelector('.lookMeta'); if (note) note.textContent = release ? '놓아주면 자연으로 돌아가고 포인트는 돌아오지 않아요. 도감 기록은 남아요.' : '버리면 영영 사라지고 포인트는 돌아오지 않아요. 팔려면 노점이나 상인에게 가져가요.';
+    byId('discardOk').textContent = release ? '놓아주기' : '버리기';
     byId('discardQty').classList.toggle('hidden', !many); count.max = String(item.qty); count.value = '1';
     for (const b of byId('discardQty').querySelectorAll('button')) b.onclick = () => { count.value = b.dataset.n === 'all' ? String(item.qty) : '1'; };
     byId('discardCancel').onclick = () => dlg.close();
+    let reqId = crypto.randomUUID(); let reqQty = null;
     byId('discardOk').onclick = async () => {
       const n = many ? Math.floor(Number(count.value)) : 1; if (!Number.isSafeInteger(n) || n < 1 || n > item.qty) { showToast(`1개에서 ${item.qty}개 사이로 골라 주세요.`, 2500); return; }
+      if (reqQty !== n) { reqId = crypto.randomUUID(); reqQty = n; }
       byId('discardOk').disabled = true;
       try {
-        const r = await api('/api/island/bag/discard', { method: 'POST', body: JSON.stringify({ entryId: item.entryId, qty: n, requestId: crypto.randomUUID() }) }); dlg.close(); bagPicked = null;
-        const kind = item.tool || item.itemId; const left = (r.bag?.items || []).some((e) => (e.tool || e.itemId) === kind || (kind.startsWith('bike_') && e.itemId.startsWith('bike_')));
-        if (!left) { quickSlots = quickSlots.map((k) => (k === kind || (k === 'bike' && kind.startsWith('bike_')) ? null : k)); quickSaved = quickSlots; if (heldTool === kind) { heldTool = null; plaza.controller?.setHeldTool?.(null); showToolGauge(); } }
-        drawIslandBag(r.bag); if (r.undo) showDiscardUndo(r.undo, `${item.name}${n > 1 ? ` ${n}개` : ''}`, r.undoMs || 10000);
+        const r = await api(release ? '/api/island/box/release' : '/api/island/bag/discard', { method: 'POST', body: JSON.stringify({ entryId: item.entryId, qty: n, requestId: reqId }) }); dlg.close(); bagPicked = null;
+        if (!release) {
+          const kind = item.tool || item.itemId; const left = (r.bag?.items || []).some((e) => (e.tool || e.itemId) === kind || (kind.startsWith('bike_') && e.itemId.startsWith('bike_')));
+          if (!left) { quickSlots = quickSlots.map((k) => (k === kind || (k === 'bike' && kind.startsWith('bike_')) ? null : k)); quickSaved = quickSlots; if (heldTool === kind) { heldTool = null; plaza.controller?.setHeldTool?.(null); showToolGauge(); } }
+        }
+        drawIslandBag(r.bag); if (r.undo) showDiscardUndo(r.undo, `${item.name}${n > 1 ? ` ${n}개` : ''}`, r.undoMs || 10000, release ? '놓아줬어요' : '버렸어요');
       } catch (error) { showToast(error.message, 3500); if (error.data?.bag) drawIslandBag(error.data.bag); }
       finally { byId('discardOk').disabled = false; }
     };
     dlg.showModal(); (many ? count : byId('discardOk')).focus();
   }
-  function showDiscardUndo(token, name, ms) {
+  function showDiscardUndo(token, name, ms, verb = '버렸어요') {
     clearInterval(discardUndo?.timer); const until = Date.now() + ms; const line = byId('islandBagInfo');
     const draw = () => { const left = Math.ceil((until - Date.now()) / 1000); if (left <= 0 || discardUndo?.token !== token) { clearInterval(discardUndo?.timer); if (discardUndo?.token === token) { discardUndo = null; line.querySelector('.discardUndo')?.remove(); } return; }
       let box = line.querySelector('.discardUndo'); if (!box) { box = document.createElement('p'); box.className = 'discardUndo'; box.setAttribute('role', 'status'); const t = document.createElement('span'); const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost tiny'; b.id = 'discardUndoBtn'; b.textContent = '되돌리기'; b.addEventListener('click', undoDiscard); box.append(t, ' ', b); line.replaceChildren(box); }
-      box.querySelector('span').textContent = `🗑 ${name}${josa(name, '을', '를')} 버렸어요 · ${left}초`; };
+      box.querySelector('span').textContent = `🗑 ${name}${josa(name, '을', '를')} ${verb} · ${left}초`; };
     discardUndo = { token, name, until, timer: setInterval(draw, 250) }; draw();
   }
   async function undoDiscard() {
@@ -2712,8 +2718,8 @@
     if (item.itemId.startsWith('bike_')) { const riding = Boolean(plaza.controller?.cycling?.()); out.push([riding ? '넣기' : '꺼내기', () => { islandBagDialog.close(); plaza.controller?.toggleBike?.(); plazaStage.focus({ preventScroll: true }); }]); } // (1.10.356 탈것·펫: out to ride, back in)
     if (SHOW_GOODS.has(item.itemId)) out.push([heldTool === item.itemId ? '넣기' : '들기', () => holdTool(item.itemId)]); // (v1.10.236 빠른 칸: held, then 상호작용 uses one -- 사용자 「도구처럼 장착한 후에」)
     if (quickKind(item)) out.push(['빠른 칸에', () => { quickPick = quickKind(item); drawQuick(); showToast('아래 빠른 칸을 누르거나 1~5를 눌러요.', 2500); }]);
-    /* (430: the old box pages' 「놓아주기」 here -- a fish or an insect let go; the 도감 keeps it) */
-    if (/^(fish|insect)_/.test(item.itemId)) out.push(['놓아주기', async () => { try { const r = await api('/api/island/box/release', { method: 'POST', body: JSON.stringify({ entryId: item.entryId }) }); showToast(`${item.name}을(를) 놓아줬어요.`, 2500); bagPicked = null; drawIslandBag(r.bag); } catch (error) { showToast(error.message, 3000); } }]);
+    /* (430: the old box pages' 「놓아주기」 here -- 433 Codex P1-3: asks count & confirms with 10 s 되돌리기 so an insect stack is never wiped in one click) */
+    if (/^(fish|insect)_/.test(item.itemId)) out.push(['놓아주기', () => askDiscard(item, { release: true })]);
     /* (1.10.432 사용자 결정 92: 버리기 on everything, last -- a lost thing or what an errand I took asks for greyed, with why) */
     out.push(['버리기', () => askDiscard(item), ['lost', 'wallet'].includes(item.itemId) ? '분실물은 주인이나 관공서에 가져다줘요.' : bagKeep.has(item.itemId) ? '하고 있는 심부름에 쓸 물건이에요.' : null]);
     return out;

@@ -86,7 +86,7 @@ require('./lib/island-items').setPriceHook(Economy.priceOf);
 require('./lib/island-items').setSizeHook(() => [Economy.value('fish:sizeMin'), Economy.value('fish:sizeMax')]); // v1.10.231 물고기 크기
 // v1.10.195 가방 늘리기: each account's bag size (world 'bagSlots': { account: 24 | 32 }), kept here for the stores' adds
 const bagSlots = new Map();
-const discardUndos = new Map(); const DISCARD_UNDO_MS = 10000; // (1.10.432 가방 버리기: token -> { account, gone, at, used } -- 10 s, once)
+const DISCARD_UNDO_MS = 10000; // (1.10.432 가방 버리기 · 1.10.433 Codex P1-1·P1-6: persisted in pointStore settlements -- 10 s, once)
 require('./lib/island-items').setSlotsHook((account) => bagSlots.get(account));
 // v1.10.297 물고기 통·곤충 채집통: each account's boxes (world 'boxSlots': { account: { fish: 30.., insect: 30.. } }), 'account|kind'
 /* (1.10.430 인벤토리 2차: a full bag says which kind's room -- and the container that makes it bigger; `kind` for the page) */
@@ -2661,7 +2661,7 @@ const trainVisitors = new Map();
 const trainRiders = new Map(); let trainShift = 0; let trainTraffic = IslandTrain.createTraffic(nowMs());
 const taxiRides = new Map(); // v1.10.271 섬 택시: session token -> { from, startedAt, runMs? } while riding
 const taxiPaying = new Set(); // (v1.10.283: a fare being taken -- one at a time per session)
-const taxiPaidRides = new Map(); // (1.10.403 Codex #6: a fare's claim -> when its ride started; an hour's -- a paid request starts one ride)
+// (1.10.433 Codex P1-9: taxi single-fare tickets are tracked persistently in pointStore settlements, surviving restarts)
 const unstuckAt = new Map(); // (1.10.322 U3: session token -> when it last asked to be put on 대청마당)
 const IslandUnstuck = require('./lib/island-unstuck'); // (364: the nearest free spot, 10 minutes apart)
 // 364 관리자 「섬 이벤트」 (lib/island-admin-events.js): the list kept in worldValue('adminEvents'); the server applies them (sales,
@@ -5246,7 +5246,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.432' });
+    return sendJson(res, 200, { ok: true, version: '1.10.433' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -6588,28 +6588,28 @@ async function requestHandler(req, res) {
   if (pathname === '/api/island/bag' && req.method === 'GET') {
     const session = requireSession(req, res);
     if (!session) return;
-    const account = pointAccountForSession(session); const grow = IslandItems.BAG_GROW.find((n) => n > IslandItems.slotsOf(account)) || null; // (v1.10.195: the next size and its price)
+    const account = pointAccountForSession(session); // (1.10.433 Codex P1-4: old bag grow 24/32 retired -- history kept in bagSlots for free 50-slot basket)
     const boxGrow = Object.fromEntries(IslandItems.BOXES.map((kind) => { const n = IslandItems.BOX_GROW.find((s) => s > IslandItems.boxNow(account, kind)); return [kind, n ? { slots: n, price: Economy.value(`${BOX_KEY[kind]}:${n}`) } : null]; })); // (297; 430 the free basket counted)
-    return sendJson(res, 200, { ok: true, ...await pointStore.islandBag(account, islandEvents.activeLost()), dailyCap: IslandItems.DAILY_CAP, grow: grow && { slots: grow, price: Economy.value(`bag:${grow}`) }, boxGrow, sellMults: sellMultsNow(), autoSort: (await pointStore.worldValue(`bagAuto:${account}`).catch(() => null))?.on !== false /* (431 결정 91: on unless turned off) */, keep: await errandKeep(account) /* (432: an errand's things -- 버리기 greyed) */ });
+    return sendJson(res, 200, { ok: true, ...await pointStore.islandBag(account, islandEvents.activeLost()), dailyCap: IslandItems.DAILY_CAP, grow: null, boxGrow, sellMults: sellMultsNow(), autoSort: (await pointStore.worldValue(`bagAuto:${account}`).catch(() => null))?.on !== false /* (431 결정 91: on unless turned off) */, keep: await errandKeep(account) /* (432: an errand's things -- 버리기 greyed) */ });
   }
-  // v1.10.297 물고기 통·곤충 채집통: bought (and made bigger) at the 잡화점 like the bag, 30 -> 60 -> 90 -> 120, paid once each
+  // v1.10.297 물고기 통·곤충 채집통: bought (and made bigger) at the 잡화점 like the bag, 50 -> 100 -> 200, paid once each
   if (pathname === '/api/island/box/grow' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
     const body = await parseJson(req); const kind = String(body.kind || ''); if (!IslandItems.BOXES.includes(kind)) return sendError(res, 400, 'BAD_BOX', '없는 통이에요.');
     if (mallFloor(session.token) !== 1) return sendError(res, 409, 'TOO_FAR', '백화점 1층 잡화점에서 살 수 있어요.');
     /* (Codex 291~300 #2: the size the page asked for -- sent again or pressed twice, the step already bought answers ok at no
-       charge, and never the step after it; a page from before `to` gets the next step as it did) */
+       charge, and never the step after it; a page from before `to` gets the next step as it did; 1.10.433 Codex P1-7: payment and boxSlots saved in one atomic transaction) */
     const want = body.to === undefined ? null : Number(body.to);
     return worldEdit(async () => {
       const now = IslandItems.boxNow(account, kind); const to = IslandItems.BOX_GROW.find((n) => n > now); const name = BOX_NAME[kind]; /* (430: a free basket's 50 is had -- the next step 100) */
       if (want !== null && want <= now && IslandItems.BOX_GROW.includes(want)) return sendJson(res, 200, { ok: true, kind, slots: now, next: to || null, balance: null, already: true });
       if (!to) return sendError(res, 409, 'BOX_TOP', `${name}이 이미 가장 커요.`);
       if (want !== null && want !== to) return sendError(res, 409, 'STALE_BOX', `${name} 크기가 바뀌었어요. 다시 확인해 주세요.`);
-      let out; try { out = await pointStore.charge({ userId: account, claimId: `bag:${kind}box:${to}:${account}`, /* (the charge kind 'bag': the 잡화점's) */ price: Economy.value(`${BOX_KEY[kind]}:${to}`), title: `잡화점 · ${name} ${to}칸` }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
+      let out; try { out = await pointStore.growBox({ userId: account, kind, to, price: Economy.value(`${BOX_KEY[kind]}:${to}`), title: `잡화점 · ${name} ${to}칸` }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
       if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
-      const all = (await pointStore.worldValue('boxSlots')) || {}; await pointStore.setWorldValue('boxSlots', { ...all, [account]: { ...(all[account] || {}), [kind]: to } }); boxSlots.set(`${account}|${kind}`, to);
+      boxSlots.set(`${account}|${kind}`, out.slots);
       if (out.applied) notifyPointsChanged([account]);
-      return sendJson(res, 200, { ok: true, kind, slots: to, next: IslandItems.BOX_GROW.find((n) => n > to) || null, balance: out.balance ?? null });
+      return sendJson(res, 200, { ok: true, kind, slots: out.slots, next: IslandItems.BOX_GROW.find((n) => n > out.slots) || null, balance: out.balance ?? null, ...(out.already ? { already: true } : {}) });
     });
   }
   // 362 광석 값 (사용자 1A, notes gather-must-ideas 끝): the 잡화점 (the 백화점 1층) sells every ore and the stone at what the merchant pays
@@ -6635,12 +6635,18 @@ async function requestHandler(req, res) {
     if (!out.applied) return sendError(res, 409, 'NOTHING_TO_MOVE', IslandItems.boxOf(account, kind) ? '옮길 것이 없거나 통이 가득 찼어요.' : `${BOX_NAME[kind]}을 먼저 사 주세요.`);
     return sendJson(res, 200, { ok: true, moved: out.moved, bag: out.bag });
   }
-  // 297 놓아주기: one out of a box, back to the water or the grass (nothing paid; the 도감 keeps it)
+  // 297 놓아주기 · 1.10.433 Codex P1-3: chosen qty (default 1 -- never wipes a whole insect stack) with 10 s persistent undo
   if (pathname === '/api/island/box/release' && req.method === 'POST') {
-    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
-    const out = await pointStore.islandRelease({ userId: account, entryId: String((await parseJson(req)).entryId || '') });
-    if (!out.applied) return sendError(res, 409, 'NOT_IN_BOX', '가방에 없는 물고기 · 곤충이에요.');
-    return sendJson(res, 200, { ok: true, bag: out.bag });
+    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
+    const qty = body.qty === undefined ? 1 : Number(body.qty);
+    const requestId = body.requestId === undefined ? crypto.randomUUID() : String(body.requestId || '');
+    let out; try { out = await pointStore.islandRelease({ userId: account, requestId, entryId: String(body.entryId || ''), qty, undoMs: DISCARD_UNDO_MS, now: nowMs() }); } catch { return sendError(res, 400, 'BAD_RELEASE', '놓아줄 개수를 확인해 주세요.'); }
+    if (!out.applied && !out.already) {
+      const [code, say] = out.reason === 'qty' ? ['BAD_QTY', '그만큼은 없어요. 개수를 다시 골라 주세요.'] : ['NOT_IN_BOX', '가방에 없는 물고기 · 곤충이에요.'];
+      return sendError(res, 409, code, say, { bag: out.bag });
+    }
+    const leftMs = Math.max(0, (out.until || 0) - nowMs());
+    return sendJson(res, 200, { ok: true, ...(out.already ? { already: true } : {}), gone: out.gone, undo: !out.undone && leftMs > 0 ? out.undo : null, undoMs: leftMs, bag: out.bag });
   }
   // (문제 기록 1103 4) 한 번 공지: a note on the island once for each account (seen kept on the server -- not again on another
   // device); the next one only a line here. Tests: off unless turned on (every test's first island would open it)
@@ -6657,34 +6663,33 @@ async function requestHandler(req, res) {
     const slots = IslandItems.quickSlots((await parseJson(req)).slots); if (!slots) return sendError(res, 400, 'BAD_QUICK', '빠른 칸에 넣을 수 없어요.');
     await worldEdit(() => pointStore.setWorldValue(`quick:${account}`, slots)); return sendJson(res, 200, { ok: true, slots });
   }
-  /* 1.10.432 가방 버리기 (사용자 결정 92 전부 A): one entry's qty gone for good (no points back), judged here -- a lost thing or what an errand I
-     took asks for stays; one request once (its claim); then the 빠른 칸 lose a kind with none left, the admin's record gets who · what · how many ·
-     when, and a 되돌리기 token: the same person, 10 s, once (the same things back under its own claim -- never twice) */
+  /* 1.10.432 가방 버리기 (사용자 결정 92 전부 A) · 1.10.433 Codex P1-1·P1-6: one entry's qty gone for good (no points back), judged here -- a lost thing
+     or what an errand I took asks for stays; one request once (its claim + persistent undo token returned on retry and across restarts); undo restores up
+     to the pre-discard slot count so accounts over the 430 default cap never lose an item */
   if (pathname === '/api/island/bag/discard' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
     const keep = await errandKeep(account);
-    let out; try { out = await pointStore.islandDiscard({ userId: account, requestId: String(body.requestId || ''), entryId: String(body.entryId || ''), qty: Number(body.qty), keep }); } catch { return sendError(res, 400, 'BAD_DISCARD', '버릴 개수를 확인해 주세요.'); }
-    if (out.already) return sendJson(res, 200, { ok: true, already: true, bag: out.bag });
-    if (!out.applied) {
+    let out; try { out = await pointStore.islandDiscard({ userId: account, requestId: String(body.requestId || ''), entryId: String(body.entryId || ''), qty: Number(body.qty), keep, undoMs: DISCARD_UNDO_MS, now: nowMs() }); } catch { return sendError(res, 400, 'BAD_DISCARD', '버릴 개수를 확인해 주세요.'); }
+    if (!out.applied && !out.already) {
       const [code, say] = out.reason === 'keep' ? ['KEEP', ['lost', 'wallet'].includes(out.itemId) ? '분실물은 버릴 수 없어요. 주인이나 관공서에 가져다주세요.' : '하고 있는 심부름에 쓸 물건이라 버릴 수 없어요.'] : out.reason === 'qty' ? ['BAD_QTY', '그만큼은 없어요. 개수를 다시 골라 주세요.'] : ['MISSING', '가방에 없는 물건이에요.'];
       return sendError(res, 409, code, say, { bag: out.bag });
     }
-    { const kindOf = (id) => IslandItems.TOOL_KIND[id] || (id.startsWith('bike_') ? 'bike' : id); const have = new Set(out.bag.items.map((e) => kindOf(e.itemId)));
-      const quick = IslandItems.quickSlots((await pointStore.worldValue(`quick:${account}`)) || []) || [];
-      if (quick.some((k) => k && !have.has(k))) await worldEdit(() => pointStore.setWorldValue(`quick:${account}`, quick.map((k) => (k && !have.has(k) ? null : k)))); }
-    const undo = crypto.randomUUID(); discardUndos.set(undo, { account, gone: out.gone, at: nowMs(), used: false }); setTimeout(() => discardUndos.delete(undo), DISCARD_UNDO_MS + 5000).unref?.();
-    await worldEdit(async () => { const log = (await pointStore.worldValue('discardLog')) || []; log.push({ at: nowMs(), account, name: await accountName(account).catch(() => ''), itemId: out.gone.itemId, qty: out.gone.qty }); await pointStore.setWorldValue('discardLog', log.slice(-500)); }).catch((error) => console.error('버린 기록 실패:', error.message));
-    return sendJson(res, 200, { ok: true, gone: out.gone, undo, undoMs: DISCARD_UNDO_MS, bag: out.bag });
+    if (out.applied) {
+      { const kindOf = (id) => IslandItems.TOOL_KIND[id] || (id.startsWith('bike_') ? 'bike' : id); const have = new Set(out.bag.items.map((e) => kindOf(e.itemId)));
+        const quick = IslandItems.quickSlots((await pointStore.worldValue(`quick:${account}`)) || []) || [];
+        if (quick.some((k) => k && !have.has(k))) await worldEdit(() => pointStore.setWorldValue(`quick:${account}`, quick.map((k) => (k && !have.has(k) ? null : k)))); }
+      await worldEdit(async () => { const log = (await pointStore.worldValue('discardLog')) || []; log.push({ at: nowMs(), account, name: await accountName(account).catch(() => ''), itemId: out.gone.itemId, qty: out.gone.qty }); await pointStore.setWorldValue('discardLog', log.slice(-500)); }).catch((error) => console.error('버린 기록 실패:', error.message));
+    }
+    const leftMs = Math.max(0, (out.until || 0) - nowMs());
+    return sendJson(res, 200, { ok: true, ...(out.already ? { already: true } : {}), gone: out.gone, undo: !out.undone && leftMs > 0 ? out.undo : null, undoMs: leftMs, bag: out.bag });
   }
   if (pathname === '/api/island/bag/discard/undo' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session); const body = await parseJson(req);
-    const id = String(body.undo || ''); const u = discardUndos.get(id);
-    if (!u || u.account !== account || u.used || nowMs() - u.at > DISCARD_UNDO_MS) return sendError(res, 409, 'UNDO_GONE', '되돌릴 수 있는 시간이 지났어요.');
-    u.used = true; /* (before any wait: a second press meanwhile is turned away) */
-    let out; try { out = await pointStore.islandGive({ userId: account, claimId: `discard-undo:${id}`, itemId: u.gone.itemId, qty: u.gone.qty, meta: u.gone.meta, quiet: true, note: '버리기 되돌리기' }, nowMs()); } catch (error) { u.used = false; console.error('되돌리기 실패:', error.message); return sendError(res, 503, 'UNDO_FAILED', '되돌리지 못했어요. 다시 눌러 주세요.'); }
-    if (!out.applied && out.reason === 'full') { u.used = false; return bagFull(res, u.gone.itemId); } /* (its room filled meanwhile -- room made, again within the time) */
-    discardUndos.delete(id);
-    await worldEdit(async () => { const log = (await pointStore.worldValue('discardLog')) || []; log.push({ at: nowMs(), account, name: await accountName(account).catch(() => ''), itemId: u.gone.itemId, qty: u.gone.qty, undo: true }); await pointStore.setWorldValue('discardLog', log.slice(-500)); }).catch(() => {});
+    const id = String(body.undo || '');
+    let out; try { out = await pointStore.islandDiscardUndo({ userId: account, undo: id, now: nowMs() }); } catch (error) { console.error('되돌리기 실패:', error.message); return sendError(res, 503, 'UNDO_FAILED', '되돌리지 못했어요. 다시 눌러 주세요.'); }
+    if (!out.applied && out.reason === 'full') return bagFull(res, out.itemId);
+    if (!out.applied) return sendError(res, 409, 'UNDO_GONE', '되돌릴 수 있는 시간이 지났어요.');
+    if (!out.release) await worldEdit(async () => { const log = (await pointStore.worldValue('discardLog')) || []; log.push({ at: nowMs(), account, name: await accountName(account).catch(() => ''), itemId: out.gone.itemId, qty: out.gone.qty, undo: true }); await pointStore.setWorldValue('discardLog', log.slice(-500)); }).catch(() => {});
     return sendJson(res, 200, { ok: true, bag: out.bag });
   }
   if (pathname === '/api/admin/discards' && req.method === 'GET') {
@@ -6705,20 +6710,11 @@ async function requestHandler(req, res) {
     let out; try { out = await pointStore.islandBagOrder({ userId: pointAccountForSession(session), ...(body.sort === true ? { sort: true } : { ids: body.ids }) }); } catch { return sendError(res, 400, 'BAD_ORDER', '가방 순서를 확인해 주세요.'); }
     return sendJson(res, out.applied ? 200 : 409, { ok: out.applied, ...(out.applied ? {} : { error: 'STALE_ORDER', message: '가방이 바뀌었어요. 다시 옮겨 주세요.' }), bag: out.bag });
   }
-  // v1.10.195 가방 늘리기: at the 잡화점 (in the 백화점), 16 -> 24 -> 32, paid once each (the claim), for good
+  // v1.10.195 가방 늘리기 · 1.10.433 Codex P1-4: retired after 430 per-kind containers (existing 24/32 history stays in bagSlots for the free 50-slot basket, never charged again)
   if (pathname === '/api/island/bag/grow' && req.method === 'POST') {
-    const session = requireSession(req, res); if (!session) return; const account = pointAccountForSession(session);
+    const session = requireSession(req, res); if (!session) return;
     if (mallFloor(session.token) !== 1) return sendError(res, 409, 'TOO_FAR', '백화점 1층 잡화점에서 늘릴 수 있어요.');
-    return worldEdit(async () => {
-      const now = IslandItems.slotsOf(account); const to = IslandItems.BAG_GROW.find((n) => n > now);
-      if (!to) return sendError(res, 409, 'BAG_TOP', '가방이 이미 가장 커요.');
-      const claimId = `bag:${to}:${account}`;
-      let out; try { out = await pointStore.charge({ userId: account, claimId, price: Economy.value(`bag:${to}`), title: `잡화점 · 가방 ${to}칸` }); } catch { return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.'); }
-      if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', '포인트가 부족합니다.');
-      await pointStore.setWorldValue('bagSlots', { ...((await pointStore.worldValue('bagSlots')) || {}), [account]: to }); bagSlots.set(account, to);
-      if (out.applied) notifyPointsChanged([account]);
-      return sendJson(res, 200, { ok: true, slots: to, next: IslandItems.BAG_GROW.find((n) => n > to) || null, balance: out.balance ?? null });
-    });
+    return sendError(res, 409, 'BAG_RETIRED', '종류별 통으로 바뀌었어요. 잡화점 창을 다시 열어 통을 골라 주세요.');
   }
   // v1.10.84 관공서 실내: SPACE at the hall's door (in the yard, past the mayor) goes in; at the room's door, out to the
   // hall's door. The server moves the position itself, so a pose can never put anyone in or out.
@@ -7584,13 +7580,12 @@ async function requestHandler(req, res) {
     const up = await upkeepNow(owner, h); const w = up.weeds.find((x) => x.id === String(body.id)); if (!w) return sendError(res, 409, 'GONE', '방금 뽑힌 잡초예요.');
     const p = IslandYard.world(lot, w.lx, w.lz);
     if (!at || (at.space && at.space !== 'island') || Math.hypot(at.x - p.x, at.z - p.z) > IslandWeeds.REACH + 0.5) return sendError(res, 409, 'TOO_FAR', '잡초 가까이에서 다시 시도해 주세요.');
-    /* (430 인벤토리 2차, notes inventory-2-plan §4: the weed was pulled out of the yard and lost when there was no room -- room first) */
-    { const { bag } = await pointStore.questDoc(account, 'upkeep'); if (!IslandItems.addToBag(bag || [], 'weed', 1, null, null, IslandItems.capOf(account))) return bagFull(res, 'weed'); }
-    const out = await upkeepApply(owner, (d) => ((d.weeds?.list || []).some((x) => x.id === w.id) ? { doc: { ...d, weeds: { ...d.weeds, list: d.weeds.list.filter((x) => x.id !== w.id) } } } : null));
-    if (!out?.doc) return sendError(res, 409, 'GONE', '방금 뽑힌 잡초예요.');
-    const given = await pointStore.islandGive({ userId: account, claimId: `yardweed:${lot.id}:${w.id}`, itemId: 'weed', qty: 1 }, nowMs()).catch(() => null);
+    /* (430 인벤토리 2차 · 1.10.433 Codex P1-8: yard weed removal and bag grant happen in one atomic store transaction -- a concurrent fill never eats the weed) */
+    const out = await pointStore.pullYardWeed({ owner, userId: account, claimId: `yardweed:${lot.id}:${w.id}`, weedId: w.id }, nowMs());
+    if (!out.applied) return out.reason === 'full' ? bagFull(res, 'weed') : sendError(res, 409, 'GONE', '방금 뽑힌 잡초예요.');
+    upkeepDocs.set(owner, out.doc);
     broadcastIsland('homes', { lot: lot.id });
-    return sendJson(res, 200, { ok: true, bag: given?.bag || null, left: out.doc.weeds.list.length });
+    return sendJson(res, 200, { ok: true, bag: out.bag || null, left: out.doc.weeds.list.length });
   }
   // the owner, inside or out: the room's floor, wallpaper, the roof (each a small price), who may come in (free)
   if (pathname === '/api/home/style' && req.method === 'POST') {
@@ -7623,7 +7618,8 @@ async function requestHandler(req, res) {
       const fishes = h.tanks[tank.uid] || []; const total = Object.values(h.tanks).reduce((n, l) => n + l.length, 0); const claim = `home_tank_${body.requestId}`;
       if (body.put) {
         const itemId = String(body.put); if (!IslandHome.FISH_SIZE[itemId] && !IslandHome.INSECTS.has(itemId)) return sendError(res, 400, 'BAD_FISH', '물고기를 확인해 주세요.');
-        if (fishes.some((f) => f.claim === claim) || h.tankPuts?.[claim]) return sendJson(res, 200, { ok: true, home: homeAs(session.token, h) }); /* (1.10.403 Codex 391~400 #3: done once -- even after that fish was taken out again, a late copy of the request puts no second one) */
+        /* (1.10.403 Codex #3 · 1.10.433 Codex P1-5: done puts are kept permanently in point_settlements (`home_tank_done:<claim>`), never evicted after 7 days / 300 entries) */
+        if (fishes.some((f) => f.claim === claim) || h.tankPuts?.[claim] || await pointStore.settlementOf(`home_tank_done:${claim}`)) return sendJson(res, 200, { ok: true, home: homeAs(session.token, h) });
         if (!IslandHome.fits(IslandHome.shapeOf(tank.id), itemId)) return sendError(res, 409, 'TOO_BIG', T.insects ? '곤충 상자에는 곤충만 넣어요.' : IslandHome.INSECTS.has(itemId) ? '수조에는 물고기만 넣어요.' : '이 수조에는 너무 큰 물고기예요.');
         if (!T.insects && fishes.length && h.tankMixed?.[tank.uid]) return sendError(res, 409, 'TANK_WATER', '섞인 수조예요. 꺼내기만 할 수 있고, 다 비우면 다시 넣을 수 있어요.'); /* (Codex 361~370 #13: once mixed, until empty) */
         if (!T.insects && !IslandHome.waterFits(fishes, itemId)) { const w = IslandHome.tankWater(fishes); return sendError(res, 409, 'TANK_WATER', w === 'mixed' ? '섞인 수조예요. 꺼내기만 할 수 있고, 다 비우면 다시 넣을 수 있어요.' : `${IslandHome.WATER_WORD[w]} 수조예요. ${IslandHome.WATER_WORD[w]} 물고기만 넣어요.`); } /* (368 민물·바다 수조: the first fish sets the water) */
@@ -7631,11 +7627,17 @@ async function requestHandler(req, res) {
         if (total >= homeStage(h).fish) return sendError(res, 409, 'TOO_MANY', `물고기는 집 전체에 ${homeStage(h).fish}마리까지예요.`);
         const out = await pointStore.islandUse({ userId: account, requestId: `hometank-${body.requestId}`, itemId, keep: true });
         if (!out.applied && !out.already) return sendError(res, 409, 'NOT_IN_BAG', '가방에 없는 물고기예요.');
-        /* (1.10.395 Codex 381~390 #1: the same request again after the tank failed and the fish went back to the bag -- not into the tank as well) */
-        if (out.already && await pointStore.settlementOf(`island_give:hometank-back-${body.requestId}`)) return sendError(res, 409, 'NOT_IN_BAG', '가방으로 돌려 둔 물고기예요. 다시 넣어 주세요.');
+        /* (1.10.395 Codex #1 · 1.10.433 Codex P1-5: a rolled-back put, another account's claim, or an ancient pre-433 evicted put can never add a fresh fish) */
+        if (out.already) {
+          if (out.userId && out.userId !== account) return sendError(res, 409, 'NOT_IN_BAG', '가방에 없는 물고기예요.');
+          if (await pointStore.settlementOf(`island_give:hometank-back-${body.requestId}`)) return sendError(res, 409, 'NOT_IN_BAG', '가방으로 돌려 둔 물고기예요. 다시 넣어 주세요.');
+          const usedAt = Number.isFinite(Number(out.at)) ? Number(out.at) : Date.parse(String(out.at));
+          if (!Number.isFinite(usedAt) || nowMs() - usedAt > 600000) return sendJson(res, 200, { ok: true, home: homeAs(session.token, h) });
+        }
         const next = { ...h, tankPuts: tankPutsWith(h.tankPuts, claim), tanks: { ...h.tanks, [tank.uid]: [...fishes, { fid: crypto.randomUUID(), itemId, claim, ...(out.bought ? { bought: true } : {}), ...(Number.isFinite(out.size) ? { size: out.size } : {}) }] } }; /* (1.10.344 P2-6: a 「산 것」 stays one in the tank; Codex 361~370 #1: and its length) */
         /* (383 Codex 371~380 #3: the tank not saved -- the fish back in the bag (its own claim), never gone between the two) */
         try { await saveHome(account, next); } catch (error) { if (out.applied) await pointStore.islandGive({ userId: account, claimId: `hometank-back-${body.requestId}`, itemId, qty: 1, quiet: true, ...((out.bought || Number.isFinite(out.size)) ? { meta: { ...(out.bought ? { bought: true } : {}), ...(Number.isFinite(out.size) ? { size: out.size } : {}) } } : {}) }, nowMs()).catch((e) => console.error('수조 되돌리기 실패:', e.message)); throw error; }
+        await pointStore.markSettlement(`home_tank_done:${claim}`, 'island', { kind: 'home_tank_done', userId: account, itemId, claim }).catch(() => {});
         return sendJson(res, 200, { ok: true, home: homeAs(session.token, next) });
       }
       const f = fishes.find((x) => x.fid === String(body.take)); if (!f) return sendJson(res, 200, { ok: true, home: homeAs(session.token, h) }); // (already taken out)
@@ -7644,6 +7646,8 @@ async function requestHandler(req, res) {
          and takes this one out of the tank) */
       const out = await pointStore.islandGive({ userId: account, claimId: `home_tank_take_${f.fid}`, itemId: f.itemId, qty: 1, quiet: true, ...(Object.keys(meta).length ? { meta } : {}) }, nowMs());
       if (!out.applied && out.reason === 'full') return bagFull(res, f.itemId);
+      /* (1.10.433 Codex P1-5: permanently record the original put claim before removing the fish from the tank so a late replay can never spawn a copy) */
+      if (f.claim) await pointStore.markSettlement(`home_tank_done:${f.claim}`, 'island', { kind: 'home_tank_done', userId: account, itemId: f.itemId, claim: f.claim });
       /* (Codex 361~370 #13: a mixed tank stays mixed -- take-out only -- till its last fish is out, not as soon as one kind is gone) */
       const rest = fishes.filter((x) => x.fid !== f.fid); const mixed = !T.insects && rest.length > 0 && (Boolean(h.tankMixed?.[tank.uid]) || IslandHome.tankWater(fishes) === 'mixed');
       const tankMixed = { ...(h.tankMixed || {}) }; if (mixed) tankMixed[tank.uid] = true; else delete tankMixed[tank.uid];
@@ -8334,20 +8338,52 @@ async function requestHandler(req, res) {
       reflexRuns.set(id, { account, game: body.game, level, at: now, contest: entry?.contest.id || null, bet: bet?.id || null }); if (bet) bet.run = id;
       return sendJson(res, 200, { ok: true, id });
     }
-    const run = reflexRuns.get(String(body.id || ''));
-    if (!run || run.account !== account || now - run.at > Reflex.RUN_MS) return sendError(res, 409, 'NO_GAME', '끝난 판입니다.'); // v1.10.70 also too old
-    reflexRuns.delete(body.id); // one report a round
+    const runId = String(body.id || '');
+    const run = reflexRuns.get(runId);
     const score = Number(body.score);
-    const verdict = Reflex.judge(run.game, run.level, score, now - run.at);
-    if (verdict === 'score') return sendError(res, 400, 'BAD_SCORE', '잘못된 기록입니다.');
+    if (!run || run.account !== account || now - run.at > Reflex.RUN_MS) {
+      /* (1.10.433 Codex P1-10: if the run was already persisted before a restart/drop, return its saved result for the exact same score) */
+      if (/^[A-Za-z0-9-]{8,64}$/.test(runId)) {
+        const saved = await pointStore.settlementOf(`solo:${runId}`).catch(() => null);
+        if (saved && saved.userId === account && saved.ms === score) {
+          return sendJson(res, 200, { ok: true, verdict: 'ok', best: saved.best, newBest: Boolean(saved.newBest), contest: null, weekRank: await soloWeekRank(account, saved.game, saved.level) });
+        }
+      }
+      return sendError(res, 409, 'NO_GAME', '끝난 판입니다.'); // v1.10.70 also too old
+    }
+    if (run.done) {
+      if (score === run.done.score) return sendJson(res, 200, run.done.response);
+      return sendError(res, 409, 'NO_GAME', '끝난 판입니다.');
+    }
+    if (run.saving) return sendError(res, 503, 'TRY_LATER', '기록을 저장하는 중이에요. 잠시 후 다시 시도해 주세요.');
+    const endAt = run.endedAt || now; run.endedAt = endAt;
+    const verdict = Reflex.judge(run.game, run.level, score, endAt - run.at);
+    if (verdict === 'score') { reflexRuns.delete(runId); return sendError(res, 400, 'BAD_SCORE', '잘못된 기록입니다.'); }
+    /* (1.10.433 Codex P1-2: `fast` is rejected BEFORE saving -- never enters personal best, weekly leaderboard, or trophies) */
+    if (verdict === 'fast') {
+      reflexRuns.delete(runId);
+      const bet = run.bet && residentBets.get(run.bet);
+      const betOut = bet ? await settleBet(bet, 'lose', String(session.label || '')) : null;
+      return sendError(res, 400, 'TOO_FAST', '기록을 확인하지 못했어요.', { verdict: 'fast', ...(betOut ? { bet: betOut } : {}) });
+    }
     const G = Reflex.GAMES[run.game];
-    const out = await pointStore.soloClear({ userId: account, gameId: body.id, game: run.game, level: run.level, ms: score, higher: G.higher, points: 0,
-      title: G.levels ? `${G.name} ${Reflex.LEVELS[run.level]}` : G.name, week: climbWeekOf(nowMs()) });
+    run.saving = true;
+    let out;
+    try {
+      out = await pointStore.soloClear({ userId: account, gameId: runId, game: run.game, level: run.level, ms: score, higher: G.higher, points: 0,
+        title: G.levels ? `${G.name} ${Reflex.LEVELS[run.level]}` : G.name, week: climbWeekOf(nowMs()) });
+    } catch (error) {
+      run.saving = false;
+      console.error('혼자 게임 기록 저장 실패:', error.message);
+      return sendError(res, 503, 'TRY_LATER', '기록을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.');
+    }
     if (verdict === 'ok') islandProgress(`minigame:${run.game}`, account, score); // v1.10.80 농부 부탁: a round good enough counts
     const contest = verdict === 'ok' && run.contest ? await contestNote(account, session, run.contest, run.game, score) : null; // (A4: a round opened at the tent)
     const bet = run.bet && residentBets.get(run.bet); /* (v1.10.278: won if the server's check passed and it beat the islander's mark -- 'low' or 'fast': lost) */
     const betOut = bet ? await settleBet(bet, (verdict === 'ok' || verdict === 'low') && IslandBets.beat(bet.game, bet.skill, score, bet.target) /* (v1.10.291: the mark it started with) */ ? 'win' : 'lose', String(session.label || '')) : null;
-    return sendJson(res, 200, { ok: true, verdict, best: out.best, newBest: out.newBest, contest, weekRank: await soloWeekRank(account, run.game, run.level), ...(betOut ? { bet: betOut } : {}) });
+    const response = { ok: true, verdict, best: out.best, newBest: out.newBest, contest, weekRank: await soloWeekRank(account, run.game, run.level), ...(betOut ? { bet: betOut } : {}) };
+    run.saving = false; run.done = { score, response };
+    return sendJson(res, 200, response);
   }
   // v1.10.69 오늘의 문제 (lib/puzzle-daily.js): the page says when it opens the day's puzzle (kept from the first time, so a
   // puzzle left and resumed still counts its whole time) and sends the solved board; the first right answer of the game,
@@ -8847,14 +8883,16 @@ async function requestHandler(req, res) {
     try {
       const price = hasPass ? 0 : pay === 'pass' ? dayPass : fare;
       if (price > 0) {
-        /* (1.10.403 Codex 391~400 #6: the fare's claim by the page's request, not the moment -- paid, then the server gone before the ride was kept: the
-           same request pressed again rides on that payment, not a second fare; a paid request starts one ride, and only within 10 minutes) */
-        const rid = typeof body.requestId === 'string' && /^[A-Za-z0-9-]{8,64}$/.test(body.requestId) ? body.requestId : null; const fareClaim = `taxi:${account}:${rid || startedAt}`;
-        const out = await pointStore.charge(pay === 'pass' ? { userId: account, claimId: passClaim, price, title: `섬 택시 자유이용권 · ${passDay.slice(5)}` } : { userId: account, claimId: fareClaim, price, title: `섬 택시 · ${IslandTaxi.labelOf(from)} → ${to === from ? IslandTaxi.LOOP_LABEL : IslandTaxi.labelOf(to)}` }).catch(() => null);
+        /* (1.10.403 Codex #6 · 1.10.433 Codex P1-9: fare settlement stores route + price + unused flag permanently and transitions unused -> used once in pointStore, surviving restarts) */
+        const rid = typeof body.requestId === 'string' && /^[A-Za-z0-9-]{8,64}$/.test(body.requestId) ? body.requestId : null; const fareClaim = `taxi:${account}:${rid || `${startedAt}-${crypto.randomBytes(4).toString('hex')}`}`;
+        const out = await pointStore.charge(pay === 'pass' ? { userId: account, claimId: passClaim, price, title: `섬 택시 자유이용권 · ${passDay.slice(5)}` } : { userId: account, claimId: fareClaim, price, title: `섬 택시 · ${IslandTaxi.labelOf(from)} → ${to === from ? IslandTaxi.LOOP_LABEL : IslandTaxi.labelOf(to)}`, meta: { from, to } }).catch(() => null);
         if (!out) return sendError(res, 400, 'BAD_REQUEST', '잘못된 요청입니다.');
         if (out.reason === 'insufficient') return sendError(res, 409, 'INSUFFICIENT_POINTS', `포인트가 모자라요(${price.toLocaleString('ko-KR')}P)`);
-        if (pay !== 'pass' && !out.applied) { const at = Number.isFinite(Number(out.at)) ? Number(out.at) : Date.parse(String(out.at)); if (!rid || taxiPaidRides.has(fareClaim) || !(nowMs() - at < 600000)) return sendError(res, 409, 'TAXI_PRICE', '이미 쓴 결제예요. 다시 타기를 눌러 주세요.'); }
-        if (pay !== 'pass') { taxiPaidRides.set(fareClaim, nowMs()); for (const [k, at] of taxiPaidRides) if (nowMs() - at > 3600000) taxiPaidRides.delete(k); }
+        if (pay !== 'pass') {
+          if (!out.applied && !rid) return sendError(res, 409, 'TAXI_PRICE', '이미 쓴 결제예요. 다시 타기를 눌러 주세요.');
+          const ticket = await pointStore.useTaxiTicket({ userId: account, claimId: fareClaim, from, to, price, now: nowMs(), maxAgeMs: 600000 }).catch(() => null);
+          if (!ticket?.applied) return sendError(res, 409, 'TAXI_PRICE', '이미 쓴 결제예요. 다시 타기를 눌러 주세요.');
+        }
         if (out.applied) { paid = price; notifyPointsChanged([account]); } /* (a pass already bought today -- by another screen at once: not again) */
       }
       took = true;
@@ -11101,9 +11139,14 @@ async function main() {
   for (const [account, n] of Object.entries((await pointStore.worldValue('bagSlots')) || {})) bagSlots.set(account, n); // v1.10.195
   for (const [account, kinds] of Object.entries((await pointStore.worldValue('boxSlots')) || {})) for (const [kind, n] of Object.entries(kinds || {})) boxSlots.set(`${account}|${kind}`, n); // v1.10.297
   { // 362 (사용자 2A): a box bought at the old sizes kept at its new one -- 30 -> 50, 60·90 -> 100, 120 -> 200 (IslandItems.boxOf reads it so too)
-    const all = (await pointStore.worldValue('boxSlots')) || {}; let stepped = 0; const next = {};
+    // 1.10.433 Codex P1-7: also finish any pre-433 box purchase whose charge committed right before a restart
+    const all = (await pointStore.worldValue('boxSlots')) || {}; let stepped = 0; let healed = 0; const next = {};
     for (const [account, kinds] of Object.entries(all)) { next[account] = {}; for (const [kind, n] of Object.entries(kinds || {})) { const s = IslandItems.BOX_STEP[n] ?? n; if (s !== n) stepped += 1; next[account][kind] = s; boxSlots.set(`${account}|${kind}`, s); } }
-    if (stepped) { await pointStore.setWorldValue('boxSlots', next).catch((error) => console.error('통 크기 올리기 실패:', error.message)); console.log(`[box-step] ${stepped} boxes stepped up to 50/100/200`); }
+    for (const c of await pointStore.paidBoxClaims().catch(() => [])) {
+      const cur = Number(next[c.userId]?.[c.kind]) || 0;
+      if (c.to > cur) { (next[c.userId] ||= {})[c.kind] = c.to; boxSlots.set(`${c.userId}|${c.kind}`, c.to); healed += 1; }
+    }
+    if (stepped || healed) { await pointStore.setWorldValue('boxSlots', next).catch((error) => console.error('통 크기 올리기 실패:', error.message)); if (stepped) console.log(`[box-step] ${stepped} boxes stepped up to 50/100/200`); if (healed) console.log(`[box-heal] ${healed} paid box upgrades applied`); }
   }
   /* 1.10.430 인벤토리 2차 (결정 3A, notes inventory-2-plan §2): who bought the bag's 24 or 32 keeps the 채집 바구니's 50 -- written once
      (world 'bagKinds430'); IslandItems.boxNow reads it so even before. bagSlots itself kept (a step back to 1.10.429 reads it) */
@@ -11212,7 +11255,7 @@ async function main() {
   bootMark('before-listen');
   /* (1.10.376 별마루섬 호랑이: their ground made after the start in 20 ms slices, as 별마루섬's open table -- the tigers wait till it is) */
   if (process.env.NODE_ENV !== 'test') setTimeout(() => { const step = () => { try { if (!tigerSim.warm(20)) setImmediate(step); } catch (error) { console.error('호랑이 땅 만들기 실패:', error.message); } }; step(); }, 6000).unref?.();
-  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.432 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); tigerPendingResume().catch(() => {}); /* (403 Codex #16: catches whose loss was not saved before the restart) */ if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.433 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); tigerPendingResume().catch(() => {}); /* (403 Codex #16: catches whose loss was not saved before the restart) */ if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

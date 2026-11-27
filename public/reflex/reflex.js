@@ -244,12 +244,27 @@ export function mount({ api, onBack, pieceSkin = null }) {
       line.textContent = out ? (out.newBest ? '최고 기록!' : `최고 ${fmtScore(out.best, g.unit)}`) + weekLine(out) : '';
       return;
     }
-    try {
-      const out = await api('/api/solo/reflex/finish', { method: 'POST', body: JSON.stringify({ id, score }) });
-      if (info) (info.records[g.id] ||= {})[level] = { best: out.best };
-      if (out.newBest) sfx.best();
-      line.textContent = (contestPlay ? contestSaid(out, g) : out.newBest ? '최고 기록!' : `최고 ${fmtScore(out.best, g.unit)}`) + weekLine(out);
-    } catch (error) { line.textContent = error.message; }
+    /* (1.10.433 Codex P1-10: transient server/storage failure keeps the run open on the server -- auto-retry once, then offer a retry button) */
+    const sendReflex = async (autoRetry) => {
+      try {
+        const out = await api('/api/solo/reflex/finish', { method: 'POST', body: JSON.stringify({ id, score }) });
+        if (info) (info.records[g.id] ||= {})[level] = { best: out.best };
+        if (out.newBest) sfx.best();
+        line.textContent = (contestPlay ? contestSaid(out, g) : out.newBest ? '최고 기록!' : `최고 ${fmtScore(out.best, g.unit)}`) + weekLine(out);
+      } catch (error) {
+        if (!settled(error) && autoRetry) {
+          line.textContent = '기록을 다시 보내는 중…';
+          setTimeout(() => { if (line.isConnected) sendReflex(false); }, 1200);
+          return;
+        }
+        line.textContent = error.message;
+        if (!settled(error)) {
+          const retry = button('hpBtn', '다시 보내기', () => { retry.disabled = true; line.textContent = '기록 확인 중…'; sendReflex(false); });
+          line.append(' ', retry);
+        }
+      }
+    };
+    sendReflex(true);
   }
   const weekLine = (out) => (out?.weekRank ? ` · 이번 주 ${out.weekRank}위` : ''); // (v1.10.250 기록의 탑)
 
