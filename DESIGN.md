@@ -114,90 +114,87 @@ typography:
     fontSize: 15px
     fontWeight: 800
     lineHeight: 1.45
-  isle:
-    display:
-      fontSize: 24px
-      fontWeight: 900
-      lineHeight: 1.3
-    title:
-      fontSize: 18px
-      fontWeight: 900
-      lineHeight: 1.35
-    subtitle:
-      fontSize: 16px
-      fontWeight: 800
-      lineHeight: 1.4
-    body:
-      fontSize: 15px
-      fontWeight: 700
-      lineHeight: 1.5
-    body-long:
-      fontSize: 15px
-      fontWeight: 400
-      lineHeight: 1.6
-    support:
-      fontSize: 13px
-      fontWeight: 700
-      lineHeight: 1.45
-    smallest:
-      fontSize: 12px
-      fontWeight: 700
-      lineHeight: 1.4
-  hall:
-    title:
-      fontSize: 24px
-      fontWeight: 900
-      lineHeight: 1.3
-      letterSpacing: -0.03em
-    hud-number:
-      fontSize: 34px
-      fontWeight: 900
-      lineHeight: 1
-      fontFeature: '"tnum"'
-    result-number:
-      fontSize: 64px
-      fontWeight: 900
-      lineHeight: 1
-      fontFeature: '"tnum"'
-    hud-label:
-      fontSize: 11px
-      fontWeight: 800
-      lineHeight: 1.3
-      letterSpacing: 0.06em
-    body:
-      fontSize: 14px
-      fontWeight: 700
-      lineHeight: 1.5
-    pill:
-      fontSize: 13px
-      fontWeight: 800
-      lineHeight: 1.3
-  lobby:
-    body:
-      fontSize: 0.84rem
-      fontWeight: 800
-      lineHeight: 1.45
-    row:
-      fontSize: 0.8rem
-      fontWeight: 800
-      lineHeight: 1.45
-    support:
-      fontSize: 0.74rem
-      fontWeight: 800
-      lineHeight: 1.45
-    heading:
-      fontSize: 1.1rem
-      fontWeight: 900
-      lineHeight: 1.35
-    number-lg:
-      fontSize: 1.35rem
-      fontWeight: 900
-      lineHeight: 1.2
-    eyebrow:
-      fontSize: 0.78rem
-      fontWeight: 900
-      lineHeight: 1.3
-      letterSpacing: 0.16em
+  isle-display:
+    fontSize: 24px
+    fontWeight: 900
+    lineHeight: 1.3
+  isle-title:
+    fontSize: 18px
+    fontWeight: 900
+    lineHeight: 1.35
+  isle-subtitle:
+    fontSize: 16px
+    fontWeight: 800
+    lineHeight: 1.4
+  isle-body:
+    fontSize: 15px
+    fontWeight: 700
+    lineHeight: 1.5
+  isle-body-long:
+    fontSize: 15px
+    fontWeight: 400
+    lineHeight: 1.6
+  isle-support:
+    fontSize: 13px
+    fontWeight: 700
+    lineHeight: 1.45
+  isle-smallest:
+    fontSize: 12px
+    fontWeight: 700
+    lineHeight: 1.4
+  hall-title:
+    fontSize: 24px
+    fontWeight: 900
+    lineHeight: 1.3
+    letterSpacing: -0.03em
+  hall-hud-number:
+    fontSize: 34px
+    fontWeight: 900
+    lineHeight: 1
+    fontFeature: '"tnum"'
+  hall-result-number:
+    fontSize: 64px
+    fontWeight: 900
+    lineHeight: 1
+    fontFeature: '"tnum"'
+  hall-hud-label:
+    fontSize: 11px
+    fontWeight: 800
+    lineHeight: 1.3
+    letterSpacing: 0.06em
+  hall-body:
+    fontSize: 14px
+    fontWeight: 700
+    lineHeight: 1.5
+  hall-pill:
+    fontSize: 13px
+    fontWeight: 800
+    lineHeight: 1.3
+  lobby-body:
+    fontSize: 0.84rem
+    fontWeight: 800
+    lineHeight: 1.45
+  lobby-row:
+    fontSize: 0.8rem
+    fontWeight: 800
+    lineHeight: 1.45
+  lobby-support:
+    fontSize: 0.74rem
+    fontWeight: 800
+    lineHeight: 1.45
+  lobby-heading:
+    fontSize: 1.1rem
+    fontWeight: 900
+    lineHeight: 1.35
+  lobby-number-lg:
+    fontSize: 1.35rem
+    fontWeight: 900
+    lineHeight: 1.2
+  lobby-eyebrow:
+    fontSize: 0.78rem
+    fontWeight: 900
+    lineHeight: 1.3
+    letterSpacing: 0.16em
 rounded:
   isle:
     tape: 4px
@@ -252,7 +249,7 @@ components:
   isle-sheet-head:
     backgroundColor: "{colors.isle.card}"
     textColor: "{colors.isle.ink}"
-    typography: "{typography.isle.title}"
+    typography: "{typography.isle-title}"
     height: 56px
   isle-close:
     backgroundColor: "{colors.isle.paper}"
@@ -262,7 +259,7 @@ components:
   isle-button-primary:
     backgroundColor: "{colors.isle.btn}"
     textColor: "{colors.on-primary}"
-    typography: "{typography.isle.subtitle}"
+    typography: "{typography.isle-subtitle}"
     rounded: "{rounded.isle.md}"
     height: 44px
   isle-button-paper:
@@ -283,19 +280,19 @@ components:
   isle-tab:
     backgroundColor: "{colors.isle.card}"
     textColor: "{colors.isle.ink}"
-    typography: "{typography.isle.support}"
+    typography: "{typography.isle-support}"
     rounded: "{rounded.isle.full}"
     height: 36px
   isle-tab-selected:
     backgroundColor: "{colors.isle.select}"
     textColor: "{colors.isle.ink}"
-    typography: "{typography.isle.support}"
+    typography: "{typography.isle-support}"
     rounded: "{rounded.isle.full}"
     height: 36px
   isle-row:
     backgroundColor: "{colors.isle.card}"
     textColor: "{colors.isle.ink}"
-    typography: "{typography.isle.body}"
+    typography: "{typography.isle-body}"
     rounded: "{rounded.isle.md}"
     height: 44px
   isle-input:
@@ -306,7 +303,7 @@ components:
   isle-value-pill:
     backgroundColor: "{colors.isle.value-pill}"
     textColor: "{colors.isle.value}"
-    typography: "{typography.isle.support}"
+    typography: "{typography.isle-support}"
     rounded: "{rounded.isle.full}"
   isle-tape:
     backgroundColor: "{colors.isle.field}"
@@ -326,7 +323,7 @@ components:
   hall-pill:
     backgroundColor: "{colors.hall.dark.bg}"
     textColor: "{colors.hall.dark.t1}"
-    typography: "{typography.hall.pill}"
+    typography: "{typography.hall-pill}"
     rounded: "{rounded.hall.full}"
     height: 34px
   hall-close:
@@ -354,7 +351,7 @@ components:
   lobby-row:
     backgroundColor: "{colors.lobby.dark.row}"
     textColor: "{colors.lobby.dark.text}"
-    typography: "{typography.lobby.row}"
+    typography: "{typography.lobby-row}"
     rounded: "{rounded.lobby.md}"
     padding: 10px
   lobby-button-primary:
@@ -641,7 +638,7 @@ AI가 화면을 만들거나 고칠 때의 순서.
 1. 이 파일의 Overview에서 바탕을 고른다. 섬 위면 `colors.isle`, 게임관이면 `colors.hall`, 섬 밖이면 `colors.lobby`.
 2. YAML의 `components`에서 가까운 부품을 찾아 그 값을 그대로 쓴다(`{colors.isle.btn}`처럼 이름으로). 글로 다시 풀어 쓰지 않는다.
 3. 새 색·크기가 필요하면 YAML과 해당 절에 먼저 넣고, 대비를 적는다.
-4. 고친 뒤 확인: `npx @google/design.md lint DESIGN.md`(토큰 참조·대비), 게임 색은 `node --test test/gamehall-catalog.test.js`, 밝은 테마는 `node tools/theme-light.js` 후 `test/theme-light.test.js`, 섬 창은 그 창을 여는 e2e(`island-paper-windows`, `island-bag`, `general-store`, `dress-room`, `attendance-card` 등)를 먼저 돌린다.
+4. 고친 뒤 확인: `npx @google/design.md@0.4.0 lint DESIGN.md`(토큰 참조·대비 — **오류 0**이어야 함. 「부품에 안 쓰인 색」 경고와 0.4.0이 아직 모르는 `motion` 경고는 그대로 둔다. 0.4.0은 글자 단계를 묶음으로 못 읽어서 `isle-title`처럼 한 줄 이름으로 쓴다), 게임 색은 `node --test test/gamehall-catalog.test.js`, 밝은 테마는 `node tools/theme-light.js` 후 `test/theme-light.test.js`, 섬 창은 그 창을 여는 e2e(`island-paper-windows`, `island-bag`, `general-store`, `dress-room`, `attendance-card` 등)를 먼저 돌린다.
 5. 화면이 바뀌면 PC·폰 사진으로 확인한다.
 
 ## Known Gaps
