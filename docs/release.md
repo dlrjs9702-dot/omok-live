@@ -1,6 +1,6 @@
 # 릴리스 절차
 
-규칙은 [AGENTS.md](../AGENTS.md) §4~§6이 기준이다. 이 문서는 그 규칙을 실행 순서로 풀어 쓴 체크리스트이며, 둘이 어긋나면 AGENTS.md를 따른다. 릴리스는 Claude Code(로컬·클라우드)가 진행하며(AGENTS.md §8), 환경에 관계없이 같은 순서를 따른다.
+규칙은 [AGENTS.md](../AGENTS.md)가 기준이다(이 문서의 「AGENTS §N」은 옛 전문 [agents-detail.md](agents-detail.md)의 절 번호). 이 문서는 그 규칙을 실행 순서로 풀어 쓴 체크리스트이며, 둘이 어긋나면 AGENTS.md를 따른다. 릴리스는 Claude Code(로컬·클라우드)가 진행하며(AGENTS.md §8), 환경에 관계없이 같은 순서를 따른다.
 
 ## 목적
 사용자에게 보이는 변경을 `main`에 병합하고 Render 운영 배포까지 확인한 뒤, 기록 두 곳(`PROJECT_STATUS.md`, 비공개 `STATUS.md`)을 맞춘다.
