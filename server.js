@@ -2856,7 +2856,7 @@ const boatAtDock = (p, dock) => Boolean(p) && (p.space || 'island') === 'island'
 const boatRefusal = (session, here) => (taxiRides.has(session.token) ? 'taxi' : (taxiBusyOf(session, here)?.reason || (here?.bike ? 'bike' : null)));
 const boatsView = (now = nowMs()) => IslandBoat.view(boatFleet, now);
 function boatTick() {
-  const now = nowMs(); const r = IslandBoat.tick(boatFleet, now, { canBoard: (token, dock) => { const s = sessions.get(token); const p = plazaPresence.get(token); return Boolean(s) && boatAtDock(p, dock) && !boatRefusal(s, p); } });
+  const now = nowMs(); const r = IslandBoat.tick(boatFleet, now, { canBoard: (token, dock) => { const s = sessions.get(token); const p = plazaPresence.get(token); return Boolean(s) && boatAtDock(p, dock) && !boatRefusal(s, p); }, whereOf: (token) => plazaPresence.get(token) || null /* (435: a queued one's walk on) */ });
   for (const o of r.released) { boatDone.set(o.token, { dock: o.dock, x: Math.round(o.x * 100) / 100, z: Math.round(o.z * 100) / 100 }); const p = plazaPresence.get(o.token); if (p) p.boat = null; }
   for (const o of r.boarded) { const p = plazaPresence.get(o.token); if (p) p.boat = { id: o.id, seat: o.seat }; freeSeat(o.token); }
   if (r.changed) { plazaDirty = true; broadcastIsland('boats', boatsView(now)); }
@@ -5263,7 +5263,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.434' });
+    return sendJson(res, 200, { ok: true, version: '1.10.435' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -8974,7 +8974,7 @@ async function requestHandler(req, res) {
     { const why = boatRefusal(session, here); /* (395 Codex 11: the queue asks the same) */
       if (why === 'bike') return sendError(res, 409, 'BOAT_BIKE', '자전거에서 내려 주세요.');
       if (why) { console.log(`[boat] busy reason=${why}`); return sendError(res, 409, 'BOAT_BUSY', BOAT_BUSY_WORDS[why] || BOAT_BUSY_WORDS.boat, { reason: why }); } }
-    const now = nowMs(); const r = IslandBoat.board(boatFleet, dock, session.token, now);
+    const now = nowMs(); const r = IslandBoat.board(boatFleet, dock, session.token, now, here); /* (435: the boat waits for my walk on) */
     if (r.error) return sendError(res, 409, r.error === 'RIDING' ? 'BOAT_BUSY' : 'BAD_REQUEST', r.error === 'RIDING' ? BOAT_BUSY_WORDS.boat : '잘못된 요청입니다.');
     if (r.queued) { broadcastIsland('boats', boatsView(now)); return sendJson(res, 200, { ok: true, queued: true, place: r.place, etaS: Math.ceil(r.etaMs / 1000), boats: boatsView(now) }); }
     here.boat = { id: r.boat.id, seat: r.seat }; here.bike = null; freeSeat(session.token); plazaDirty = true; console.log(`[boat] board ${dock} ${r.boat.id}#${r.seat}`);
@@ -11304,7 +11304,7 @@ async function main() {
   bootMark('before-listen');
   /* (1.10.376 별마루섬 호랑이: their ground made after the start in 20 ms slices, as 별마루섬's open table -- the tigers wait till it is) */
   if (process.env.NODE_ENV !== 'test') setTimeout(() => { const step = () => { try { if (!tigerSim.warm(20)) setImmediate(step); } catch (error) { console.error('호랑이 땅 만들기 실패:', error.message); } }; step(); }, 6000).unref?.();
-  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.434 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); tigerPendingResume().catch(() => {}); /* (403 Codex #16: catches whose loss was not saved before the restart) */ if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.435 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); tigerPendingResume().catch(() => {}); /* (403 Codex #16: catches whose loss was not saved before the restart) */ if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

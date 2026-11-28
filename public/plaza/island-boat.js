@@ -47,6 +47,10 @@
   const captainAt = (pose) => { const p = worldOf(pose, NODES.captain); return { x: p.x, y: p.y, z: p.z, yaw: pose.yaw }; };
   // where one steps off: on the float 1 m in from its sea edge beside a boarding berth, or the arm's middle by the unloading one (172 HANDOFF §4)
   function exitOf(dockId, berth) { const e = MODEL.exits[berth >= 0 && berth < 3 ? berth : 0]; return toWorld(dockId, e[0], e[1]); }
+  /* 1.10.435 문제 기록 9fc80a32 「탈 때 순간이동 → 걸어 올라타기」: one boarding walks on from where they stand -- to the berth's step, through the side gate,
+     to the seat (ABOARD m on board) at WALK_ON m/s (the page's walk); the boat holds till they could be in (WALK_SPARE for the page hearing of it) */
+  const WALK_ON = 3.36; const ABOARD = 5; const WALK_SPARE = 1500;
+  const walkMsOf = (dock, berth, x, z) => { const e = exitOf(dock, berth); return Number.isFinite(x) && Number.isFinite(z) ? Math.round(((Math.hypot(x - e.x, z - e.z) + ABOARD) / WALK_ON) * 1000 + WALK_SPARE) : 0; };
   // ---- the way across: a berth, the lane on this way's right, a berth (or the waiting spot) -- sampled every metre with its time ----
   function laneSide(dir) {
     const pts = dir > 0 ? LANE : [...LANE].reverse(); const out = [];
@@ -154,18 +158,19 @@
   const busyForShift = (fleet, dock, b, now) => dockWaterBusy(fleet, dock, b, now) || fleet.boats.some((o) => o !== b && o.at === dock && (o.phase === 'hold' || o.phase === 'back'));
   const busyForLeave = (fleet, dock, b, now) => dockWaterBusy(fleet, dock, b, now);
   const busyForMoor = (fleet, dock, b, now) => dockWaterBusy(fleet, dock, b, now);
-  function depart(fleet, b, now) { b.from = b.at; b.to = DOCKS[b.at].other; b.berthFrom = b.berth; b.berthTo = freeBerth(fleet, b.to, b); b.phase = 'sail'; b.t0 = now; b.at = null; b.berth = -1; const p = pathOf(b.from, b.berthFrom, b.to, b.berthTo); b.until = now + p.ms / fleet.scale; b.clearAt = now + p.clearMs / fleet.scale; b.inAt = Number.isFinite(p.inMs) ? now + p.inMs / fleet.scale : Infinity; }
+  function depart(fleet, b, now) { b.walkUntil = 0; b.from = b.at; b.to = DOCKS[b.at].other; b.berthFrom = b.berth; b.berthTo = freeBerth(fleet, b.to, b); b.phase = 'sail'; b.t0 = now; b.at = null; b.berth = -1; const p = pathOf(b.from, b.berthFrom, b.to, b.berthTo); b.until = now + p.ms / fleet.scale; b.clearAt = now + p.clearMs / fleet.scale; b.inAt = Number.isFinite(p.inMs) ? now + p.inMs / fleet.scale : Infinity; }
   /* (boardable: the outer boarding berth's boat first; the inner's only while the outer is empty and nothing shifting into it -- its way out passes
      there. Never one at the unloading berth: a rider's boat never backs out) */
   const boardable = (fleet, dock) => fleet.boats.filter((b) => b.at === dock && (b.phase === 'hold' || b.phase === 'docked') && (b.berth === OUTER || (b.berth === INNER && !usedBerths(fleet, dock, b).has(OUTER)))).sort((a, c) => a.berth - c.berth);
   // board at a dock: a boat holding there with room, else one staying (it starts holding) -- or the queue
-  function board(fleet, dock, token, now) {
+  function board(fleet, dock, token, now, at = null) { /* (435: `at` where they stand -- the boat waits for their walk) */
     if (!DOCKS[dock]) return { error: 'BAD_DOCK' }; if (riderOf(fleet, token)) return { error: 'RIDING' };
     const here = boardable(fleet, dock);
     const pick = here.find((b) => b.phase === 'hold' && freeSeats(b)) || here.find((b) => b.phase === 'docked');
     if (!pick) { const q = fleet.queues[dock]; if (!q.some((e) => e.token === token)) q.push({ token, at: now }); return { queued: true, place: q.findIndex((e) => e.token === token) + 1, etaMs: etaOf(fleet, dock, now) }; }
     const seat = pick.seats.indexOf(null); pick.seats[seat] = token; if (pick.phase === 'docked') { pick.phase = 'hold'; pick.until = now + HOLD / fleet.scale; }
-    if (!freeSeats(pick) && !busyForLeave(fleet, dock, pick, now)) depart(fleet, pick, now); /* (full: off now, unless the water before the dock is another's -- then at the next tick) */
+    if (at) { pick.walkUntil = Math.max(pick.walkUntil || 0, now + walkMsOf(dock, pick.berth, at.x, at.z)); /* (a walk's real time -- not the tests' quicker crossing) */ pick.until = Math.max(pick.until, pick.walkUntil); }
+    if (!freeSeats(pick) && now >= (pick.walkUntil || 0) && !busyForLeave(fleet, dock, pick, now)) depart(fleet, pick, now); /* (full: off now, unless the water before the dock is another's -- then at the next tick) */
     fleet.queues[dock] = fleet.queues[dock].filter((e) => e.token !== token);
     return { ok: true, boat: pick, seat };
   }
@@ -203,12 +208,12 @@
   }
   // the fleet's clock moved on: holds run out, crossings end, unloading ends; the queues boarded where a boat now takes people.
   // canBoard(token, dock): still there for it (the server's own look: on the island, near the float). Returns what changed.
-  function tick(fleet, now, { canBoard = () => true } = {}) {
+  function tick(fleet, now, { canBoard = () => true, whereOf = () => null } = {}) { /* (435 whereOf(token): where one queued stands, for their walk) */
     const out = { changed: false, released: [], boarded: [] };
     for (let guard = 0; guard < 12; guard += 1) {
       let moved = false;
       for (const b of fleet.boats) {
-        if (b.phase === 'hold' && (now >= b.until || !freeSeats(b)) && !busyForLeave(fleet, b.at, b, now)) { depart(fleet, b, now); moved = true; continue; }
+        if (b.phase === 'hold' && (now >= b.until || !freeSeats(b)) && now >= (b.walkUntil || 0) && !busyForLeave(fleet, b.at, b, now)) { depart(fleet, b, now); moved = true; continue; }
         if (b.phase === 'back' && !busyForLeave(fleet, b.at, b, now)) { depart(fleet, b, now); moved = true; continue; }
         if (b.phase === 'parked' && !busyForShift(fleet, b.at, b, now)) { const k = shiftTarget(fleet, b.at, b);
           if (k >= 0) { b.phase = 'shift'; b.berth = k; b.t0 = now; b.until = now + shiftMsOf(b.at, k, fleet.scale); } else b.phase = 'back'; moved = true; continue; }
@@ -232,7 +237,7 @@
       for (const dock of Object.keys(fleet.queues)) {
         const q = fleet.queues[dock]; while (q.length && !canBoard(q[0].token, dock)) q.shift();
         while (q.length) { const b = boardable(fleet, dock).find((x) => (x.phase === 'hold' && freeSeats(x)) || x.phase === 'docked'); if (!b) break;
-          const e = q.shift(); if (!canBoard(e.token, dock)) continue; const r = board(fleet, dock, e.token, now); if (r.ok) { out.boarded.push({ token: e.token, id: r.boat.id, seat: r.seat }); moved = true; } }
+          const e = q.shift(); if (!canBoard(e.token, dock)) continue; const r = board(fleet, dock, e.token, now, whereOf(e.token)); if (r.ok) { out.boarded.push({ token: e.token, id: r.boat.id, seat: r.seat }); moved = true; } }
       }
       if (!moved) break; out.changed = true;
     }
@@ -250,7 +255,7 @@
     const eta = Math.max(0, Math.ceil(((v.eta?.[dock] ?? 0) - (now - v.at)) / 1000));
     return `배 오는 중 · ${eta}초${myPlace ? ` · 내 순서 ${myPlace}번째` : ''}`;
   }
-  return { SEATS, HOLD, UNLOAD, MOOR, FAST, SLOW, BOATS, BRIDGE, SIDE, LANE, DOCKS, NODES, SEAT_DROP, worldOf, seatAt, captainAt, exitOf, nearDock, laneSide, pathOf, poseAt, sailMs,
+  return { WALK_ON, ABOARD, WALK_SPARE, walkMsOf, /* (435) */ SEATS, HOLD, UNLOAD, MOOR, FAST, SLOW, BOATS, BRIDGE, SIDE, LANE, DOCKS, NODES, SEAT_DROP, worldOf, seatAt, captainAt, exitOf, nearDock, laneSide, pathOf, poseAt, sailMs,
     ROOTS, MODEL, OUTER, INNER, UNLOAD_BERTH, moorPath, shiftPath, boardable, shiftTarget, /* (409 결정 75) */
     createFleet, riderOf, countAt, freeBerth, board, leave, drop, etaOf, tick, view, signOf };
 }));

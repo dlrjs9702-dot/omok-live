@@ -22,10 +22,13 @@ test('탐방선: 배 타는 곳에서 타기 → 곧 출발 → 다리 밑으로
   await expect.poll(async () => (await shown()).mine, { timeout: 15000 }).not.toBeNull();
   const mine = (await shown()).mine;
   // crossing: the boat leaves the dock and passes under the bridge; I sit on its seat
-  let under = false; let far = 0; let sailed = 0;
+  /* (1.10.435 문제 기록 9fc80a32: walked on from the float -- then seated in it; the hat away from the gate, back once off) */
+  let under = false; let far = 0; let sailed = 0; let walked = 0; let hatOff = 0;
   await expect.poll(async () => { const s = await page.evaluate(() => { const d = window.PlazaDebug(); return { ...d.boats(), me: { x: d.x, z: d.z } }; }); const b = s.shown.find((x) => x.id === mine.id); /* (one look: the boat and me in the same frame) */
-    if (b?.x != null && s.mine) { if (Math.hypot(b.x - 59.35, b.z - 140) < 12) under = true; far = Math.max(far, Math.hypot(s.me.x - b.x, s.me.z - b.z)); if (s.state.boats.find((x) => x.id === mine.id)?.phase === 'sail') sailed += 1; }
+    if (s.walking) walked += 1; if (s.hatOff) hatOff += 1;
+    if (b?.x != null && s.mine && !s.walking) { if (Math.hypot(b.x - 59.35, b.z - 140) < 12) under = true; far = Math.max(far, Math.hypot(s.me.x - b.x, s.me.z - b.z)); if (s.state.boats.find((x) => x.id === mine.id)?.phase === 'sail') sailed += 1; }
     return s.mine; }, { timeout: 60000, intervals: [100] }).toBeNull();
+  expect(walked, 'walked on').toBeGreaterThan(3); expect(hatOff, 'the hat away aboard').toBeGreaterThan(0); expect((await shown()).hatOff, 'the hat back once off').toBe(false);
   expect(sailed, 'seen crossing').toBeGreaterThan(3);
   expect(under, 'under the high bridge').toBe(true); expect(far, 'seated in it').toBeLessThan(2.5);
   // off on 별마루섬 부두 -- 409 결정 75: on its arm, by the unloading berth
