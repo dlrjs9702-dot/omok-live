@@ -6732,7 +6732,7 @@ async function requestHandler(req, res) {
     const now = Date.now(); if (now - perfLoggedAt < 60000) return sendError(res, 429, 'PERF_SOON', '1분 뒤에 다시 남길 수 있어요.'); perfLoggedAt = now;
     const body = await parseJson(req).catch(() => null); const num = (v, max) => (Number.isFinite(Number(v)) ? Math.max(0, Math.min(max, Math.round(Number(v) * 10) / 10)) : null);
     const PLACES = ['plaza', 'stop', 'bridge', 'street', 'forest'];
-    const rows = (Array.isArray(body?.rows) ? body.rows : []).slice(0, 20).filter((w) => PLACES.includes(w?.place)).map((w) => ({ place: w.place, tier: num(w.tier, 2), see: Boolean(w.see), fps: num(w.fps, 240), p50: num(w.p50, 5000), p95: num(w.p95, 5000), over50: num(w.over50, 10000), js: num(w.js, 1000), calls: num(w.calls, 100000), tris: num(w.tris, 1e8) }));
+    const rows = (Array.isArray(body?.rows) ? body.rows : []).slice(0, 20).filter((w) => PLACES.includes(w?.place)).map((w) => ({ place: w.place, tier: num(w.tier, 2), see: Boolean(w.see), fps: num(w.fps, 240), p50: num(w.p50, 5000), p95: num(w.p95, 5000), over50: num(w.over50, 10000), long: num(w.long, 100) /* (440 P2: %, the [client] line's yardstick) */, js: num(w.js, 1000), calls: num(w.calls, 100000), tris: num(w.tris, 1e8) }));
     console.log(`[perf] ${JSON.stringify({ v: SERVER_VERSION, phone: Boolean(body?.phone), gpu: String(body?.gpu || '').replace(/[^\w ().,-]/g, '').slice(0, 80), dpr: num(body?.dpr, 8), px: String(body?.px || '').replace(/[^\dx]/g, '').slice(0, 12), rows })}`);
     return sendJson(res, 200, { ok: true, rows: rows.length });
   }
@@ -7118,7 +7118,7 @@ async function requestHandler(req, res) {
   if (pathname === '/api/client/report' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
     if (!checkRateLimit(`client-report:${session.token}`, 20, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
-    const body = await parseJson(req); const kept = clientReports.add({ kind: body.kind, text: body.text, fps: body.fps, tier: body.tier, scale: body.scale, device: body.device });
+    const body = await parseJson(req); const kept = clientReports.add({ kind: body.kind, text: body.text, fps: body.fps, tier: body.tier, scale: body.scale, long: body.long /* (1.10.440 ④ P2) */, device: body.device });
     return sendJson(res, 200, { ok: true, kept });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/client-report' && req.method === 'GET') return sendJson(res, 200, { ok: true, line: clientReports.line(clientLoggedDay || 'test', require('./package.json').version) });

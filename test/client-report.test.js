@@ -41,6 +41,21 @@ test('화면 보고 서버: 들어온 사람만, 1분에 20번, 하루 줄에 �
   assert.match(line, /TypeError: q @ app\.js:3:4/); assert.doesNotMatch(line, /보고하는사람|guest:|"userId"/);
 });
 
+test('긴 프레임 비율 (1.10.440 ④ P2): 보고마다 50 ms 넘은 프레임 %, 하루 줄에 중앙값 · p90, 성능 재기와 같은 잣대', () => {
+  const r = C.createReports();
+  for (const long of [0, 0.5, 2, 12.5, 40]) r.add({ kind: 'perf', fps: 50, tier: 2, long, device: 'phone' });
+  r.add({ kind: 'perf', fps: 58, tier: 2, device: 'phone' }); r.add({ kind: 'perf', fps: 58, long: 250, device: 'pc' }); r.add({ kind: 'perf', fps: 58, long: 'x', device: 'pc' });
+  const s = r.summary('d', 'v');
+  assert.deepEqual(s.perf.phone.long, { n: 5, p50: 2, p90: 40 }, '없는 보고는 빼고');
+  assert.deepEqual(s.perf.pc.long, { n: 1, p50: 100, p90: 100 }, '0~100으로 자름, 숫자 아닌 것은 없음');
+  const b = C.createReports(); b.restore(JSON.parse(JSON.stringify(r.state()))); assert.equal(b.line('d', 'v'), r.line('d', 'v'), '다시 켜져도 같음');
+  const fs2 = require('node:fs'); const scene = fs2.readFileSync(path.join(__dirname, '../public/plaza/plaza-scene.js'), 'utf8'); const app = fs2.readFileSync(path.join(__dirname, '../public/app.js'), 'utf8');
+  assert.match(scene, /const LONG_MS = 50;/); assert.match(scene, /over50: t\.filter\(\(v\) => v > LONG_MS\)\.length, long:/, '성능 재기도 같은 50 ms');
+  assert.match(scene, /if \(real > 0\) \{ longAll \+= 1; if \(real \* 1000 > LONG_MS\) longN \+= 1; \}/); assert.match(scene, /longFrames \/\* \(1\.10\.440/);
+  assert.match(app, /long: l && l\.n >= 100 \? l\.pct : null/, '100프레임 넘을 때만');
+  assert.match(fs2.readFileSync(path.join(__dirname, '../server.js'), 'utf8'), /long: body\.long \/\* \(1\.10\.440/);
+});
+
 test('하루 표본은 다시 켜져도 이어짐 (1.10.352): state → restore가 같은 줄, 한도 안에서만', () => {
   const a = C.createReports(); a.add({ kind: 'error', text: 'TypeError: x is undefined', device: 'phone' }); a.add({ kind: 'perf', fps: 42.5, tier: 1, scale: 75, device: 'pc' }); a.add({ kind: 'perf', fps: 18, tier: 0, device: 'phone' });
   const b = C.createReports(); b.restore(JSON.parse(JSON.stringify(a.state())));

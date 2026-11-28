@@ -1872,7 +1872,10 @@
   function reportFrames() {
     try { if (navigator.webdriver && !localStorage.getItem('gc.testReport')) return; } catch { return; }
     const visit = ++framesVisit;
-    const tick = () => { if (visit !== framesVisit || !document.body.classList.contains('plazaMode')) return; if (!document.hidden && fpsNow) { const s = plaza.controller?.screenNow?.(); sendReport({ kind: 'perf', fps: fpsNow, tier: s?.tier ?? null, scale: s?.scale ?? null }); } setTimeout(tick, 15 * 60000); };
+    /* (1.10.440 ④ P2: with the share of frames over 50 ms since the last report -- the scene's own count, the one 성능 재기 uses; sent only over
+       100 frames, counted afresh from this visit's start) */
+    plaza.controller?.longFrames?.();
+    const tick = () => { if (visit !== framesVisit || !document.body.classList.contains('plazaMode')) return; if (!document.hidden && fpsNow) { const s = plaza.controller?.screenNow?.(); const l = plaza.controller?.longFrames?.(); sendReport({ kind: 'perf', fps: fpsNow, tier: s?.tier ?? null, scale: s?.scale ?? null, long: l && l.n >= 100 ? l.pct : null }); } setTimeout(tick, 15 * 60000); };
     setTimeout(tick, Number(localStorage.getItem('gc.testReport')) || 60000);
   }
   // U1 느린 기기 알림: the first seconds on the island measured (from 3 s in -- past the first loads -- for 10 s); under 20 fps a
