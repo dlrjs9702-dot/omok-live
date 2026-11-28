@@ -66,7 +66,7 @@
     'train.car': { url: '/assets/island/train-v1/train_carriage.glb', low: { url: '/assets/island/train-v1/train_carriage_low.glb' }, near: 45 },
     'train.platform': { url: '/assets/island/train-v1/train_platform.glb', low: { url: '/assets/island/train-v1/train_platform_low.glb' }, near: 45 },
   // v1.10.271 섬 택시 (assets 99): the car (front −Z: turned round, its doors and wheels kept as nodes) and the stop's bench
-  'taxi.car': { url: '/assets/island/taxi-v1/taxi_island.glb', low: { url: '/assets/island/taxi-v1/taxi_island_low.glb' }, near: 40, rotationY: Math.PI },
+  'taxi.car': { url: '/assets/island/taxi-v1/taxi_island.glb', low: { url: '/assets/island/taxi-v1/taxi_island_low.glb' }, near: 40, rotationY: Math.PI, keepNodes: true /* (1.10.436 assets 183, 문제 기록 f62f225a-1: door_L · door_R · wheel_* nodes again -- 272's 99b build merged them; kept so they move) */ },
   'taxi.roof_sign': { url: '/assets/island/taxi-v1/taxi_roof_sign.glb', low: { url: '/assets/island/taxi-v1/taxi_roof_sign_low.glb' }, near: 40, rotationY: Math.PI }, /* (1.10.423 다듬기 164 ⑦: the car's roof mark, the car file's frame) */
   'taxi.stop': { url: '/assets/island/taxi-v1/taxi_stop.glb', low: { url: '/assets/island/taxi-v1/taxi_stop_low.glb' }, near: 40, rotationY: Math.PI },
   'taxi.stop_sign': { url: '/assets/island/taxi-v1/taxi_stop_sign.glb', low: { url: '/assets/island/taxi-v1/taxi_stop_sign_low.glb' }, near: 40, keepNodes: true }, /* (1.10.392 N4-b, assets 163: a road stop's sign -- its `plate` both faces, the game's words on it) */

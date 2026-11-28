@@ -46,7 +46,7 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
     rec.h.position.set(pose.x, groundY(pose.x, pose.z), pose.z); rec.h.rotation.set((pose.pitch || 0) + sl.pitch, pose.yaw, (pose.roll || 0) + sl.roll, 'YXZ');
     const open = X.doorOf(pose.phase, Math.min(1, Math.max(0, pose.k || 0))); /* (assets 99 motions.json: TaxiEnter opens 0~0.14 and shuts 0.86~1, TaxiExit 0~0.12 and 0.80~1) */
     for (const d of rec.doors) d.o.rotation.y = d.yaw0 + d.side * open * 1.22;
-    for (const w of rec.wheels) w.rotation.x = -(pose.d || 0) / 0.32;
+    for (const w of rec.wheels) w.rotation.x = -(pose.d || 0) / 0.38; /* (436 assets 183: the wheels' own radius) */
   }
   const stops = Object.keys(X.STOPS).map((id) => {
     const s = X.stopOf(id); const shelter = new THREE.Group(); shelter.position.set(s.shelter.x, groundY(s.shelter.x, s.shelter.z), s.shelter.z); shelter.rotation.y = s.shelter.yaw; group.add(shelter);
@@ -156,6 +156,6 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
   const setNight = (on) => { night = Boolean(on); };
   const dispose = () => { scene.remove(group); for (const m of made) m.dispose?.(); };
   // (v1.10.285) the cars on their way or parked after a ride: where, which way, running or not, honking -- they block and others step aside
-  const cars = () => [...moving.entries()].filter(([, r]) => r.out).map(([key, r]) => ({ key, x: r.h.position.x, z: r.h.position.z, yaw: r.h.rotation.y, running: Boolean(r.running), horn: Boolean(r.horn?.visible), ask: Boolean(r.ask?.visible), ghost: Boolean(r.ghost), rate: r.rate ?? 1, waitMs: r.waitMs || 0, slope: r.slope ? { pitch: +r.slope.pitch.toFixed(3), roll: +r.slope.roll.toFixed(3) } : null /* (436: the ground's tilt under it) */ })); /* (317: its pace -- 0 standing for someone, a little creeping by; 391: the cars out) */
+  const cars = () => [...moving.entries()].filter(([, r]) => r.out).map(([key, r]) => ({ key, x: r.h.position.x, z: r.h.position.z, yaw: r.h.rotation.y, running: Boolean(r.running), horn: Boolean(r.horn?.visible), ask: Boolean(r.ask?.visible), ghost: Boolean(r.ghost), rate: r.rate ?? 1, waitMs: r.waitMs || 0, slope: r.slope ? { pitch: +r.slope.pitch.toFixed(3), roll: +r.slope.roll.toFixed(3) } : null /* (436: the ground's tilt under it) */, doors: r.doors.length, door: r.doors.length ? +r.doors[0].o.rotation.y.toFixed(3) : null, wheels: r.wheels.length /* (436 assets 183) */ })); /* (317: its pace -- 0 standing for someone, a little creeping by; 391: the cars out) */
   return { group, step, seatOf, setNight, dispose, cars, stops: () => stops.map((st) => ({ id: st.id, x: st.s.x, z: st.s.z, standing: Boolean(standCount[st.id]), count: standCount[st.id] || 0, away: !standCount[st.id], label: st.said || '' })), /* (294; 391: how many stand there) */ moving: () => [...moving.entries()].filter(([, r]) => r.out).map(([k]) => k), roadSigns: () => roadSigns.map((s) => ({ id: s.id, x: +s.at.x.toFixed(2), z: +s.at.z.toFixed(2), model: s.g.children.length > 1 })), /* (392) */ floorMarks: () => ({ marks: marks.length, lanes: lanes.length }), /* (399) */ parked: () => [...moving.entries()].filter(([, r]) => !r.out).map(([k, r]) => ({ id: k, x: +r.h.position.x.toFixed(2), z: +r.h.position.z.toFixed(2) })) };
 }
