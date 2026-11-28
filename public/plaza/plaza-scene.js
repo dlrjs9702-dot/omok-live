@@ -1871,7 +1871,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // v1.9.6: the server moved me out of someone (it saw an overlap my screen did not): glide there, through tryMove.
   let correction = null;
   function correctTo(x, z) {
-    if (liftRide || riding) return;
+    if (liftRide || riding || taxiRide || myBoat) return; /* (1.10.436 문제 기록 ca8229cf 「택시 타고 움직일 때 캐릭터가 엄청 떨려」: a ride sets where I am each frame -- not the server's word from the stop) */
     if (platform) { const q = R.platformClamp(platform.line, platform.station, x, z); me.root.position.set(q.x, q.y, q.z); correction = null; return; }
     const d = Math.hypot(x - me.root.position.x, z - me.root.position.z);
     if (mySpace === 'townhall') { const q = globalThis.IslandTerrain.roomClamp(x, z); if (d > 0.3) { me.root.position.set(q.x, ROOM.y, q.z); correction = null; } else if (d > 0.05) correction = q; return; } // v1.10.84
@@ -1881,6 +1881,9 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   }
   function stepCorrection(dt) {
     if (!correction) return;
+    /* (436 ca8229cf: one caught as I got in was glided toward after the taxi had sat me each frame -- never reached, so all the way: I shook between
+       the seat and the stop. A ride's seat is mine; the glide dropped) */
+    if (taxiRide || riding || myBoat || liftRide) { correction = null; return; }
     const p = me.root.position; const k = Math.min(1, dt * 8);
     const nx = p.x + (correction.x - p.x) * k; const nz = p.z + (correction.z - p.z) * k;
     tryMove(nx, nz);
@@ -7406,7 +7409,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     if (taxiRide || riding || !ride || !(TX.STOPS[ride.from] || TX.ROADSTOPS?.[ride.from]) || !Number.isFinite(ride.startedAt)) return false;
     if (sitting) standUp(); if (gather) endGather(false); if (fishing) fishStop?.(); actLock = 0; if (cycling) { cycling = null; onBike?.(false, null); }
     taxiRide = { ride: { from: ride.from, startedAt: ride.startedAt, ...(ride.runMs ? { runMs: ride.runMs } : {}), ...roadClockOf(ride) }, from: (() => { const o = TX.STOPS[ride.from] ? TX.stopOf(ride.from).out : TX.boardOf(ride.from, ride.curb); return new THREE.Vector3(o.x, heightAt(o.x, o.z), o.z); })(), out: false }; /* (from enter_L, where TaxiEnter's first frame stands) */
-    keys.clear(); taxiRide.clips = taxiClipsIn(me, taxiRide.ride); me.noTuck = true; me.tailTucked = true; me.tuckTail?.(true); assets.hat?.(me, true); /* (v1.10.285) */
+    keys.clear(); correction = null; trainChangedAt = Date.now(); /* (436 ca8229cf: a correction sent before getting in is let go -- app.js) */ taxiRide.clips = taxiClipsIn(me, taxiRide.ride); me.noTuck = true; me.tailTucked = true; me.tuckTail?.(true); assets.hat?.(me, true); /* (v1.10.285) */
     return true;
   }
   // (총괄 271 검토 「타고/출발하고/멈추고/내려주는 애니메이션이 자연스럽게 이어지게」, assets 99 motions.json: each clip is from the
@@ -7431,13 +7434,13 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const [id, o] of others) { if (o.taxi) { let r = taxiOthers.get(id); if (!r) taxiOthers.set(id, (r = { key: id, ride: null })); r.ride = o.taxi; rides.push(r); } else onFoot.push(o.c.root.position); } /* (v1.10.285: who a car honks at) */
     if (taxiOthers.size > others.size + 8) for (const id of taxiOthers.keys()) if (!others.has(id)) taxiOthers.delete(id);
     taxiView.setNight(phase === 'night'); taxiView.step(taxiNow(), rides, onFoot, taxiStops); taxiCars = taxiView.cars(); /* (294 7: the server's stops -- their cars out, there and back) */
-    if (taxiTrace && taxiRide && taxiTrace.length < 4000) { const q0 = taxiView.seatOf(taxiRide.ride, taxiNow()); taxiTrace.push({ t: performance.now(), x: q0.x, z: q0.z, phase: q0.phase, off: viewOffset, srv: serverOffset, cells: pilot?.counts?.().made ?? null, fades: assets.debug?.().fade?.started ?? null }); }
+    if (taxiTrace && taxiRide && taxiTrace.length < 4000) { const q0 = taxiView.seatOf(taxiRide.ride, taxiNow()); const cr = taxiCars.find((c) => c.key === taxiRide.ride.car); taxiTrace.push({ t: performance.now(), x: q0.x, z: q0.z, y: q0.y, yaw: q0.yaw, car: cr ? { x: cr.x, z: cr.z, yaw: cr.yaw, slope: cr.slope } : null, was: { x: me.root.position.x, z: me.root.position.z, corr: Boolean(correction) } /* (436 ca8229cf: the seat against the car drawn the same frame; where the frame before left me) */, phase: q0.phase, off: viewOffset, srv: serverOffset, cells: pilot?.counts?.().made ?? null, fades: assets.debug?.().fade?.started ?? null }); }
     if (!taxiRide && mySpace === 'island') taxiPush(taxiCars);
     if (!taxiRide) return;
     const q = taxiView.seatOf(taxiRide.ride, taxiNow()); const out = TX.arrivalOf(taxiRide.ride);
     if (q.phase === 'done') { // (out at the other stop: exit_L, where TaxiExit's last frame stands)
       taxiRide = null; taxiOff(me);
-      me.root.position.set(out.x, heightAt(out.x, out.z), out.z); correction = null; placeCamera(true); onTaxiEnd?.(); return;
+      me.root.position.set(out.x, heightAt(out.x, out.z), out.z); correction = null; trainChangedAt = Date.now(); /* (436: and one sent from the seat) */ placeCamera(true); onTaxiEnd?.(); return;
     }
     const seat = taxiSeat.set(q.x, q.y, q.z);
     if (q.phase === 'exit' && !taxiRide.out) { taxiRide.out = true; taxiRide.clips = taxiClipsOut(me, taxiRide.ride); }

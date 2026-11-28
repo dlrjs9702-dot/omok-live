@@ -13,6 +13,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.436 B 택시 · 도로 (notes docs/issue-plan-20261128.md 2번 묶음)
+
+- f62f225a-1 문: assets 183(taxi_island High · Low를 door_L · door_R · wheel_FL/FR/RL/RR 노드로 다시 나눔 — 272 99b 빌드가 한 덩어리로 합쳤음, `precompressed`), `taxi.car` `keepNodes`. 탈 때 · 내릴 때 door_L 0 → −70°, 바퀴 굴림 반지름 0.38.
+- f62f225a-2 대청마당 합류부(사용자 결정 98 A): 길 끝 차선(x −1.6 ~ 3.0)부터 두 번째 자리 차 끝(x 14.6)까지 돌바닥 위 폭 3 m 아스팔트 띠(z −55 ~ −52, `PLAZA_WAY`)와 흰 가장자리 선 — 메시, 돌바닥 위 3 cm · polygonOffset. 차가 이 띠를 따라 나와 길로 꺾어 들어감(운행은 그대로).
+- 66460bba 지그재그 금: T자 한쪽 구석에서 두 길의 좌우 부호가 엇갈려 노란 선 · 회색 줄이 생김. 툇마루섬 마을 정류장 · 툇마루섬 갈림 · 마을 길 모퉁이를 TEES로 칠함(`box` · `far` · `bar` 생략 가능), L1도 `PAINT_FLIP`(회차 자리 부호는 길 끝을 따름), 막힌 끝은 10 m 안 조각을 끝 평면으로 자름. 셰이더(island.js)는 걸러진 R이 0 근처인데 네 칸 거리가 먼 곳을 그 거리로 읽어 인도 · 차선으로 그림. 섬 전체에 못 가리는 뒤집힘은 별마루섬 입구 길 끝(택시 서는 자리 아래) 하나.
+- ca8229cf 떨림: 탈 때 받은 위치 보정(`correction`)이 목표에 닿지 못해 타는 내내 stepTaxi 뒤에서 정류장 쪽으로 끌어당김. 택시 · 배 · 기차 · 엘리베이터 위에서는 보정을 받지 않고 남은 것도 버림, 탈 때 · 내릴 때 `trainChangedAt`으로 그 전 보정 무시.
+- f62f225a-3 기울기: 차 앞뒤 1.3 m · 옆 0.75 m 땅 높이로 앞뒤 · 옆 기울기(0.35 rad까지) — 별마루다리 아치에서 ±0.15 rad.
+- 다듬기 「택시 비스듬히」: 서 있는 차를 문 쪽으로 25° 돌려 그림(그림만; 서는 자리 · 문 · 탑승 표시 · 운행은 그대로), 탈 때 곧게, 서면 다시.
+- 시험: 유닛 `taxi-road-436`, e2e island-taxi-stops · island-taxi-yield · bicycle · island-boat · dalmaru-walk(PC · 폰).
+
 ## v1.10.435 A 배·부두 (notes docs/issue-plan-20261128.md 1번 묶음)
 
 - 7f7ee860 승무원 없음: 배 모델은 그대로, 선장 캐릭터 4명 뺌(무인 운영).
@@ -28,10 +38,3 @@
 - 가방·펫·호랑이·롤백(P2-15~18): 버리기 뒤 빠른 칸 정리를 `worldEdit` 안에서 최신 배열을 다시 읽어 해당 종류만 제거. 산책 중인 가방 펫을 마지막까지 버리면 `pet` 문서와 캐시·presence를 함께 해제. `tigerPending`을 잡힘 ID별 `worldEdit` 갱신(`tigerPendingMutate`)과 초기 읽기 재시도로 변경. `bagView`·`visibleSlots`가 보유 칸 수 이상을 보장해 롤백 호환 유지.
 - 택시·탐방선(P2-19·20, P3-21): `IslandTaxi.fleetView`에 정차 `curb` 포함 및 `island-taxi-scene` 좌표 전달. `IslandBoat`의 출항·이동·접안·입항이 공통 부두 앞 수역 예약(`dockWaterBusy`)을 공유. `IslandBoat.nearDock` 공통 22 m 발판+팔 영역을 화면(`plaza-scene`)과 서버(`boatAtDock`)가 함께 사용.
 - 시험: `codex-p2-434`(JSON·PG·서버·규칙) 추가 및 연관 단위 테스트 통과.
-
-## v1.10.433 Codex 401~432 검토 P1 10건 고침 (결정 93)
-
-- 가방 버리기·놓아주기(P1-1·3·6): 확인 창마다 요청 ID 한 번, 되돌리기 토큰과 버리기 직전 칸 수를 `point_settlements`에 영구 저장(재시도·서버 재시작 유지, 10칸 초과 보유자도 직전 수량까지 복원). 곤충·물고기 놓아주기도 확인 창·수량 선택(기본 1)·10초 되돌리기 적용(`islandRelease`→`islandDiscard` 경로 통일).
-- 통·가방·잡초·수조(P1-4·5·7·8): 옛 `/api/island/bag/grow`는 결제 전 `BAG_RETIRED`로 거절(기존 24/32칸 무료 바구니 이력은 유지). 통 구매 `growBox`를 포인트 차감+`boxSlots` 한 거래로 묶고 시작 시 미완료 구매 자동 복구(`paidBoxClaims`). 마당 잡초 뽑기 `pullYardWeed`를 마당 제거+가방 지급 한 거래로 원자화. 수조 넣기 완료를 `home_tank_done:<claim>` 영구 정산으로 기록해 `tankPuts` 만료 후 재도착 시 복사 차단.
-- 혼자 게임·택시(P1-2·9·10): `/api/solo/reflex/finish`는 `fast` 판정을 `soloClear` 전에 `400 TOO_FAST`로 거절(개인·주간 순위·트로피 미반영), 저장 실패(`503`) 시 판을 유지해 자동·수동 재전송 허용. 택시 단건 승차권은 경로·금액·`used`를 정산에 저장해 `useTaxiTicket`으로 1회만 전환(재시작 후 재사용·경로 위조 차단).
-- 시험: `codex-p1-433`(JSON·PG·서버 재시작 포함) 추가, `bag-discard-432`·`bag-grow`·`inventory-430`·`reflex-server`·e2e `island-bag` 갱신.

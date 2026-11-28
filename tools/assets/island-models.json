@@ -9445,10 +9445,11 @@
     },
     {
       "out": "taxi-v1/taxi_island.glb",
-      "src": "taxi99b:01. High/taxi_island.glb",
-      "sha256": "0dbaf1a227d0879ee2bb31ae76fed398c8b30fb4ad5721b1a24b837487f856c2",
-      "lowSrc": "taxi99b:02. Low/taxi_island_low.glb",
-      "lowSha256": "f6df3f417d11a7e17c3c4e7d5c9cd3ba89af03c2a561674048a40b19ade2e633"
+      "src": "taxi183:01. High/taxi_island.glb",
+      "sha256": "a5eaeb118feb3dba61023b6a31fa1071ee7275f82049775df8761a07a747b8ef",
+      "lowSrc": "taxi183:02. Low/taxi_island_low.glb",
+      "lowSha256": "9930c8a7da0a0006e9ad343f4332cb16625b495323aafb2c475e7c9c0556e8e3",
+      "precompressed": true
     },
     {
       "out": "taxi-v1/taxi_stop.glb",
@@ -15890,6 +15891,7 @@
     }
   ],
   "sources": {
+    "taxi183": "183. Game Island taxi doors split 2026-11-28",
     "identity75": "75. Game Island building identity 2026-10-26",
     "v2": "01. Game Island assets 2026-10-05/02. Finished assets",
     "additions": "02. Game Island additions 2026-10-05/02. Finished assets",
