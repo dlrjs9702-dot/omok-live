@@ -6825,12 +6825,15 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     assets.setQuality(q); island.setQuality(q); pilot?.setQuality(q); // v1.10.73: the ground cover by tier (v1.10.276: the pilot's blades too)
     resize();
   }
+  const TOUCH_SLOW = Boolean(globalThis.matchMedia?.('(pointer:coarse)').matches); /* (439 결정 101: a touch screen's own line) */
   function adaptQuality(dt) {
     if (document.hidden || performance.now() < quietUntil) { sampled = 0; slowTime = 0; return; }
     if (qualityHeld) return;
     sampled += dt; slowTime += dt > 1 / 35 ? dt : 0;
     if (sampled < 3) return;
-    gov.tier = quality; const to = gov.step(performance.now() / 1000, { slow: slowTime / sampled > 0.5, fast: slowTime / sampled < 0.1, secs: sampled });
+    /* (1.10.439 사용자 결정 101 A, notes docs/phone-perf-20261128: a phone warm at 「높음」 ran 46~56 fps -- its slow frames 40~57 % of the time, under the
+       half, so it never stepped down; on a touch screen (phone, tablet) 30 % steps it down, a PC as before) */
+    gov.tier = quality; const to = gov.step(performance.now() / 1000, { slow: slowTime / sampled > (TOUCH_SLOW ? 0.3 : 0.5), fast: slowTime / sampled < 0.1, secs: sampled });
     sampled = 0; slowTime = 0; if (to === null) return;
     const up = to > quality; setTier(to); if (up) { quietUntil = performance.now() + 3000; resetFrameSample(); } /* (a step up measured again after its load -- 3 s, 187A: heavy within 10 s goes back) */ tierKeep(to); onAutoTier?.(to);
   }

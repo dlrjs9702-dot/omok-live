@@ -12,6 +12,7 @@ test('439 장면: 장면은 스스로 다시 계산하지 않음 · 숨은 맨 �
   const s = read('public/plaza/plaza-scene.js');
   assert.match(s, /const scene = new THREE\.Scene\(\);[\s\S]{0,600}scene\.matrixAutoUpdate = false;/);
   assert.match(s, /scene\.addEventListener\('childadded', \(\{ child \}\) => \{/); assert.match(s, /if \(!this\.visible && u\.mwOnce\) \{ u\.mwHid = true; return; \} const f = force \|\| u\.mwHid === true; u\.mwHid = false; u\.mwOnce = true; own\.call\(this, f\);/);
+  assert.match(s, /const TOUCH_SLOW = Boolean\(globalThis\.matchMedia\?\.\('\(pointer:coarse\)'\)\.matches\);/); assert.match(s, /slow: slowTime \/ sampled > \(TOUCH_SLOW \? 0\.3 : 0\.5\)/, '결정 101: a touch screen steps down at 30 %');
   assert.match(s, /b\.matrixWorldNeedsUpdate = true;/); assert.match(s, /k\.matrixWorldNeedsUpdate = true;/);
 });
 
