@@ -4798,6 +4798,22 @@
   });
   byId('economyBox')?.addEventListener('toggle', (event) => { if (event.target.open) api('/api/admin/economy').then(drawEconomy).catch((error) => showToast(error.message)); });
   /* (1.10.432 버린 기록: who · what · how many · when, newest first, on opening) */
+  /* 1.10.439 ④ 폰 실측 P1 「성능 재기」 (notes docs/engine-borrow-feasibility-20261122.md §3-4, 결정 62: 관리자만): the window shut -- over the island
+     nothing is drawn -- about a minute over five places (plaza perfRun), the table in a window after, one `[perf]` line on the server (the device's
+     kind and GPU, no account) */
+  const PERF_PLACE = { plaza: '대청마당', stop: '정류장 앞', bridge: '별마루다리', street: '마을 거리', forest: '숲' };
+  byId('perfRunBtn')?.addEventListener('click', async () => {
+    const c = plaza.controller; if (!c?.perfRun || !document.body.classList.contains('plazaMode')) { showToast('섬에서 눌러 주세요.'); return; }
+    plazaDialog.close(); showToast('성능 재는 중 · 1분쯤 걸려요');
+    const r = await c.perfRun({ warp: window.PlazaWarp, onStep: (n, t) => showToast(`성능 재는 중 · ${n}/${t}`) }).catch(() => null);
+    if (!r) { showToast('성능 재기를 못 했어요.'); return; }
+    const table = document.createElement('table'); table.className = 'perfTable';
+    const head = table.createTHead().insertRow(); for (const h of ['곳', '화질', 'fps', 'p95 ms', '50 ms+', '스크립트 ms', '그리기']) head.append(Object.assign(document.createElement('th'), { textContent: h }));
+    const body = table.createTBody(); for (const w of r.rows) { const tr = body.insertRow(); for (const v of [`${PERF_PLACE[w.place] || w.place}${w.see ? '' : ' (구멍 없이)'}`, w.tier === 2 ? '높음' : w.tier === 1 ? '보통' : '낮음', w.fps, w.p95, w.over50, w.js ?? '-', w.calls]) tr.insertCell().textContent = String(v); }
+    const meta = Object.assign(document.createElement('p'), { className: 'lookMeta', textContent: `${r.phone ? '폰' : 'PC'} · ${r.gpu || 'GPU 모름'} · ${r.px}` });
+    openPlazaWindow('성능 재기', [meta, table]);
+    api('/api/admin/perf', { method: 'POST', body: JSON.stringify(r) }).catch(() => {});
+  });
   byId('discardLogBox')?.addEventListener('toggle', (event) => { if (!event.target.open) return;
     api('/api/admin/discards').then((r) => { const list = byId('discardLog'); list.replaceChildren(...(r.items || []).map((e) => { const li = document.createElement('li'); li.textContent = `${new Date(e.at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · ${e.name || '이름 없음'} · ${e.item} ×${e.qty}${e.undo ? ' (되돌림)' : ''}`; return li; }));
       if (!list.children.length) { const li = document.createElement('li'); li.className = 'lookMeta'; li.textContent = '아직 버린 물건이 없어요.'; list.append(li); } }).catch((error) => showToast(error.message)); });

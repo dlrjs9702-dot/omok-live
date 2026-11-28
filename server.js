@@ -54,7 +54,7 @@ const IslandCalendar = require('./public/plaza/island-calendar'); // E1 계절 �
 const XmasPlay = require('./public/plaza/xmas-play'); // 1.10.334 썰매 언덕·눈 요새
 const IslandFestival = require('./lib/island-festival'); // E1 축제 도장
 const Together = require('./lib/island-together'); // B 47 생일·우체통
-const SERVER_VERSION = require('./package.json').version; // (관리자 「문제 기록」에 붙는 버전)
+const SERVER_VERSION = require('./package.json').version; let perfLoggedAt = 0; /* (1.10.439 성능 재기: its [perf] line once a minute) */ // (관리자 「문제 기록」에 붙는 버전)
 const IslandInsects = require('./lib/island-insects'); // B 47 곤충 채집
 // 묶음 5 보이는 곤충: the layout of each 10 minutes (lib/island-insects.js layout over the island's spots), those caught or
 // sent off since it came (gone for everyone till the next), who caught which (a request sent again answers the same)
@@ -6724,6 +6724,17 @@ async function requestHandler(req, res) {
     if (!out.applied) return sendError(res, 409, 'UNDO_GONE', '되돌릴 수 있는 시간이 지났어요.');
     if (!out.release) await worldEdit(async () => { const log = (await pointStore.worldValue('discardLog')) || []; log.push({ at: nowMs(), account, name: await accountName(account).catch(() => ''), itemId: out.gone.itemId, qty: out.gone.qty, undo: true }); await pointStore.setWorldValue('discardLog', log.slice(-500)); }).catch(() => {});
     return sendJson(res, 200, { ok: true, bag: out.bag });
+  }
+  /* 1.10.439 ④ 폰 실측 P1 「성능 재기」 (notes engine-borrow §3-4, 결정 62: 관리자만): the run's table as one `[perf]` log line -- the device's kind, its GPU,
+     its numbers; never an account, a name or a place of anyone. Numbers only, a row's place one of five words; once a minute */
+  if (pathname === '/api/admin/perf' && req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
+    const now = Date.now(); if (now - perfLoggedAt < 60000) return sendError(res, 429, 'PERF_SOON', '1분 뒤에 다시 남길 수 있어요.'); perfLoggedAt = now;
+    const body = await parseJson(req).catch(() => null); const num = (v, max) => (Number.isFinite(Number(v)) ? Math.max(0, Math.min(max, Math.round(Number(v) * 10) / 10)) : null);
+    const PLACES = ['plaza', 'stop', 'bridge', 'street', 'forest'];
+    const rows = (Array.isArray(body?.rows) ? body.rows : []).slice(0, 20).filter((w) => PLACES.includes(w?.place)).map((w) => ({ place: w.place, tier: num(w.tier, 2), see: Boolean(w.see), fps: num(w.fps, 240), p50: num(w.p50, 5000), p95: num(w.p95, 5000), over50: num(w.over50, 10000), js: num(w.js, 1000), calls: num(w.calls, 100000), tris: num(w.tris, 1e8) }));
+    console.log(`[perf] ${JSON.stringify({ v: SERVER_VERSION, phone: Boolean(body?.phone), gpu: String(body?.gpu || '').replace(/[^\w ().,-]/g, '').slice(0, 80), dpr: num(body?.dpr, 8), px: String(body?.px || '').replace(/[^\dx]/g, '').slice(0, 12), rows })}`);
+    return sendJson(res, 200, { ok: true, rows: rows.length });
   }
   if (pathname === '/api/admin/discards' && req.method === 'GET') {
     if (!requireAdmin(req, res)) return;
