@@ -337,6 +337,9 @@ test('동작 줄이기에서도 수동 시점과 이동 유지', async ({ browse
   await a.page.emulateMedia({ reducedMotion: 'reduce' });
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().environment.ambient.bodyScale)).toBe(1);
   await a.page.clock.install();
+  // (439: the frames right after install still carry the real clock's last time -- run the fake one first, or the press can land
+  // before the loop is on it and the view never moves: 1 in 4~8 locally, main too)
+  await a.page.clock.runFor(300);
   await a.page.locator('#plazaStage').focus();
   const before = await a.page.evaluate(() => { const d = window.PlazaDebug(); return { pitch: d.camPitch, x: d.x, z: d.z }; });
   await a.page.keyboard.down('ArrowUp'); await a.page.clock.fastForward(200); await a.page.clock.fastForward(200); await a.page.keyboard.up('ArrowUp');
