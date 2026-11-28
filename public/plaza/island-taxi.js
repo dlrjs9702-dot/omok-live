@@ -71,8 +71,18 @@
      square -- painted so (island-paths buildRoadMap): the shore road straight across (`bar`), the stem up to its middle and squared off there, no
      yellow or edge line across the mouth, square kerb corners, its crossing straight across the stem; the ground banked and kept clear under it
      (dalmaru-island). The cars keep 434's ways (ROUTE · L2 as they were): the stops, the rides and the fares unchanged */
-  const TEES = Object.freeze([Object.freeze({ x: 0.4, z: -7.8, ux: 0, uz: -1, bar: Object.freeze([[-7.8, -7.3], [-4, -7.7], [0.4, -7.8], [4, -7.7], [7.8, -7.3]]), stem: Object.freeze([[0.4, -16.2], [0.4, -7.8]]) /* (from the junction -- the cars' Y under it; the crossing on it) */ })]);
-  const PAINT_FLIP = Object.freeze([L2]); /* (435: painted as if run east, as ROUTE across the dock's T -- island-paths buildRoadMap) */
+  /* 1.10.436 문제 기록 66460bba 「도로가 이상해」 (툇마루섬 마을 정류장 옆): every T painted so -- where a road's own corner meets another going on
+     straight, a T's one corner had the two roads' sides told opposite ways, a squiggle of yellow across it (work: flips436). `box` [a0, a1, l]: the
+     cars' pieces not painted (both ends within a0..a1 down the stem, l across it; the dock's [-0.3, 9, 4.5]); no `bar` where the roads already run
+     straight across; `far` the stem's other end square too (a dead end at a stop: a round end's middle line turned about past its end) */
+  const TEES = Object.freeze([Object.freeze({ x: 0.4, z: -7.8, ux: 0, uz: -1, bar: Object.freeze([[-7.8, -7.3], [-4, -7.7], [0.4, -7.8], [4, -7.7], [7.8, -7.3]]), stem: Object.freeze([[0.4, -16.2], [0.4, -7.8]]) /* (from the junction -- the cars' Y under it; the crossing on it) */ }),
+    /* (436: 툇마루섬 마을's stop -- ROUTE's last turn east off the neck where EXT goes on north; the stem to the stop's end) */
+    Object.freeze({ x: -19.7, z: 172.8, ux: 1, uz: 0, box: [-0.3, 9, 1], stem: Object.freeze([[-19.7, 172.8], [-16, 172.9], [-13.3, 173.1]]), far: true }),
+    /* (436: the 툇마루섬 fork -- ROUTE's turn north off the west 윤슬다리 road; its crossing on the stem) */
+    Object.freeze({ x: -19.2, z: 141.3, ux: 0, uz: 1, box: [-0.3, 9, 1], stem: Object.freeze([[-19.2, 141.3], [-19.3, 145.2], [-19.4, 149.1]]) }),
+    /* (436: the village street's corner -- EXT up the neck meets the street, L1 off west: the street straight across, out past the yard gate's crossing at -12) */
+    Object.freeze({ x: -20, z: 236, ux: 0, uz: -1, box: [-0.3, 9, 11], bar: Object.freeze([[-29.4, 236], [-25.4, 236], [-20, 236], [-13, 236], [-9.1, 236]]), stem: Object.freeze([[-20, 228], [-20, 236]]), bank: false /* (EXT · L1 not banked -- dalmaru-island) */ })]);
+  const PAINT_FLIP = Object.freeze([L2, L1]); /* (435: painted as if run east, as ROUTE across the dock's T -- island-paths buildRoadMap; 436 L1 too, as EXT across the street's corner) */
   const CROSS_CLEAR = 5;
   const CROSS_HALF = 2.2;
   const ROAD = Object.freeze({ lane: 2.3, walk: 1.6, half: 3.9 });
