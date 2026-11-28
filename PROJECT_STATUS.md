@@ -13,6 +13,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.440 ④ P2 · P3 — 하루 줄에 긴 프레임 비율 · 같은 재기 도구로 PC와 폰 (결정 62)
+
+- P2 하루 `[client]` 줄: 화면이 15분마다 보내는 성능 보고에 「지난 보고 뒤 50 ms 넘은 프레임 %」(`long`, 100프레임 넘을 때만)를 싣고, 서버가 기기별로 `long: { n, p50, p90 }`를 더해요(lib/client-report, 0~100으로 자름 · 다시 켜져도 이어짐). 장면이 세는 곳은 하나(`LONG_MS = 50`, plaza-scene `longFrames`) — 「성능 재기」 표의 `over50`과 새 `long` %도 같은 50 ms.
+- P2 · P3 재기 도구 `tools/perf-run.cjs`: 이 저장소 서버를 빈 데이터 폴더로 띄우고 손님 하나로 섬에 들어가 관리자 단추와 같은 `PlazaDebug().perfRun`을 돌려 표와 JSON을 남겨요. 그냥 돌리면 이 PC 크롬(그래픽 카드 그대로, 자동화 표시 없이), `--phone`이면 USB로 연결한 안드로이드 폰의 크롬 새 탭을 adb로 몰아요. 이 PC(RX 570) 낮음 · 높음 68~69.6 fps · 50 ms 넘은 프레임 0, 폰(S21+) 59.7~59.8 fps · 0.
+- 「성능 재기」 그리기 수: PC 높음은 후처리를 거치며 그릴 때마다 수를 다시 세서 1로 나오던 것 → 한 프레임 전체를 셈(높음 239~407).
+- `[perf]` 줄에도 `long` %.
+- 시험: 유닛 client-report(긴 프레임 비율) · perf-439.
+
 ## v1.10.439 ④ 엔진 대신 셋 P1 — 폰 실측 · 성능 재기 · 장면 계산 줄이기 (결정 62 · 101 · 102)
 
 - 장면 위치 계산 줄이기(plaza-scene): 장면 자체는 위치 행렬을 다시 만들지 않고(`scene.matrixAutoUpdate = false`), 장면에 바로 붙는 물체마다 `childadded`로 감싸서 숨겨진 물체는 건너뛰고 다시 보일 때 한 번 강제 갱신. 택시 정류장 표지 · 도로 표지 · 탑승 표시 · 차선 · 광장 택시 길은 처음 한 번 계산 뒤 고정(island-taxi-scene). 한 프레임 `updateMatrixWorld` 호출 16,213 → 6,502(PC).
@@ -32,11 +40,3 @@
 - ⑤ 바닷가 지도(tools/maps/shore.js): 인공 물가(B 64)를 난간 4 m 원 · 차로+1 m에서 실제 인도 · 난간 자리(0.35 m)로 줄이고, 그 옆 모래는 2.5 m에 걸쳐 B 204 → 255(파도가 서서히). 바다 물결 줄 소음 문턱 0.95~1.2 → 0.7~1.15.
 - 다듬기 「밤 만 파도」: 밤에 물가 거품 · 얇은 물막과 얕은 물결 줄에 은은한 빛(바다 · 땅 셰이더 `uNight`), 밤 물결 0.3 → 0.5.
 - 시험: 유닛 shore-walk-438, e2e dalmaru-walk · island-assets · dex-tabs · island-boat(PC · 폰). 전후 사진 notes img/c2-20261128.
-
-## v1.10.437 C 화면 · 광장 작은 것 (notes docs/issue-plan-20261128.md 3번 묶음)
-
-- a5c63780 재료 사기: 칸 한 개를 두 줄로(이름 · 값 / 개수 칸 · 1 · 5 · 10개 · 사기), 개수 칸 넓이 고정(3.4em, 손가락 화면 3.8em), 버튼 글자 안 꺾임 — 850 px · 폰 모두 칸 넘침 0.
-- 22f4502e 가방 가구 탭: 다른 탭처럼 동그라미 칸(`.furnCell`, 8칸 · 폰 4칸), 가구 모델 정지 그림(plaza `furnShot`: 작은 렌더러 하나, 모델마다 한 번 찍어 기억, 안 오면 🪑), 고른 가구 카드도 같은 그림.
-- 34141e35 섬 벼룩시장: 게시판을 대청마당 긴 화단(paving (-18, 18) → (-18, -66)) 위로 — 기록의 탑처럼 나무 없는 화단, 흙 위 0.45, 광장 가운데를 봄, SPACE 자리 화단 앞 1.2 m. 화단 앞 가운데 앉을 자리 하나 뺌.
-- B 남은 칠 자국: 셰이더가 네 칸 거리를 도로 전체에서 0.9 m부터 씀 — T자 바깥 인도 끝 · 연석 모서리 울퉁불퉁 · 별마루섬 입구 길 끝 노란 자국 정리.
-- 시험: 유닛 taxi-road-436(셰이더 판정 그대로) · dalmaru-paths · island-social 자리 수, e2e island-bag · island-flea · island-assets · plaza · dalmaru-walk(PC · 폰).
