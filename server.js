@@ -5263,7 +5263,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.439' });
+    return sendJson(res, 200, { ok: true, version: '1.10.440' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -6732,7 +6732,7 @@ async function requestHandler(req, res) {
     const now = Date.now(); if (now - perfLoggedAt < 60000) return sendError(res, 429, 'PERF_SOON', '1분 뒤에 다시 남길 수 있어요.'); perfLoggedAt = now;
     const body = await parseJson(req).catch(() => null); const num = (v, max) => (Number.isFinite(Number(v)) ? Math.max(0, Math.min(max, Math.round(Number(v) * 10) / 10)) : null);
     const PLACES = ['plaza', 'stop', 'bridge', 'street', 'forest'];
-    const rows = (Array.isArray(body?.rows) ? body.rows : []).slice(0, 20).filter((w) => PLACES.includes(w?.place)).map((w) => ({ place: w.place, tier: num(w.tier, 2), see: Boolean(w.see), fps: num(w.fps, 240), p50: num(w.p50, 5000), p95: num(w.p95, 5000), over50: num(w.over50, 10000), js: num(w.js, 1000), calls: num(w.calls, 100000), tris: num(w.tris, 1e8) }));
+    const rows = (Array.isArray(body?.rows) ? body.rows : []).slice(0, 20).filter((w) => PLACES.includes(w?.place)).map((w) => ({ place: w.place, tier: num(w.tier, 2), see: Boolean(w.see), fps: num(w.fps, 240), p50: num(w.p50, 5000), p95: num(w.p95, 5000), over50: num(w.over50, 10000), long: num(w.long, 100) /* (440 P2: %, the [client] line's yardstick) */, js: num(w.js, 1000), calls: num(w.calls, 100000), tris: num(w.tris, 1e8) }));
     console.log(`[perf] ${JSON.stringify({ v: SERVER_VERSION, phone: Boolean(body?.phone), gpu: String(body?.gpu || '').replace(/[^\w ().,-]/g, '').slice(0, 80), dpr: num(body?.dpr, 8), px: String(body?.px || '').replace(/[^\dx]/g, '').slice(0, 12), rows })}`);
     return sendJson(res, 200, { ok: true, rows: rows.length });
   }
@@ -7118,7 +7118,7 @@ async function requestHandler(req, res) {
   if (pathname === '/api/client/report' && req.method === 'POST') {
     const session = requireSession(req, res); if (!session) return;
     if (!checkRateLimit(`client-report:${session.token}`, 20, 60 * 1000)) return sendError(res, 429, 'TOO_MANY_ATTEMPTS', '잠시 후 다시 시도해 주세요.');
-    const body = await parseJson(req); const kept = clientReports.add({ kind: body.kind, text: body.text, fps: body.fps, tier: body.tier, scale: body.scale, device: body.device });
+    const body = await parseJson(req); const kept = clientReports.add({ kind: body.kind, text: body.text, fps: body.fps, tier: body.tier, scale: body.scale, long: body.long /* (1.10.440 ④ P2) */, device: body.device });
     return sendJson(res, 200, { ok: true, kept });
   }
   if (process.env.NODE_ENV === 'test' && pathname === '/api/test/client-report' && req.method === 'GET') return sendJson(res, 200, { ok: true, line: clientReports.line(clientLoggedDay || 'test', require('./package.json').version) });
@@ -11315,7 +11315,7 @@ async function main() {
   bootMark('before-listen');
   /* (1.10.376 별마루섬 호랑이: their ground made after the start in 20 ms slices, as 별마루섬's open table -- the tigers wait till it is) */
   if (process.env.NODE_ENV !== 'test') setTimeout(() => { const step = () => { try { if (!tigerSim.warm(20)) setImmediate(step); } catch (error) { console.error('호랑이 땅 만들기 실패:', error.message); } }; step(); }, 6000).unref?.();
-  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.439 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); tigerPendingResume().catch(() => {}); /* (403 Codex #16: catches whose loss was not saved before the restart) */ if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.440 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); tigerPendingResume().catch(() => {}); /* (403 Codex #16: catches whose loss was not saved before the restart) */ if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had

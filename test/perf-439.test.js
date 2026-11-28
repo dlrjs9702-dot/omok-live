@@ -37,6 +37,6 @@ test('439 [perf] 줄: 관리자만, 숫자와 다섯 곳 이름만(계정 · 이
   assert.equal((await req('/api/admin/perf', s.admin, body)).status, 429, 'once a minute');
   let line = ''; for (let k = 0; k < 20 && !line; k += 1) { line = s.logs().split('\n').find((l) => l.startsWith('[perf] ')) || ''; if (!line) await sleep(100); }
   const j = JSON.parse(line.slice(7)); assert.equal(j.phone, true); assert.equal(j.gpu, 'ANGLE (ARM, Mali-G78, OpenGL ES 3.2)script'); assert.equal(j.px, '540x1065');
-  assert.deepEqual(Object.keys(j.rows[0]).sort(), ['calls', 'fps', 'js', 'over50', 'p50', 'p95', 'place', 'see', 'tier', 'tris']);
+  assert.deepEqual(Object.keys(j.rows[0]).sort(), ['calls', 'fps', 'js', 'long', 'over50', 'p50', 'p95', 'place', 'see', 'tier', 'tris']);
   assert.ok(!/누군가|성능손님|"who"|"name"/.test(line), 'no name, no account');
 });
