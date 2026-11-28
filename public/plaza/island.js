@@ -393,10 +393,12 @@ float off = (rd.r * 2.0 - 1.0) * ${globalThis.IslandPaths.ROAD_RANGE.toFixed(1)}
 // (1.10.436 문제 기록 66460bba: where two roads' sides meet told opposite ways (a T's one inner corner, a round end past its middle) the filtered
 // R reads near 0 away from any middle -- a squiggle of asphalt and yellow over the kerb and the walk. There the four texels' own distances, filtered:
 // a road's real middle has them all under ~0.8 m (0.58 m cells), such a meeting over 1.2 and well over the filtered -- out to the kerb, its blur too)
-if (ao < 2.5) { ivec2 rs = textureSize(tRoad, 0); vec2 ru = (vGroundXZ - uPathBox.xy) / uPathBox.z * vec2(rs) - 0.5; ivec2 r0 = ivec2(floor(ru)); vec2 rf = ru - floor(ru); ivec2 rm = rs - 1;
+// (1.10.437: everywhere on the road -- where the sides agree the two are the same; read only up to 2.5 the kerb and the walk's edge kept a jag
+// across the meeting -- and from 0.9: a round end's middle line past its end, 1.0 ~ 1.2 there)
+{ ivec2 rs = textureSize(tRoad, 0); vec2 ru = (vGroundXZ - uPathBox.xy) / uPathBox.z * vec2(rs) - 0.5; ivec2 r0 = ivec2(floor(ru)); vec2 rf = ru - floor(ru); ivec2 rm = rs - 1;
 float a00 = abs(texelFetch(tRoad, clamp(r0, ivec2(0), rm), 0).r * 2.0 - 1.0); float a10 = abs(texelFetch(tRoad, clamp(r0 + ivec2(1, 0), ivec2(0), rm), 0).r * 2.0 - 1.0);
 float a01 = abs(texelFetch(tRoad, clamp(r0 + ivec2(0, 1), ivec2(0), rm), 0).r * 2.0 - 1.0); float a11 = abs(texelFetch(tRoad, clamp(r0 + ivec2(1, 1), ivec2(0), rm), 0).r * 2.0 - 1.0);
-float af = mix(mix(a00, a10, rf.x), mix(a01, a11, rf.x), rf.y) * ${globalThis.IslandPaths.ROAD_RANGE.toFixed(1)}; ao = mix(ao, af, smoothstep(1.1, 1.5, af) * smoothstep(0.3, 0.6, af - ao)); }
+float af = mix(mix(a00, a10, rf.x), mix(a01, a11, rf.x), rf.y) * ${globalThis.IslandPaths.ROAD_RANGE.toFixed(1)}; ao = mix(ao, af, smoothstep(0.9, 1.2, af)); }
 float rc = smoothstep(0.35, 0.75, rd.g) * (1.0 - smoothstep(3.86, 3.94, ao));
 if (rc > 0.0) {
 vec3 col;

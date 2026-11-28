@@ -2837,11 +2837,20 @@
     const furnTab = bagTab === 'furniture'; grid.classList.toggle('hidden', furnTab); furn.classList.toggle('hidden', !furnTab);
     if (furnTab) drawFurnList(); /* (430: the other tabs draw only their own things -- drawIslandBag) */
   }
+  /* (437: a furniture piece's picture -- 🪑, swapped for its model's still once made) */
+  function furnPic(model) {
+    const box = document.createElement('span'); box.className = 'furnPic'; box.textContent = '🪑';
+    plaza.controller?.furnShot?.(model, (url) => { if (!url) return; const img = document.createElement('img'); img.src = url; img.alt = ''; img.width = 48; img.height = 48; box.replaceChildren(img); });
+    return box;
+  }
   async function drawFurnList() {
     const list = byId('islandFurnList');
     if (!furnNow || Date.now() - furnAt > 15000) { try { const r = await api('/api/island/furniture/mine'); furnNow = (r.pieces || []).filter((p) => !p.placed); furnAt = Date.now(); } catch { furnNow ||= []; } if (bagTab !== 'furniture') return; if (bagNow) drawBagTabs(bagNow); }
     const groups = new Map(); for (const p of furnNow) { const g = groups.get(p.id) || { ...p, n: 0 }; g.n += 1; groups.set(p.id, g); }
-    const cells = [...groups.values()].map((p) => { const c = document.createElement('button'); c.type = 'button'; c.className = 'furnCell'; c.dataset.item = p.id; c.setAttribute('role', 'listitem'); c.append(Object.assign(document.createElement('b'), { textContent: p.name || p.id }), Object.assign(document.createElement('small'), { textContent: p.n > 1 ? `×${p.n}` : '' })); c.addEventListener('click', () => { for (const x of list.children) x.classList.toggle('picked', x === c); byId('islandBagInfo').replaceChildren(bagDetail({ itemId: p.id, name: p.name || p.id, qty: p.n, furniture: true })); }); return c; });
+    /* (1.10.437 문제 기록 22f4502e 「가구도 다른 인벤토리처럼 동그라미 안에 그림」: a round slot like the other tabs' -- the model's still (plaza
+       furnShot), 🪑 till it comes; its name on hover and when picked, its count on the edge) */
+    const cells = [...groups.values()].map((p) => { const c = document.createElement('button'); c.type = 'button'; c.className = 'furnCell'; c.dataset.item = p.id; c.setAttribute('role', 'listitem'); c.title = p.name || p.id; c.setAttribute('aria-label', `${p.name || p.id} ${p.n}개`);
+      c.append(furnPic(p.model), Object.assign(document.createElement('small'), { textContent: p.n > 1 ? `×${p.n}` : '' })); c.addEventListener('click', () => { for (const x of list.children) x.classList.toggle('picked', x === c); byId('islandBagInfo').replaceChildren(bagDetail({ itemId: p.id, name: p.name || p.id, qty: p.n, furniture: true, model: p.model })); }); return c; });
     if (!cells.length) cells.push(Object.assign(document.createElement('p'), { className: 'lookMeta', textContent: '아직 놓지 않은 가구가 없어요. 가구점이나 벼룩시장에서 사면 여기 보여요.' }));
     list.replaceChildren(...cells);
   }
@@ -2849,7 +2858,7 @@
   // fish's or an insect's size, 「산 것」
   function bagDetail(item) {
     const card = document.createElement('div'); card.className = 'bagDetail';
-    const pic = document.createElement('div'); pic.className = 'bagDetailPic'; pic.append(item.furniture ? Object.assign(document.createElement('span'), { textContent: '🪑' }) : itemIcon(item));
+    const pic = document.createElement('div'); pic.className = 'bagDetailPic'; pic.append(item.furniture ? furnPic(item.model) : itemIcon(item));
     const text = document.createElement('div'); text.className = 'bagDetailText';
     const tab = BAG_DATA?.TABS.find(([k]) => k === (item.furniture ? 'furniture' : BAG_DATA.tabOf(item.itemId)))?.[1] || '';
     const head = document.createElement('p'); head.className = 'bagDetailHead'; head.append(Object.assign(document.createElement('b'), { textContent: item.name }), item.qty > 1 && !item.usesMax ? ` ×${item.qty}` : '', tab ? Object.assign(document.createElement('span'), { className: 'bagDetailKind', textContent: tab }) : '', item.bought ? Object.assign(document.createElement('span'), { className: 'bagDetailBought', textContent: '산 것' }) : '');

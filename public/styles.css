@@ -3907,9 +3907,17 @@ body.islandMining .quickBar,body.islandMining #toast{visibility:hidden}
 .islandBagGrid>.islandBagSlot[hidden]{display:none}
 .islandFurnList{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;max-height:46vh;overflow:auto;padding:4px}
 .islandFurnList.hidden{display:none}
-.furnCell{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:8px 10px;border-radius:14px;border:2px solid rgba(120,90,50,.25);background:#fffaf0;color:#4a3524;text-align:left;cursor:pointer}
-.furnCell b{font-size:13px}.furnCell small{color:#8a7055;font-weight:700}
-.furnCell.picked{border-color:#c9862a;background:#fff1cf}
+/* (1.10.437 문제 기록 22f4502e: the furniture tab's pieces round slots like the pouch's -- the model's still in the circle, the count on its edge) */
+#islandBagDialog.bagPouch .islandFurnList{grid-template-columns:repeat(8,minmax(44px,1fr));gap:8px;margin:0;padding:4px 2px}
+@media (max-width:640px),(pointer:coarse){#islandBagDialog.bagPouch .islandFurnList{grid-template-columns:repeat(4,minmax(44px,1fr))}}
+.islandFurnList>p{grid-column:1/-1}
+.furnCell{position:relative;aspect-ratio:1;min-width:44px;display:grid;place-items:center;padding:0;border-radius:50%;border:2px solid var(--isle-line);background:#f8eedb;box-shadow:inset 0 3px 6px -3px rgba(110,71,40,.3);color:var(--isle-ink);font-size:1.4rem;cursor:pointer;touch-action:manipulation}
+.furnCell .furnPic,.bagDetailPic .furnPic{display:grid;place-items:center;width:78%;height:78%}
+.furnCell .furnPic img,.bagDetailPic .furnPic img{width:100%;height:100%;object-fit:contain;pointer-events:none}
+.furnCell small{position:absolute;right:-2px;bottom:-2px;padding:0 5px;border-radius:999px;background:var(--isle-paper);border:1px solid var(--isle-line);font-size:.75rem;font-weight:800;line-height:1.4;color:var(--isle-ink)}
+.furnCell small:empty{display:none}
+.furnCell:focus-visible{outline:3px solid var(--isle-tag);outline-offset:2px}
+.furnCell.picked{border-color:var(--isle-tag);background:#fdf0d4}
 .bagDetail{display:flex;gap:12px;align-items:flex-start;text-align:left;padding:8px 10px;border-radius:14px;background:rgba(255,250,240,.92);color:#4a3524}
 .bagDetailPic{flex:0 0 auto;width:58px;height:58px;display:grid;place-items:center;border-radius:50%;background:#f3e6cc;font-size:34px}
 .bagDetailPic img{width:46px;height:46px;object-fit:contain}
@@ -3946,6 +3954,14 @@ body.islandMining .quickBar,body.islandMining #toast{visibility:hidden}
 .countBoxInput:focus-visible{outline:3px solid #2f6fc0;outline-offset:1px}
 @media (pointer:coarse){.countBoxInput{min-height:40px;width:3.8em}}
 .oreShopRow .countBox{margin-left:auto}
+/* (1.10.437 문제 기록 a5c63780 「재료 사기 중 화면 크기에 따라 칸이 창 밖으로」: two lines a row -- the name and price across, then the count and
+   the buttons, which wrap whole; nothing squashed (the count's number cut, 「1 / 개」 broken in two)) */
+.oreShopRow{flex-wrap:wrap;align-items:center;justify-content:flex-start;row-gap:6px;gap:6px}
+.oreShopRow>span:first-child{flex:1 0 100%;min-width:0}
+.oreShopRow .countBox{margin-left:0;margin-right:auto;flex:0 0 auto}
+.oreShopRow .countBox>*,.oreShopRow>button{flex:0 0 auto;white-space:nowrap}
+.oreShopRow .countBoxInput{width:3.4em;max-width:3.4em}
+@media (pointer:coarse){.oreShopRow .countBoxInput{width:3.8em;max-width:3.8em}}
 #islandPlaceSubmit.sure{background:#e0952e;color:#fff;border-color:#b06a12}
 @media (max-width:560px){#islandPlaceList:has(.placeSide){grid-template-columns:1fr}.placeItems{max-height:26vh}}
 /* 364 📲 게임 설치: the guide card (this device's steps first, the others folded) */

@@ -1262,7 +1262,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
       for (const g of V.gardens) {
         // (v1.10.253 탑 자리 옮기기: 사용자 「그 화단에 있는 나무는 없애」 → 「따로 만들게 해서 병합해」) the long garden under 기록의 탑:
         // assets 104's 나무 없는 긴 화단 (and no flowers under the podium); the other gardens as ever
-        const R = T.RECORD_TOWER; const under = R && Math.hypot(g.x - R.x, g.z - R.z) < 3;
+        const R = T.RECORD_TOWER; const B = T.AUCTION_BOARD; const under = (R && Math.hypot(g.x - R.x, g.z - R.z) < 3) || (B && Math.hypot(g.x - B.x, g.z - B.z) < 3); /* (437 34141e35: and the 벼룩시장 board's) */
         const p = piece(under ? 'plaza.garden_long_bare' : `plaza.garden_${g.kind}`, g.x, heightAt(g.x, g.z), g.z, 0, g.kind === 'round' ? box(6, 0.45, 6, 0x9fbf7f) : box(10, 0.45, 3.6, 0x9fbf7f));
         if (under) towerBed = p;
       }
@@ -1785,6 +1785,38 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     take(); setTimeout(take, 1600);
     return true;
   }
+  /* 1.10.437 문제 기록 22f4502e 「인벤토리 가구도 다른 인벤토리처럼 동그라미 안에 그림」: a furniture model's still (it has no picture of its own --
+     only the model), from the front and a little above, on a little stage of its own (one renderer, kept); one at a time, each kept by its model.
+     `done(url)` once it is in -- null when it never came (the 🪑 stays) */
+  let furnStage = null; const furnPics = new Map(); const furnQueue = []; let furnBusy = false;
+  function furnShot(model, done) {
+    if (!model) return false; if (furnPics.has(model)) { done(furnPics.get(model)); return true; }
+    furnQueue.push([model, done]); pumpFurnShots(); return true;
+  }
+  function pumpFurnShots() {
+    if (furnBusy || !furnQueue.length) return; const [model, done] = furnQueue.shift();
+    if (furnPics.has(model)) { done(furnPics.get(model)); pumpFurnShots(); return; }
+    if (!furnStage) {
+      const S = 128; const canvas = document.createElement('canvas'); canvas.width = S; canvas.height = S;
+      let r; try { r = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true }); } catch { furnPics.set(model, null); done(null); return; }
+      r.outputColorSpace = renderer.outputColorSpace; r.toneMapping = renderer.toneMapping; r.toneMappingExposure = renderer.toneMappingExposure; r.setSize(S, S, false);
+      const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xffffff, 0x8a7a66, 2.4)); const sun = new THREE.DirectionalLight(0xffffff, 1.8); sun.position.set(3, 6, 5); sc.add(sun);
+      furnStage = { canvas, renderer: r, scene: sc, camera: new THREE.PerspectiveCamera(30, 1, 0.05, 100) };
+    }
+    furnBusy = true; const v = furnStage; const g = new THREE.Group(); v.scene.add(g); let over = false;
+    const finish = () => {
+      if (over) return; over = true; clearTimeout(late); let url = null;
+      const box = new THREE.Box3().setFromObject(g);
+      if (!box.isEmpty()) {
+        const c = box.getCenter(new THREE.Vector3()); const r = Math.max(0.05, box.getSize(new THREE.Vector3()).length() / 2); const dist = (r / Math.sin((15 * Math.PI) / 180)) * 1.02;
+        const dir = new THREE.Vector3(0.45, 0.5, 0.74).normalize(); v.camera.position.copy(c).addScaledVector(dir, dist); v.camera.near = Math.max(0.01, dist - r * 2); v.camera.far = dist + r * 2; v.camera.updateProjectionMatrix(); v.camera.lookAt(c);
+        v.renderer.render(v.scene, v.camera); url = v.canvas.toDataURL('image/png');
+      }
+      assets.detach(g); v.scene.remove(g); furnPics.set(model, url); furnBusy = false; done(url); pumpFurnShots();
+    };
+    const late = setTimeout(finish, 9000); /* (never in: an empty stage -- no picture) */
+    assets.attach(model, g, new THREE.Group(), (entry) => { if (entry) requestAnimationFrame(() => requestAnimationFrame(finish)); else finish(); }); /* (no model for it: at once) */
+  }
   function tryOnClose() {
     const v = tryOnView; if (!v) return; tryOnView = null; cancelAnimationFrame(v.raf);
     if (v.c?.model) v.c.root.removeFromParent(); else if (v.c) disposeCharacter(v.c); v.renderer.dispose(); v.renderer.forceContextLoss?.();
@@ -2179,7 +2211,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
   // it), its bulbs and lamps lit at night (the model's `glow`, nightGlow); a stand-in its solids' box (solids.json fallbackBoxes)
   const AUCTION = globalThis.IslandTerrain.AUCTION_BOARD;
   const auctionBoard = AUCTION ? (() => {
-    const root = new THREE.Group(); root.position.set(AUCTION.x, heightAt(AUCTION.x, AUCTION.z), AUCTION.z); root.rotation.y = AUCTION.yaw; scene.add(root);
+    const root = new THREE.Group(); root.position.set(AUCTION.x, heightAt(AUCTION.x, AUCTION.z) + (AUCTION.lift || 0) /* (437: on the garden's soil) */, AUCTION.z); root.rotation.y = AUCTION.yaw; scene.add(root);
     const glows = []; /* (1.10.339: a model kept whole -- its `glow` bulbs lit here at night, as the record tower's) */
     const fb = new THREE.Group(); mesh(new THREE.BoxGeometry(3.98, 4.1, 1.04), mat(0x2a3556), 0, 2.05, 0.06, fb); root.add(fb);
     assets.attach('plaza.auction_board', root, fb, (entry) => { glows.length = 0; if (entry) root.traverse((o) => { for (const m of [].concat(o.material || [])) if (m?.name === 'glow' && !glows.includes(m)) { m.emissive?.set(0xffd27a); glows.push(m); } }); });
@@ -7728,7 +7760,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     tigerCaught: (x, z) => { if (sitting) standUp(); if (gather) endGather(false); if (fishing) fishStop?.(); actLock = 0; if (cycling) { cycling = null; onBike?.(false, null); } keys.clear(); correctTo(x, z); placeCamera(true); }, playPull /* (318) */, setStocksBoard, tedSay /* (320) */, setFleaBadge /* (339) */, setDenDoor, setDenNote, setDenRaid, setDenShown, denShow, serverNow: () => viewNow() /* (341) */, setQualityMode, setRenderScale /* (314) */, onAutoTier: (fn) => { onAutoTier = fn; }, screenNow: () => ({ tier: quality, held: qualityHeld, scale: Math.round((renderer.getPixelRatio() / BASE_RATIO) * 100) }) /* (1.10.322 U2: 「지금 화면」 -- the tier and the share drawn) */, setMotionMode, paceDown, paceUp, pace: () => (paceRun ? 'run' : pace),
     // v1.10.84 조작 배치: the phone's own 걷기 (a tap switches the two walks) and 뛰기 (runs while held) buttons
     paceTap: () => { pace = pace === 'walk' ? 'slow' : 'walk'; return pace; }, setRun: (on) => { paceRun = Boolean(on); }, walkPace: () => pace, act: () => { if (grab) { endGrab(); return; } if (!isBlocked() && near) interact(near); }, actDown, actUp, actCancel: () => { if (!netAimEnd()) actUp(); }, grabTurn: () => turnGrab(), homeEditView: (on) => { if (!on || !editView) { setEditZoom(0); if (on) editOpen(); } editView = Boolean(on); }, editZoom: (z) => { if (z != null) setEditZoom(Number(z)); return editZoom; } /* (v1.10.315: tests, and the window’s buttons) */, placeTool, placeScreen, placePoint, placing: () => Boolean(placeAim), grabEnd: () => endGrab(), onHomeMove: (fn) => { onHomeMove = fn; }, onGrab: (fn) => { onGrab = fn; }, onSeatTurn: (fn) => { onSeatTurn = fn; }, seatTurn: (dir) => turnSeat(dir < 0 ? -1 : 1), /* 2회차 11 */ // v1.10.62 모바일: the stick, and the hint tapped (= Space)
-    canInteract, holdQuestDeparture, talkCamera, counterCamera, setProjects, /* (v1.10.222) */ lookScope, /* (v1.10.224) */ setWalkBob: (on) => { walkBob = Boolean(on); }, /* (v1.10.218 B4) */ setBugsDim, /* (1.10.348 「벌레 흐리게」) */ toolBreak, /* (v1.10.221) */ setMouseSens: (v) => { mouseSens = Math.max(0.3, Math.min(3, Number(v) || 1)); }, setLockTip: (fn) => { onLockTip = fn; }, unlockPointer: () => { if (locked()) document.exitPointerLock?.(); }, /* (v1.10.217) */ roster: () => roster, setRoster, postQuest: (post) => [...eventObjs].find(([k, o]) => k.startsWith('ev:quest_npc:') && o.post === post)?.[0] || null, questOf: (n) => { return [...eventObjs].find(([k, o]) => k.startsWith('ev:quest_npc:') && (o.walker === n || (o.post && roster?.posts[o.post] === n)))?.[0] || null; }, /* (C2: the 부탁 in their talk) */ /* (v1.10.215: the day's table; a story islander's 부탁 at that counter) */ trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), startTaxi, taxiRiding: () => (taxiRide ? { ...taxiRide.ride } : null), onTaxiEnd: (fn) => { onTaxiEnd = fn; }, /* (v1.10.271) */ setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode: (m) => { walkTime = ['auto', 'morning', 'day', 'evening', 'night'].includes(m) ? m : 'auto'; return setTimeMode(m); }, setWeather, setIslandLook, setPlants, nearestPlant, tryOn, tryOnClose, tryOnPose, tryOnShot, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, insectsMoved, feel, feelBlocked, /* (v1.10.263 감정 표현) */ residentTalkFace: (n, f) => faceFor(residentChar(n), f, EM.TALK_FACE_MS), residentTalk: (n, text) => startTalk(residentChar(n), text), /* (v1.10.287) */ residentEmote: (n, id) => { const c = residentChar(n); return c ? emoteRun(c, id) : null; }, /* (v1.10.278 주민 내기: their wave, think, a win's pose, a loss's face) */
+    canInteract, holdQuestDeparture, talkCamera, counterCamera, setProjects, /* (v1.10.222) */ lookScope, /* (v1.10.224) */ setWalkBob: (on) => { walkBob = Boolean(on); }, /* (v1.10.218 B4) */ setBugsDim, /* (1.10.348 「벌레 흐리게」) */ toolBreak, /* (v1.10.221) */ setMouseSens: (v) => { mouseSens = Math.max(0.3, Math.min(3, Number(v) || 1)); }, setLockTip: (fn) => { onLockTip = fn; }, unlockPointer: () => { if (locked()) document.exitPointerLock?.(); }, /* (v1.10.217) */ roster: () => roster, setRoster, postQuest: (post) => [...eventObjs].find(([k, o]) => k.startsWith('ev:quest_npc:') && o.post === post)?.[0] || null, questOf: (n) => { return [...eventObjs].find(([k, o]) => k.startsWith('ev:quest_npc:') && (o.walker === n || (o.post && roster?.posts[o.post] === n)))?.[0] || null; }, /* (C2: the 부탁 in their talk) */ /* (v1.10.215: the day's table; a story islander's 부탁 at that counter) */ trainDocked: (station) => R.docked(trainNow(), station), trainChangedAt: () => trainChangedAt, setPlatform, platform: () => platform, board, alight, riding: () => (riding ? { ...riding } : null), startTaxi, taxiRiding: () => (taxiRide ? { ...taxiRide.ride } : null), onTaxiEnd: (fn) => { onTaxiEnd = fn; }, /* (v1.10.271) */ setTrainService: (snapshot) => R.setService(snapshot), setTrainShift: (ms) => { trainShift = Number(ms) || 0; }, sit, standUp, emote, setTimeMode: (m) => { walkTime = ['auto', 'morning', 'day', 'evening', 'night'].includes(m) ? m : 'auto'; return setTimeMode(m); }, setWeather, setIslandLook, setPlants, nearestPlant, tryOn, tryOnClose, tryOnPose, tryOnShot, furnShot /* (437) */, tryOnShown: () => (tryOnView?.c ? { worn: tryOnView.c.wardrobe || null, model: Boolean(tryOnView.c.assetRoot) } : null), setPhotoMode: (on, onEnd = null) => { if (on) onPhotoEnd = onEnd; return setPhotoMode(on); }, photoPose, actionBusy, capture, fishBegin, fishResult, fishStop, fishingNow, insectsMoved, feel, feelBlocked, /* (v1.10.263 감정 표현) */ residentTalkFace: (n, f) => faceFor(residentChar(n), f, EM.TALK_FACE_MS), residentTalk: (n, text) => startTalk(residentChar(n), text), /* (v1.10.287) */ residentEmote: (n, id) => { const c = residentChar(n); return c ? emoteRun(c, id) : null; }, /* (v1.10.278 주민 내기: their wave, think, a win's pose, a loss's face) */
     residentSay: (n, text) => say(residentChar(n), text), nearResident: (r = 4) => { if (mySpace !== 'island') return null; const m = me.root.position; let best = null; for (const { n, c, w } of wanderers) { if (!c.root.visible || w.pose.held) continue; const d = Math.hypot(w.x - m.x, w.z - m.z); if (d < r && (!best || d < best.d)) best = { n, d, x: m.x, z: m.z }; } return best; }, /* (v1.10.278: one walking near me, for their own ask) */ /* (v1.10.264: what an islander says, its face) */ netFail: (id) => { if (netBag?.id === id && !netBag.ok) netLose(); }, fishTug: fishTugOn, fishTugFight, showCatch, showDone: () => showEnd(false), /* (v1.10.257 자랑 장면) */ setTownhallPass, mayorLine, start, stop, dispose, debug, interact, setAvatar, setOthers, pose, correctTo, drawMap, speak, setMapMarkers, pinMap, setStatues: setStatuesPublic, setBirthdays, birthdayCheer, setGuideTarget, setMyPet, snapshot, setEvents: setEventsPublic, setResidents, setServerTime, setWeeds, removeWeeds, gatherWeed, gatherResource, finishGather, holdWeed, holdBasket, returnLost, playMine,
     lostName: (id) => (lostProp(id) === 'prop.event.lost_pouch' ? '작은 주머니' : '곰 인형') }; // v1.10.34: what the owner lost (its look)
 }
