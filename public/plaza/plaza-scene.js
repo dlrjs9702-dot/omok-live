@@ -6777,7 +6777,7 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     const t0 = performance.now();
     raf = requestAnimationFrame(frame); viewReady = true; stepViewClock(); /* (294) */ stepFrameClock(Number.isFinite(now) ? now : t0); /* (403) */
     placeMoved();
-    const real = (now - (last || now)) / 1000; const dt = Math.min(0.05, real); last = now; clock += dt;
+    const real = Math.max(0, (now - (last || now)) / 1000); /* (439: never back in time -- a test's fake clock starts below the real one: a step back put NaN in my place) */ const dt = Math.min(0.05, real); last = now; clock += dt;
     camDt = Math.min(0.25, real); // v1.10.21: turning keeps to the clock on a slow PC (the animation step is capped)
     step(dt);
     if (now - coverCheckedAt > 250) { coverCheckedAt = now; covered = windowCovers(); }
