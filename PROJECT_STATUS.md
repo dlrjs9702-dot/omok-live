@@ -13,6 +13,14 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.437 C 화면 · 광장 작은 것 (notes docs/issue-plan-20261128.md 3번 묶음)
+
+- a5c63780 재료 사기: 칸 한 개를 두 줄로(이름 · 값 / 개수 칸 · 1 · 5 · 10개 · 사기), 개수 칸 넓이 고정(3.4em, 손가락 화면 3.8em), 버튼 글자 안 꺾임 — 850 px · 폰 모두 칸 넘침 0.
+- 22f4502e 가방 가구 탭: 다른 탭처럼 동그라미 칸(`.furnCell`, 8칸 · 폰 4칸), 가구 모델 정지 그림(plaza `furnShot`: 작은 렌더러 하나, 모델마다 한 번 찍어 기억, 안 오면 🪑), 고른 가구 카드도 같은 그림.
+- 34141e35 섬 벼룩시장: 게시판을 대청마당 긴 화단(paving (-18, 18) → (-18, -66)) 위로 — 기록의 탑처럼 나무 없는 화단, 흙 위 0.45, 광장 가운데를 봄, SPACE 자리 화단 앞 1.2 m. 화단 앞 가운데 앉을 자리 하나 뺌.
+- B 남은 칠 자국: 셰이더가 네 칸 거리를 도로 전체에서 0.9 m부터 씀 — T자 바깥 인도 끝 · 연석 모서리 울퉁불퉁 · 별마루섬 입구 길 끝 노란 자국 정리.
+- 시험: 유닛 taxi-road-436(셰이더 판정 그대로) · dalmaru-paths · island-social 자리 수, e2e island-bag · island-flea · island-assets · plaza · dalmaru-walk(PC · 폰).
+
 ## v1.10.436 B 택시 · 도로 (notes docs/issue-plan-20261128.md 2번 묶음)
 
 - f62f225a-1 문: assets 183(taxi_island High · Low를 door_L · door_R · wheel_FL/FR/RL/RR 노드로 다시 나눔 — 272 99b 빌드가 한 덩어리로 합쳤음, `precompressed`), `taxi.car` `keepNodes`. 탈 때 · 내릴 때 door_L 0 → −70°, 바퀴 굴림 반지름 0.38.
@@ -31,10 +39,3 @@
 - 3faca5e1 펫: 주인이 앉으면 배 뒤 갑판(자리별 칸)에 앉아 함께 감 — 배를 그린 뒤 자리 잡아 한 프레임 늦지 않음.
 - 1b9f6edf 부두 앞 T자: 칠만 T자(island-paths buildRoadMap `TEES`) — 곧은 물가 길 · 줄기 끝 · 입구(B MOUTH)는 선 없음 · 건널목 줄기에 반듯이(0.59,-14.4). L2를 반대 방향으로 칠해(`PAINT_FLIP`) 노란 선 지렁이 없앰. 차 길 · 정류장 · 요금은 434 그대로. T자 아래 땅 둔덕 · 비움도 T자로(dalmaru-island).
 - 시험: 유닛 `boat-dock-435`, e2e island-boat(걸어 타기 · 모자) · dalmaru-walk · island-taxi-stops · island-taxi-yield · island-pets(PC · 폰).
-
-## v1.10.434 Codex 401~432 검토 P2 10건 · P3 1건 고침 (결정 93)
-
-- 행사 밭·채석장·도구(P2-11~14): 행사 밭 수확을 `questApply`(`bagNext`) 한 거래로 묶어 동시 첫 수확의 횟수 이중 소진 차단. 채석장 `islandGive`에 `requireTool: true`를 적용하고 실패 작은 돌 보상을 `questApply` 한 거래로 원자화(채집물 꽉 참·곡괭이 없음 시 횟수/내구도 미변경). 도구 구매 `islandBuy`가 복구 대기(`island_discard_undo`) 중인 같은 종류 도구도 `TOOL_MAX`에 합산.
-- 가방·펫·호랑이·롤백(P2-15~18): 버리기 뒤 빠른 칸 정리를 `worldEdit` 안에서 최신 배열을 다시 읽어 해당 종류만 제거. 산책 중인 가방 펫을 마지막까지 버리면 `pet` 문서와 캐시·presence를 함께 해제. `tigerPending`을 잡힘 ID별 `worldEdit` 갱신(`tigerPendingMutate`)과 초기 읽기 재시도로 변경. `bagView`·`visibleSlots`가 보유 칸 수 이상을 보장해 롤백 호환 유지.
-- 택시·탐방선(P2-19·20, P3-21): `IslandTaxi.fleetView`에 정차 `curb` 포함 및 `island-taxi-scene` 좌표 전달. `IslandBoat`의 출항·이동·접안·입항이 공통 부두 앞 수역 예약(`dockWaterBusy`)을 공유. `IslandBoat.nearDock` 공통 22 m 발판+팔 영역을 화면(`plaza-scene`)과 서버(`boatAtDock`)가 함께 사용.
-- 시험: `codex-p2-434`(JSON·PG·서버·규칙) 추가 및 연관 단위 테스트 통과.

@@ -18,15 +18,18 @@ test('436 칠: 모든 T자 · 막힌 끝 -- 차선 위에 셰이더가 못 가�
   const R = (k) => (m[k * 3] / 255 - 0.5) * 2 * P.ROAD_RANGE; const bad = [];
   for (let j = 0; j < res - 1; j += 1) for (let i = 0; i < res - 1; i += 1) { const k = j * res + i; if (!m[k * 3 + 1]) continue;
     for (const n of [k + 1, k + res]) { if (!m[n * 3 + 1]) continue; const a = R(k); const b = R(n); if (!a || !b || Math.sign(a) === Math.sign(b)) continue;
-      const avg = (Math.abs(a) + Math.abs(b)) / 2; /* (a real middle: both small; the shader's four texels: 1.5 and over read as they are) */
-      if (avg < 0.9 || avg >= 1.5 || m[k * 3 + 2] === P.MOUTH || m[n * 3 + 2] === P.MOUTH) continue; bad.push([x0 + (i + 0.5) * cell, x0 + (j + 0.5) * cell]); } }
-  const end = X.EXT[X.EXT.length - 1]; assert.ok(bad.every(([x, z]) => Math.hypot(x - end[0], z - end[1]) < 4), `left: ${JSON.stringify(bad.slice(0, 5))}`);
+      /* (a real middle between two texels 0.58 m apart: |a| + |b| at most that. Any other meeting, read halfway as the shader does (island.js: the
+         filtered R's size, mixed toward the texels' own from 0.9 to 1.2) -- yellow under 0.09: a line nobody drew; 437 none, 별마루섬 입구's end too) */
+      if (Math.abs(a) + Math.abs(b) <= cell * 1.05 || m[k * 3 + 2] === P.MOUTH || m[n * 3 + 2] === P.MOUTH) continue;
+      const af = (Math.abs(a) + Math.abs(b)) / 2; const t = Math.max(0, Math.min(1, (af - 0.9) / 0.3)); const s = t * t * (3 - 2 * t); const ao = Math.abs((a + b) / 2) * (1 - s) + af * s;
+      if (ao < 0.12) bad.push([x0 + (i + 0.5) * cell, x0 + (j + 0.5) * cell, +a.toFixed(2), +b.toFixed(2)]); } }
+  assert.deepEqual(bad, [], 'none left (437: 별마루섬 입구\'s end too)');
   // 66460bba's corner: 툇마루섬 마을's stop -- the stem squared at the stop (nothing painted 1 m past its end), the mouth marked
   const box = { x0: -26, z0: 166, size: 16 }; const q = P.buildRoadMap(T, X, 64, box); const px = (x, z) => { const i = Math.floor((x - box.x0) / 0.25); const jj = Math.floor((z - box.z0) / 0.25); return jj * 64 + i; };
   assert.equal(q[px(-17.5, 173) * 3 + 2], P.MOUTH, 'the mouth'); assert.equal(q[px(-12.2, 173.2) * 3 + 1], 0, 'squared at the stop');
   // the shader: where the filtered R reads near 0 but the four texels' own distances are far, those
   const island = read('island.js');
-  assert.match(island, /if \(ao < 2\.5\) \{ ivec2 rs = textureSize\(tRoad, 0\);/); assert.match(island, /ao = mix\(ao, af, smoothstep\(1\.1, 1\.5, af\) \* smoothstep\(0\.3, 0\.6, af - ao\)\);/);
+  assert.match(island, /\{ ivec2 rs = textureSize\(tRoad, 0\);/); assert.match(island, /ao = mix\(ao, af, smoothstep\(0\.9, 1\.2, af\)\);/); /* (437: everywhere on the road, from 0.9) */
 });
 
 test('436 떨림: 택시 · 배 · 기차 · 엘리베이터 위에서는 서버 위치 보정을 받지도 끌려가지도 않음, 탈 때 · 내릴 때 앞의 보정은 버림', () => {

@@ -1731,9 +1731,10 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .bagTab i{background:#e9dcc3;color:#5a4330}
 :root[data-theme="light"] .bagTab.on{background:var(--isle-select);border-color:var(--isle-tag);color:var(--isle-ink)}
 :root[data-theme="light"] .bagTab.on i{background:#fff3d6}
-:root[data-theme="light"] .furnCell{border:2px solid rgba(120,90,50,.25);background:#fffaf0;color:#4a3524}
-:root[data-theme="light"] .furnCell small{color:#8a7055}
-:root[data-theme="light"] .furnCell.picked{border-color:#c9862a;background:#fff1cf}
+:root[data-theme="light"] .furnCell{border:2px solid var(--isle-line);background:#f8eedb;box-shadow:inset 0 3px 6px -3px rgba(110,71,40,.3);color:var(--isle-ink)}
+:root[data-theme="light"] .furnCell small{background:var(--isle-paper);border:1px solid var(--isle-line);color:var(--isle-ink)}
+:root[data-theme="light"] .furnCell:focus-visible{outline:3px solid var(--isle-tag)}
+:root[data-theme="light"] .furnCell.picked{border-color:var(--isle-tag);background:#fdf0d4}
 :root[data-theme="light"] .bagDetail{background:rgba(255,250,240,.92);color:#4a3524}
 :root[data-theme="light"] .bagDetailPic{background:#f3e6cc}
 :root[data-theme="light"] .bagDetailKind{background:#e9dcc3}

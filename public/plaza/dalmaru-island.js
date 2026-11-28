@@ -550,7 +550,10 @@
   // it; its plinth's three circles (solids.json, r 0.52 at the model's x -1.45 / 0 / 1.45, z 0.06)
   // (1.10.346 사용자 155A C안: from (-9, -64) facing east -- its side to the fountain and the main walk, the birthday corner behind it --
   // to (-4.1, -68.5) beside the north walk, its face to the fountain; SPACE 2.1 m before it)
-  const AUCTION_BOARD = Object.freeze({ x: -4.1, z: -68.5, yaw: yawTo(-4.1, -68.5, [0, -84]), stand: Object.freeze({ x: -3.56, z: -70.53 }) });
+  /* (1.10.437 문제 기록 34141e35 「섬 벼룩시장 위치가 애매한데, 옆에 게임관처럼 이것도 나무 화단으로 옮겨. 화단을 없애고 그 위로 올려」: as 기록의 탑
+     before the 게임관 (v1.10.253) -- on the long garden across the plaza from it (paving's (-18, 18)), its trees gone (the bare bed), stood on the
+     soil (lift), along the garden, its face (-Z) south to the plaza's middle; SPACE 1.2 m out from the rim before it) */
+  const AUCTION_BOARD = Object.freeze({ x: PLAZA_C.x - 18, z: PLAZA_C.z + 18, yaw: 0, lift: 0.45, stand: Object.freeze({ x: PLAZA_C.x - 18, z: PLAZA_C.z + 18 - 3.15 }) });
   // (155A: the birthday corner keeps its one small circle -- it stands only on a birthday; circles across its banner would be walls
   // nobody sees on the other days, dalmaru-walk unseen)
   const auctionSolids = () => [-1.45, 0, 1.45].map((u) => { const B = AUCTION_BOARD; return { x: B.x + Math.cos(B.yaw) * u + Math.sin(B.yaw) * 0.06, z: B.z - Math.sin(B.yaw) * u + Math.cos(B.yaw) * 0.06, r: 0.52 }; });
@@ -649,7 +652,8 @@
       const at = g.kind === 'round' ? [[1, 1], [-1, 1], [-1, -1], [1, -1]].map(([a, b]) => [a * 2.23, b * 2.23]) : [-3, 0, 3].flatMap((x) => [[x, 1.95], [x, -1.95]]);
       // (v1.10.253 assets 104 tower-fit: on 기록의 탑's garden the middle seat on the podium's side goes -- 0.87 m before it)
       const towered = Math.hypot(g.x - RECORD_TOWER.x, g.z - RECORD_TOWER.z) < 3;
-      at.forEach(([dx, dz], n) => { if (towered && dx === 0 && dz * Math.cos(RECORD_TOWER.yaw) > 0) return; seats.push({ id: `g${k}-${n}`, x: g.x + dx, z: g.z + dz, yaw: g.kind === 'round' ? Math.atan2(dx, dz) : Math.atan2(0, dz) }); });
+      const boarded = Math.hypot(g.x - AUCTION_BOARD.x, g.z - AUCTION_BOARD.z) < 3; /* (437: the 벼룩시장 board's garden -- the middle seat before its face, where one stands to use it) */
+      at.forEach(([dx, dz], n) => { if (towered && dx === 0 && dz * Math.cos(RECORD_TOWER.yaw) > 0) return; if (boarded && dx === 0 && dz * Math.cos(AUCTION_BOARD.yaw) < 0) return; seats.push({ id: `g${k}-${n}`, x: g.x + dx, z: g.z + dz, yaw: g.kind === 'round' ? Math.atan2(dx, dz) : Math.atan2(0, dz) }); });
     });
     seats.push(...C.plazaProps().seats.filter((s) => s.room));
     return { benches, lamps, beds, seats };
