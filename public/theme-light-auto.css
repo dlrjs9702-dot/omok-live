@@ -1748,6 +1748,8 @@ html[data-theme="light"].sidePipLayout,html[data-theme="light"].sidePipLayout bo
 :root[data-theme="light"] .placeBack{border:0;background:none;color:inherit}
 :root[data-theme="light"] .countBoxInput{border:1px solid var(--isle-line,#c9b48a);background:#fffaf0;color:var(--isle-ink,#3d2f22)}
 :root[data-theme="light"] .countBoxInput:focus-visible{outline:3px solid #2f6fc0}
+:root[data-theme="light"] .perfTable{color:var(--isle-ink)}
+:root[data-theme="light"] .perfTable th,:root[data-theme="light"] .perfTable td{border-bottom:1px solid var(--isle-line)}
 :root[data-theme="light"] #islandPlaceSubmit.sure{background:#e0952e;color:#fff;border-color:#b06a12}
 :root[data-theme="light"] .islandEventItem{background:#7c2d12e6;color:#fff7ed;border:1px solid #fdba74;box-shadow:0 4px 14px #0006}
 :root[data-theme="light"] .placeEventMult{color:#c2410c;background:#ffedd5}

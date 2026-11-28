@@ -337,12 +337,15 @@ test('동작 줄이기에서도 수동 시점과 이동 유지', async ({ browse
   await a.page.emulateMedia({ reducedMotion: 'reduce' });
   await expect.poll(() => a.page.evaluate(() => window.PlazaDebug().environment.ambient.bodyScale)).toBe(1);
   await a.page.clock.install();
+  // (439: the frames right after install still carry the real clock's last time -- run the fake one first, or the press can land
+  // before the loop is on it and the view never moves: 1 in 4~8 locally, main too)
+  await a.page.clock.runFor(300);
   await a.page.locator('#plazaStage').focus();
   const before = await a.page.evaluate(() => { const d = window.PlazaDebug(); return { pitch: d.camPitch, x: d.x, z: d.z }; });
-  await a.page.keyboard.down('ArrowUp'); await a.page.clock.fastForward(200); await a.page.clock.fastForward(200); await a.page.keyboard.up('ArrowUp');
+  await a.page.keyboard.down('ArrowUp'); await a.page.clock.runFor(400); await a.page.keyboard.up('ArrowUp'); /* (439: runFor, every frame in the 400 ms -- fastForward fired each one once: two or three steps under load, 0.12 m) */
   const camera = await a.page.evaluate(() => { const d = window.PlazaDebug(); return { pitch: d.camPitch, goal: d.pitchGoal }; });
   expect(camera.pitch).toBeLessThan(before.pitch); expect(camera.pitch).toBe(camera.goal);
-  await a.page.keyboard.down('KeyW'); await a.page.clock.fastForward(200); await a.page.clock.fastForward(200); await a.page.keyboard.up('KeyW');
+  await a.page.keyboard.down('KeyW'); await a.page.clock.runFor(400); await a.page.keyboard.up('KeyW');
   expect(await a.page.evaluate(p => { const d = window.PlazaDebug(); return Math.hypot(d.x - p.x, d.z - p.z); }, before)).toBeGreaterThan(0.2);
   await expectNoScriptError(a.page); expect(a.errors).toEqual([]); await a.context.close();
 });

@@ -3954,6 +3954,10 @@ body.islandMining .quickBar,body.islandMining #toast{visibility:hidden}
 .countBoxInput:focus-visible{outline:3px solid #2f6fc0;outline-offset:1px}
 @media (pointer:coarse){.countBoxInput{min-height:40px;width:3.8em}}
 .oreShopRow .countBox{margin-left:auto}
+/* (1.10.439 관리자 「성능 재기」의 표: numbers right, a narrow phone scrolls it sideways) */
+.perfTable{display:block;overflow-x:auto;width:100%;border-collapse:collapse;font-size:.82rem;font-variant-numeric:tabular-nums;color:var(--isle-ink)}
+.perfTable th,.perfTable td{padding:4px 8px;border-bottom:1px solid var(--isle-line);text-align:right;white-space:nowrap}
+.perfTable th:first-child,.perfTable td:first-child{text-align:left}
 /* (1.10.437 문제 기록 a5c63780 「재료 사기 중 화면 크기에 따라 칸이 창 밖으로」: two lines a row -- the name and price across, then the count and
    the buttons, which wrap whole; nothing squashed (the count's number cut, 「1 / 개」 broken in two)) */
 .oreShopRow{flex-wrap:wrap;align-items:center;justify-content:flex-start;row-gap:6px;gap:6px}

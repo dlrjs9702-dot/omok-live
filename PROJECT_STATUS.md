@@ -13,6 +13,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.439 ④ 엔진 대신 셋 P1 — 폰 실측 · 성능 재기 · 장면 계산 줄이기 (결정 62 · 101 · 102)
+
+- 장면 위치 계산 줄이기(plaza-scene): 장면 자체는 위치 행렬을 다시 만들지 않고(`scene.matrixAutoUpdate = false`), 장면에 바로 붙는 물체마다 `childadded`로 감싸서 숨겨진 물체는 건너뛰고 다시 보일 때 한 번 강제 갱신. 택시 정류장 표지 · 도로 표지 · 탑승 표시 · 차선 · 광장 택시 길은 처음 한 번 계산 뒤 고정(island-taxi-scene). 한 프레임 `updateMatrixWorld` 호출 16,213 → 6,502(PC).
+- 결정 101: 자동 화질이 한 단계 내리는 기준 — 손가락 화면(`(pointer:coarse)`)만 느린 시간 30 % 넘으면, PC는 그대로 50 %.
+- 관리자 「성능 재기」(관리자 창): 섬에서 누르면 약 1분 동안 다섯 곳(대청마당 · 정류장 앞 · 별마루다리 · 마을 거리 · 숲) × 화질 낮음 · 높음(정류장은 건물 비침 켬 · 끔)을 재서 표(fps · p95 · 50 ms 넘은 프레임 · 스크립트 ms · 그리기 수)로 보여 주고, `POST /api/admin/perf`로 서버 로그 `[perf]` 한 줄(이름 · 아이디 없음, 60초에 한 번).
+- 프레임 시간이 거꾸로 가면 0으로(시험의 가짜 시계가 진짜 시간보다 작게 시작할 때 내 위치가 NaN이 되던 것).
+- e2e island-assets:334 「동작 줄이기에서도 수동 시점과 이동 유지」: main에서도 4~8번에 1번 실패 — 가짜 시계 설치 직후 프레임이 아직 진짜 시간이라 키가 먼저 들어가고, `fastForward`가 프레임을 한 번씩만 돌려 부하 속 걷기 0.12 m. `runFor`로 바꿔 3명 동시 10/10.
+- 폰 실측(S21+, 결정 102): 높음 다섯 곳 59.6~59.7 fps(27.6 °C), 이어서 자동 세 바퀴 내내 높음 유지 58.5~59.7 fps · 50 ms 넘은 프레임 0~1(33 °C까지). 스크립트 중앙값은 식었을 때 10~11 ms, 데워지면 12~18 ms — 순서를 바꿔도(자동 → 높음) 같아서 화질 모드가 아니라 온도 탓. 이번엔 느린 프레임이 30 %에 못 미쳐 자동이 내려갈 일이 없었음(내려가는 기준은 유닛으로만 확인).
+- 시험: 유닛 perf-439, e2e island-assets · island-taxi-stops · island-taxi-yield · island-view-modes · plaza · island-map · island-solids · economy-admin · admin-issue-log.
+
 ## v1.10.438 C2 해안 산책로 + 밤 만 파도 (문제 기록 c057bfa1, 사용자 결정 99 · 100)
 
 - ① 인도: 밤에 인도 · 연석 0.62배, 차선 0.86배(island.js 도로 셰이더 `uNight`) + 바깥 끝 0.5 m 어두운 테두리(땅에 박힌 듯).
@@ -30,13 +40,3 @@
 - 34141e35 섬 벼룩시장: 게시판을 대청마당 긴 화단(paving (-18, 18) → (-18, -66)) 위로 — 기록의 탑처럼 나무 없는 화단, 흙 위 0.45, 광장 가운데를 봄, SPACE 자리 화단 앞 1.2 m. 화단 앞 가운데 앉을 자리 하나 뺌.
 - B 남은 칠 자국: 셰이더가 네 칸 거리를 도로 전체에서 0.9 m부터 씀 — T자 바깥 인도 끝 · 연석 모서리 울퉁불퉁 · 별마루섬 입구 길 끝 노란 자국 정리.
 - 시험: 유닛 taxi-road-436(셰이더 판정 그대로) · dalmaru-paths · island-social 자리 수, e2e island-bag · island-flea · island-assets · plaza · dalmaru-walk(PC · 폰).
-
-## v1.10.436 B 택시 · 도로 (notes docs/issue-plan-20261128.md 2번 묶음)
-
-- f62f225a-1 문: assets 183(taxi_island High · Low를 door_L · door_R · wheel_FL/FR/RL/RR 노드로 다시 나눔 — 272 99b 빌드가 한 덩어리로 합쳤음, `precompressed`), `taxi.car` `keepNodes`. 탈 때 · 내릴 때 door_L 0 → −70°, 바퀴 굴림 반지름 0.38.
-- f62f225a-2 대청마당 합류부(사용자 결정 98 A): 길 끝 차선(x −1.6 ~ 3.0)부터 두 번째 자리 차 끝(x 14.6)까지 돌바닥 위 폭 3 m 아스팔트 띠(z −55 ~ −52, `PLAZA_WAY`)와 흰 가장자리 선 — 메시, 돌바닥 위 3 cm · polygonOffset. 차가 이 띠를 따라 나와 길로 꺾어 들어감(운행은 그대로).
-- 66460bba 지그재그 금: T자 한쪽 구석에서 두 길의 좌우 부호가 엇갈려 노란 선 · 회색 줄이 생김. 툇마루섬 마을 정류장 · 툇마루섬 갈림 · 마을 길 모퉁이를 TEES로 칠함(`box` · `far` · `bar` 생략 가능), L1도 `PAINT_FLIP`(회차 자리 부호는 길 끝을 따름), 막힌 끝은 10 m 안 조각을 끝 평면으로 자름. 셰이더(island.js)는 걸러진 R이 0 근처인데 네 칸 거리가 먼 곳을 그 거리로 읽어 인도 · 차선으로 그림. 섬 전체에 못 가리는 뒤집힘은 별마루섬 입구 길 끝(택시 서는 자리 아래) 하나.
-- ca8229cf 떨림: 탈 때 받은 위치 보정(`correction`)이 목표에 닿지 못해 타는 내내 stepTaxi 뒤에서 정류장 쪽으로 끌어당김. 택시 · 배 · 기차 · 엘리베이터 위에서는 보정을 받지 않고 남은 것도 버림, 탈 때 · 내릴 때 `trainChangedAt`으로 그 전 보정 무시.
-- f62f225a-3 기울기: 차 앞뒤 1.3 m · 옆 0.75 m 땅 높이로 앞뒤 · 옆 기울기(0.35 rad까지) — 별마루다리 아치에서 ±0.15 rad.
-- 다듬기 「택시 비스듬히」: 서 있는 차를 문 쪽으로 25° 돌려 그림(그림만; 서는 자리 · 문 · 탑승 표시 · 운행은 그대로), 탈 때 곧게, 서면 다시.
-- 시험: 유닛 `taxi-road-436`, e2e island-taxi-stops · island-taxi-yield · bicycle · island-boat · dalmaru-walk(PC · 폰).

@@ -54,7 +54,7 @@ const IslandCalendar = require('./public/plaza/island-calendar'); // E1 계절 �
 const XmasPlay = require('./public/plaza/xmas-play'); // 1.10.334 썰매 언덕·눈 요새
 const IslandFestival = require('./lib/island-festival'); // E1 축제 도장
 const Together = require('./lib/island-together'); // B 47 생일·우체통
-const SERVER_VERSION = require('./package.json').version; // (관리자 「문제 기록」에 붙는 버전)
+const SERVER_VERSION = require('./package.json').version; let perfLoggedAt = 0; /* (1.10.439 성능 재기: its [perf] line once a minute) */ // (관리자 「문제 기록」에 붙는 버전)
 const IslandInsects = require('./lib/island-insects'); // B 47 곤충 채집
 // 묶음 5 보이는 곤충: the layout of each 10 minutes (lib/island-insects.js layout over the island's spots), those caught or
 // sent off since it came (gone for everyone till the next), who caught which (a request sent again answers the same)
@@ -5263,7 +5263,7 @@ async function requestHandler(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, version: '1.10.438' });
+    return sendJson(res, 200, { ok: true, version: '1.10.439' });
   }
   if (pathname === '/ready' && req.method === 'GET') { const ok = pointStore?.dbReady !== false; return sendJson(res, ok ? 200 : 503, { ok }); } // 300 (다): the DB warmed (Render's health check); /health stays the version
 
@@ -6724,6 +6724,17 @@ async function requestHandler(req, res) {
     if (!out.applied) return sendError(res, 409, 'UNDO_GONE', '되돌릴 수 있는 시간이 지났어요.');
     if (!out.release) await worldEdit(async () => { const log = (await pointStore.worldValue('discardLog')) || []; log.push({ at: nowMs(), account, name: await accountName(account).catch(() => ''), itemId: out.gone.itemId, qty: out.gone.qty, undo: true }); await pointStore.setWorldValue('discardLog', log.slice(-500)); }).catch(() => {});
     return sendJson(res, 200, { ok: true, bag: out.bag });
+  }
+  /* 1.10.439 ④ 폰 실측 P1 「성능 재기」 (notes engine-borrow §3-4, 결정 62: 관리자만): the run's table as one `[perf]` log line -- the device's kind, its GPU,
+     its numbers; never an account, a name or a place of anyone. Numbers only, a row's place one of five words; once a minute */
+  if (pathname === '/api/admin/perf' && req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
+    const now = Date.now(); if (now - perfLoggedAt < 60000) return sendError(res, 429, 'PERF_SOON', '1분 뒤에 다시 남길 수 있어요.'); perfLoggedAt = now;
+    const body = await parseJson(req).catch(() => null); const num = (v, max) => (Number.isFinite(Number(v)) ? Math.max(0, Math.min(max, Math.round(Number(v) * 10) / 10)) : null);
+    const PLACES = ['plaza', 'stop', 'bridge', 'street', 'forest'];
+    const rows = (Array.isArray(body?.rows) ? body.rows : []).slice(0, 20).filter((w) => PLACES.includes(w?.place)).map((w) => ({ place: w.place, tier: num(w.tier, 2), see: Boolean(w.see), fps: num(w.fps, 240), p50: num(w.p50, 5000), p95: num(w.p95, 5000), over50: num(w.over50, 10000), js: num(w.js, 1000), calls: num(w.calls, 100000), tris: num(w.tris, 1e8) }));
+    console.log(`[perf] ${JSON.stringify({ v: SERVER_VERSION, phone: Boolean(body?.phone), gpu: String(body?.gpu || '').replace(/[^\w ().,-]/g, '').slice(0, 80), dpr: num(body?.dpr, 8), px: String(body?.px || '').replace(/[^\dx]/g, '').slice(0, 12), rows })}`);
+    return sendJson(res, 200, { ok: true, rows: rows.length });
   }
   if (pathname === '/api/admin/discards' && req.method === 'GET') {
     if (!requireAdmin(req, res)) return;
@@ -11304,7 +11315,7 @@ async function main() {
   bootMark('before-listen');
   /* (1.10.376 별마루섬 호랑이: their ground made after the start in 20 ms slices, as 별마루섬's open table -- the tigers wait till it is) */
   if (process.env.NODE_ENV !== 'test') setTimeout(() => { const step = () => { try { if (!tigerSim.warm(20)) setImmediate(step); } catch (error) { console.error('호랑이 땅 만들기 실패:', error.message); } }; step(); }, 6000).unref?.();
-  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.438 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); tigerPendingResume().catch(() => {}); /* (403 Codex #16: catches whose loss was not saved before the restart) */ if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
+  server.listen(PORT, HOST, () => { console.log(`게임 서버 v1.10.439 실행: http://${HOST}:${PORT}`); bootMark('listening'); console.log(`[boot] ${bootMarks.join(' · ')} ms`); tigerPendingResume().catch(() => {}); /* (403 Codex #16: catches whose loss was not saved before the restart) */ if (process.env.NODE_ENV !== 'test') setTimeout(() => { /* (370: not in tests -- it holds the loop 0.6–2 s; their first ask makes it) */ const step = () => { try { if (IslandTerrain.isle2OpenWarm && !IslandTerrain.isle2OpenWarm(20)) setImmediate(step); } catch { /* (made on the first ask instead) */ } }; step(); /* (Codex 361~370 #16: in 20 ms slices -- requests and the live streams go on between them) */ }, 3000).unref?.(); }); /* (검토 369 P1: 별마루섬's open table made once at the start, not in a player's request) */
   // v1.10.86 주민세: the day's tax once the day has begun (checked every few minutes; a server asleep through a day
   // takes that day's when it wakes). Tests run it themselves (/api/test/tax).
   // (검토 2026-11-06: a cold start's first minute -- the weekly titles, the tickers and the first visitors on a small DB -- had
