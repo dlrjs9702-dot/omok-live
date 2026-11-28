@@ -39,6 +39,15 @@ test('436 떨림: 택시 · 배 · 기차 · 엘리베이터 위에서는 서버
   assert.match(s, /stepTaxi\(\); stepQuestScenes\(dt\);[\s\S]{0,1200}stepOthers\(dt\);/, 'stepOthers (the correction) after stepTaxi -- why it is dropped, not just ordered');
 });
 
+test('436 결정 98 A 대청마당 택시 진입로: 돌바닥 위 폭 3 m, 길 끝 차선부터 두 번째 자리 차 끝까지, 돌바닥보다 3 cm 위 · polygonOffset', () => {
+  const W = X.PLAZA_WAY; const P0 = T.dalmaru.PLAZA;
+  assert.equal(W.z1 - W.z0, 3); assert.ok(W.z1 <= P0.d1 + 1e-9 && W.z0 >= P0.d0, 'on the paving');
+  const end = X.ROUTE[2]; assert.ok(W.x0 <= end[0] - X.ROAD.lane + 1e-9 && W.lineN >= end[0] + X.ROAD.lane, 'from the road\'s lanes at its end');
+  for (const k of [0, 1]) { const q = X.placeOf('plaza', k); const ax = Math.abs(Math.sin(q.yaw)) * 1.6 + Math.abs(Math.cos(q.yaw)) * 0.85; const az = Math.abs(Math.cos(q.yaw)) * 1.6 + Math.abs(Math.sin(q.yaw)) * 0.85;
+    assert.ok(q.x - ax >= W.x0 && q.x + ax <= W.x1 && q.z - az >= W.z0 - 0.05, `place ${k} on it`); }
+  const s = read('island-taxi-scene.js'); assert.match(s, /const y = groundY\(\(W\.x0 \+ W\.x1\) \/ 2, \(W\.z0 \+ W\.z1\) \/ 2\) \+ 0\.03;/); assert.match(s, /polygonOffset: true, polygonOffsetFactor: off/);
+});
+
 test('436 택시: 땅 기울기 따라 앞뒤 · 옆으로 기욺(0.35 rad까지), 서 있는 차는 25° 비스듬히(그림만)', () => {
   const s = read('island-taxi-scene.js');
   assert.match(s, /const SLOPE = \{ along: 1\.3, across: 0\.75, max: 0\.35 \};/);

@@ -83,6 +83,10 @@
     /* (436: the village street's corner -- EXT up the neck meets the street, L1 off west: the street straight across, out past the yard gate's crossing at -12) */
     Object.freeze({ x: -20, z: 236, ux: 0, uz: -1, box: [-0.3, 9, 11], bar: Object.freeze([[-29.4, 236], [-25.4, 236], [-20, 236], [-13, 236], [-9.1, 236]]), stem: Object.freeze([[-20, 228], [-20, 236]]), bank: false /* (EXT · L1 not banked -- dalmaru-island) */ })]);
   const PAINT_FLIP = Object.freeze([L2, L1]); /* (435: painted as if run east, as ROUTE across the dock's T -- island-paths buildRoadMap; 436 L1 too, as EXT across the street's corner) */
+  /* 1.10.436 사용자 결정 98 A (문제 기록 f62f225a-2 「대청마당에서 나오는 도로 합류부분 개선」): 대청마당's taxi way -- a 3 m band of asphalt on the
+     paving from the road's end (its lanes x -1.6 ~ 3.0 at the plaza's edge z -52) east past the second place (12.5, -53.5), white edge lines; the cars
+     come out along it and turn up into the road. Drawn (island-taxi-scene), walked over; `line` edges with a white line (n: the plaza's edge, from x0) */
+  const PLAZA_WAY = Object.freeze({ x0: -1.6, x1: 14.6, z0: -55, z1: -52, lineN: 3.3, w: 0.12, inset: 0.3 });
   const CROSS_CLEAR = 5;
   const CROSS_HALF = 2.2;
   const ROAD = Object.freeze({ lane: 2.3, walk: 1.6, half: 3.9 });
@@ -580,6 +584,6 @@
     ...[0, 1].map((k) => Array.from({ length: 41 }, (_, i) => { const p = parkPose(id, k, i / 40); return [p.x, p.z]; })),
     homeTail({ from: id, to: STOPS[id].to, startedAt: 0 }, tableOf(id, undefined, STOPS[id].to)).pts]));
   return { GRAPH, RING, loopWay, loopLenOf, LOOP_LABEL, /* (412 「섬 한 바퀴」) */ footOn, BANKED, PARK_PATHS, boardOf, arriveSide, leaveSide, FAR, /* (410 결정 65-3 A; 411 the far sides' table, for the checks) */ ROADSTOPS, ROAD_LEN, sOf, atS, curbOf, driveBetween, distanceOf, fareByRoad, PLACE_IDS, isTerminal, labelOf, toOf, sendCar, WAIT, nearestRoom, /* (392 N4-b) */
-    TEES, PAINT_FLIP, /* (435) */ LANE, PLACES, BACK, placeOf, laneOffs, createFleet, takeCar, settle, etaAt, fleetView, countAt, standingAt, onBridgeBox: (x, z, m = 0) => bridgeOf(x, z, m) >= 0, bridgeOf, BRIDGES, /* (391 N4-a; 397 both one-lane bridges) */ TRUNK, TRUNK_LEN, SPUR,
+    TEES, PAINT_FLIP, /* (435) */ PLAZA_WAY, /* (436) */ LANE, PLACES, BACK, placeOf, laneOffs, createFleet, takeCar, settle, etaAt, fleetView, countAt, standingAt, onBridgeBox: (x, z, m = 0) => bridgeOf(x, z, m) >= 0, bridgeOf, BRIDGES, /* (391 N4-a; 397 both one-lane bridges) */ TRUNK, TRUNK_LEN, SPUR,
     CROSSINGS, CROSS_HALF, CROSS_CLEAR, ROAD, TURN_PADS, /* (412) */ LEAD, RAMP, sideAt, ghostAt, shifted, roadNow, rateOf, warpTo, realAt, rideOver, timeless, PULL_AFTER, PARK, parkPose, TURN, backOf, carAt, easeClock, ROUTE, EXT, ROADS, STREET, ROAD_ENDS: Object.freeze([ROUTE[0], ROUTE[ROUTE.length - 1], EXT[EXT.length - 1]]) /* (395: the stops at the roads' ends -- kept clear round, as the two were) */, STOPS, BRIDGE, ENTER, EXIT, EASE, FAST, SLOW, FARE, DAY_PASS, EXTRA, BOARD, ALIGHT, SEAT, roadOf, stopOf, dropOf, driveOf, tableOf, durationOf, poseAt, arrivalOf, doorOf, fareOf };
 }));

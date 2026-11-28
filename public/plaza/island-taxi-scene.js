@@ -105,6 +105,22 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
       const g = new THREE.Group(); g.position.set(x, groundY(x, z), z); /* (the model 4 cm into the ground already) */ g.rotation.y = Math.atan2(-ux, -uz); g.scale.z = L / n; group.add(g);
       const fb = new THREE.Group(); piece(fb, markMat, 0.5, 0.05, 1, 0, 0.025, 0); g.add(fb); assets.attach('taxi.lane', g, fb); lanes.push(g); }
   }
+  /* (1.10.436 결정 98 A: 대청마당's taxi way -- island-taxi PLAZA_WAY: asphalt as the road's (island.js 0.40 0.41 0.43, linear), its white edge lines;
+     3 cm over the paving and drawn in front of it (polygonOffset), so the two never flicker) */
+  const plazaWay = (() => {
+    const W = X.PLAZA_WAY; if (!W) return null; const g = new THREE.Group(); g.name = 'taxiPlazaWay'; const y = groundY((W.x0 + W.x1) / 2, (W.z0 + W.z1) / 2) + 0.03;
+    const flat = (color, off) => { const m = new THREE.MeshStandardMaterial({ roughness: 0.95, metalness: 0, polygonOffset: true, polygonOffsetFactor: off, polygonOffsetUnits: off }); m.color.setRGB(...color, THREE.LinearSRGBColorSpace); made.push(m); return m; };
+    const asphalt = flat([0.40, 0.41, 0.43], -2); const white = flat([0.94, 0.93, 0.89], -4);
+    const plane = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2); made.push(plane);
+    const quad = (m, x0, x1, z0, z1, dy) => { const o = new THREE.Mesh(plane, m); o.scale.set(x1 - x0, 1, z1 - z0); o.position.set((x0 + x1) / 2, y + dy, (z0 + z1) / 2); o.receiveShadow = true; g.add(o); return o; };
+    quad(asphalt, W.x0, W.x1, W.z0, W.z1, 0);
+    const i = W.inset; const w = W.w;
+    quad(white, W.x0 + i, W.x1 - i, W.z0 + i, W.z0 + i + w, 0.004); /* (the plaza's side) */
+    quad(white, W.x1 - i - w, W.x1 - i, W.z0 + i, W.z1 - i, 0.004); /* (its east end) */
+    quad(white, W.x0 + i, W.x0 + i + w, W.z0 + i, W.z1, 0.004); /* (the road's west edge line on down) */
+    quad(white, W.lineN, W.x1 - i, W.z1 - i - w, W.z1 - i, 0.004); /* (the bench's side, past the road's east edge) */
+    group.add(g); return g;
+  })();
   const moving = new Map(); // (1.10.391 N4-a) car id -> its record: the four cars, standing in their places or out on a ride
   let night = false;
   // each frame: `rides` [{ key, ride }] I know of and `fleet` { cars } the server's (391: two a stop -- standing in a place, or out on a
