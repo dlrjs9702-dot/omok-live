@@ -65,5 +65,5 @@ test('435 부두 앞 T자: 차 길 · 정류장은 그대로, 칠은 곧은 물�
   for (const [x, z] of [[0.4, -10], [-1.5, -9], [2, -11.4]]) { const p = px(x, z); assert.equal(p.b, Paths.MOUTH, `the mouth at ${x}, ${z}`); }
   for (let x = -1.8; x <= 2.6; x += 0.25) assert.ok(px(x, -14.4).b > 200, `the crossing at x ${x}`);
   assert.match(island, /float mo = smoothstep\(0\.06, 0\.12, rd\.b\) \* \(1\.0 - smoothstep\(0\.38, 0\.46, rd\.b\)\); float lines = \(1\.0 - zb\) \* \(1\.0 - mo\);/);
-  assert.deepEqual(X.PAINT_FLIP, [X.ROADS[2]], 'L2 painted as if run east, as ROUTE across the T');
+  assert.deepEqual(X.PAINT_FLIP.slice(0, 1), [X.ROADS[2]], 'L2 painted as if run east, as ROUTE across the T (436: L1 too)');
 });

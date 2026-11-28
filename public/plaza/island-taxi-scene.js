@@ -35,8 +35,15 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
     return rec;
   }
   // a car where a ride's pose says: on the ground (the bridge's arch too), its lean, its doors open while one gets in or out
+  /* (1.10.436 문제 기록 f62f225a-3 「택시가 항상 땅이랑 수평이라 다리 위·오르막에서 어색 -- 기울기」: the ground under its wheels -- front and back
+     1.3 m along it, its sides 0.75 m -- tilts it as well; up to 0.35 rad) */
+  const SLOPE = { along: 1.3, across: 0.75, max: 0.35 };
+  const slopeOf = (x, z, yaw) => { const c = Math.cos(yaw); const s = Math.sin(yaw); const A = SLOPE.along; const W = SLOPE.across; const lim = (v) => Math.max(-SLOPE.max, Math.min(SLOPE.max, v));
+    const hf = groundY(x + s * A, z + c * A); const hb = groundY(x - s * A, z - c * A); const hl = groundY(x + c * W, z - s * W); const hr = groundY(x - c * W, z + s * W);
+    return { pitch: lim(-Math.atan2(hf - hb, 2 * A)), roll: lim(Math.atan2(hl - hr, 2 * W)) }; }; /* (+pitch: the front down; +roll: its +x side up -- 'YXZ', the front +z) */
   function placeCar(rec, pose) {
-    rec.h.position.set(pose.x, groundY(pose.x, pose.z), pose.z); rec.h.rotation.set(pose.pitch || 0, pose.yaw, pose.roll || 0, 'YXZ');
+    const sl = slopeOf(pose.x, pose.z, pose.yaw); rec.slope = sl;
+    rec.h.position.set(pose.x, groundY(pose.x, pose.z), pose.z); rec.h.rotation.set((pose.pitch || 0) + sl.pitch, pose.yaw, (pose.roll || 0) + sl.roll, 'YXZ');
     const open = X.doorOf(pose.phase, Math.min(1, Math.max(0, pose.k || 0))); /* (assets 99 motions.json: TaxiEnter opens 0~0.14 and shuts 0.86~1, TaxiExit 0~0.12 and 0.80~1) */
     for (const d of rec.doors) d.o.rotation.y = d.yaw0 + d.side * open * 1.22;
     for (const w of rec.wheels) w.rotation.x = -(pose.d || 0) / 0.32;
@@ -104,6 +111,7 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
   // ride: there, then staying in a place there or back empty to one at home; IslandTaxi.carAt) -- a stop with none standing says when one comes
   const live = new Set(); const rideOf = new Map(); const standCount = {}; /* (1.10.353 재사용 ③: kept between frames, emptied each) */
   const startFleet = X.createFleet(0).cars; /* (till the server's comes: two standing at each stop) */
+  const PARK_TILT = (25 * Math.PI) / 180; /* (436: + its nose toward its right -- the door's side) */
   const sm = (k) => { const t = Math.min(1, Math.max(0, k)); return t * t * (3 - 2 * t); };
   function step(now, rides, people = [], fleet = {}) { // (v1.10.285 people: [{ x, z }] on foot -- a running car within 2 m of one honks)
     live.clear(); rideOf.clear(); for (const k in standCount) delete standCount[k];
@@ -119,6 +127,11 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
         if (c.pulledAt && c.place === 0 && now - c.pulledAt < 2000) { const f = X.placeOf(c.at, 1); const k = sm((now - c.pulledAt) / 2000); p = { x: f.x + (q.x - f.x) * k, z: f.z + (q.z - f.z) * k, yaw: q.yaw, phase: 'wait', d: k * X.BACK }; } /* (the one behind pulling up) */
         else p = { ...q, phase: 'wait', d: 0 }; }
       if (ride) live.add(c.id);
+      /* (1.10.436 다듬기 「택시 비스듬히」, notes asset-eyes-1 「승차 위치에서 표정이 지붕에 가려 노점 수레처럼 보여요 -- 비스듬히 세워 한쪽 눈과 바퀴가
+         보이게」: a standing car drawn turned 25° nose toward its door side (the bench's); straight again as one gets in, turned in once it stands.
+         Drawn only -- where it stands, its door, the board mark and the rides as they were) */
+      const want = ride ? 0 : PARK_TILT; const dts = rec.at == null ? 1 : Math.min(0.25, Math.max(0, (now - rec.at) / 1000)); rec.at = now;
+      rec.tilt = rec.tilt == null ? want : rec.tilt + (want - rec.tilt) * Math.min(1, dts * 5); if (Math.abs(rec.tilt) > 1e-4) p = { ...p, yaw: p.yaw + rec.tilt };
       placeCar(rec, p); rec.running = Boolean(ride) && ['start', 'run', 'stop', 'back'].includes(p.phase); rec.out = Boolean(ride); rec.rate = ride ? X.rateOf(ride, now) : 1; rec.waitMs = ride?.blockedAt ? Math.max(0, now - ride.blockedAt) : 0;
       if (!ride) { if (rec.horn) rec.horn.visible = false; if (rec.ask) rec.ask.visible = false; ghostCar(rec, false); continue; }
       /* (317 A2: 「빵」 once the server has had it waiting for someone in front -- no sound; 1.10.340 133A: after 1 s, with 「비켜 주세요~」) */
@@ -143,6 +156,6 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
   const setNight = (on) => { night = Boolean(on); };
   const dispose = () => { scene.remove(group); for (const m of made) m.dispose?.(); };
   // (v1.10.285) the cars on their way or parked after a ride: where, which way, running or not, honking -- they block and others step aside
-  const cars = () => [...moving.entries()].filter(([, r]) => r.out).map(([key, r]) => ({ key, x: r.h.position.x, z: r.h.position.z, yaw: r.h.rotation.y, running: Boolean(r.running), horn: Boolean(r.horn?.visible), ask: Boolean(r.ask?.visible), ghost: Boolean(r.ghost), rate: r.rate ?? 1, waitMs: r.waitMs || 0 })); /* (317: its pace -- 0 standing for someone, a little creeping by; 391: the cars out) */
+  const cars = () => [...moving.entries()].filter(([, r]) => r.out).map(([key, r]) => ({ key, x: r.h.position.x, z: r.h.position.z, yaw: r.h.rotation.y, running: Boolean(r.running), horn: Boolean(r.horn?.visible), ask: Boolean(r.ask?.visible), ghost: Boolean(r.ghost), rate: r.rate ?? 1, waitMs: r.waitMs || 0, slope: r.slope ? { pitch: +r.slope.pitch.toFixed(3), roll: +r.slope.roll.toFixed(3) } : null /* (436: the ground's tilt under it) */ })); /* (317: its pace -- 0 standing for someone, a little creeping by; 391: the cars out) */
   return { group, step, seatOf, setNight, dispose, cars, stops: () => stops.map((st) => ({ id: st.id, x: st.s.x, z: st.s.z, standing: Boolean(standCount[st.id]), count: standCount[st.id] || 0, away: !standCount[st.id], label: st.said || '' })), /* (294; 391: how many stand there) */ moving: () => [...moving.entries()].filter(([, r]) => r.out).map(([k]) => k), roadSigns: () => roadSigns.map((s) => ({ id: s.id, x: +s.at.x.toFixed(2), z: +s.at.z.toFixed(2), model: s.g.children.length > 1 })), /* (392) */ floorMarks: () => ({ marks: marks.length, lanes: lanes.length }), /* (399) */ parked: () => [...moving.entries()].filter(([, r]) => !r.out).map(([k, r]) => ({ id: k, x: +r.h.position.x.toFixed(2), z: +r.h.position.z.toFixed(2) })) };
 }
