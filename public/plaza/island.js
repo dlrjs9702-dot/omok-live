@@ -285,6 +285,7 @@ export function buildIsland(scene, { mat, mesh, solids, assets = null, software 
   // that thins and breaks up as it goes back; the sand it left dark and shining, drying over about four seconds. All from
   // the time (one swell about 7 s, each stretch of beach a little off the next): nothing is remembered.
   const shoreTime = { value: 0 }; const seaShallow = { value: new THREE.Color(0x6fd8d0) };
+  const groundNight = { value: 0 }; /* (1.10.438 C2: how night it is for the ground and the sea -- 0 day, 0.5 evening, 1 night; setSeaPhase) */
   const shoreWash = (path) => (path || !maps ? '' : `
 { // 파도
 vec3 sh = texture2D(tShore, (vGroundXZ - uPathBox.xy) / uPathBox.z).rgb; float sd = (sh.r * 2.0 - 1.0) * ${SHORE_RANGE.toFixed(1)};
@@ -307,6 +308,8 @@ lace = lace * 0.6 + 0.4 * (0.5 + 0.5 * sin(vGroundXZ.x * 37.0 - vGroundXZ.y * 31
 float holes = smoothstep(coming ? 0.28 : 0.5, coming ? 0.4 : 0.62, lace);
 float band = step(0.0, behind) * (1.0 - smoothstep(width * 0.55, width, behind));
 diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.97, 0.99, 1.0), band * holes * sandy * 0.95);
+// (1.10.438 다듬기 「밤 만 파도」, notes asset-eyes-1 「만은 얕은 파도에만 빛을 남겨」: at night the lace and the thin film keep a little moonlight of their own)
+totalEmissiveRadiance += vec3(0.55, 0.66, 0.82) * (band * holes * 0.5 + film * 0.1) * sandy * uNight;
 }
 }`);
   // what the ground is made of over the season's grass (the vertex colour): each kind its own colour, the snow lying
@@ -399,7 +402,10 @@ float off = (rd.r * 2.0 - 1.0) * ${globalThis.IslandPaths.ROAD_RANGE.toFixed(1)}
 float a00 = abs(texelFetch(tRoad, clamp(r0, ivec2(0), rm), 0).r * 2.0 - 1.0); float a10 = abs(texelFetch(tRoad, clamp(r0 + ivec2(1, 0), ivec2(0), rm), 0).r * 2.0 - 1.0);
 float a01 = abs(texelFetch(tRoad, clamp(r0 + ivec2(0, 1), ivec2(0), rm), 0).r * 2.0 - 1.0); float a11 = abs(texelFetch(tRoad, clamp(r0 + ivec2(1, 1), ivec2(0), rm), 0).r * 2.0 - 1.0);
 float af = mix(mix(a00, a10, rf.x), mix(a01, a11, rf.x), rf.y) * ${globalThis.IslandPaths.ROAD_RANGE.toFixed(1)}; ao = mix(ao, af, smoothstep(0.9, 1.2, af)); }
-float rc = smoothstep(0.35, 0.75, rd.g) * (1.0 - smoothstep(3.86, 3.94, ao));
+// (1.10.438 C2 ④ 문제 기록 c057bfa1 「길/모래/바다 경계가 자로 자른 듯」: the walk's outer edge broken a little -- a paver short here, sand drifted
+// over there -- not cut along a ruler)
+float jag = SAND(vGroundXZ / 0.9).r / 0.701 - 1.0; float jag2 = SAND(vGroundXZ / 2.3 + 0.37).r / 0.701 - 1.0; float edgeAt = 3.84 + 0.16 * jag + 0.08 * jag2;
+float rc = smoothstep(0.35, 0.75, rd.g) * (1.0 - smoothstep(edgeAt - 0.04, edgeAt + 0.04, ao));
 if (rc > 0.0) {
 vec3 col;
 if (ao < 2.3) {
@@ -417,7 +423,13 @@ col = mix(col, vec3(0.96, 0.78, 0.26), lines * (1.0 - smoothstep(0.06, 0.09, ao)
 else {
 vec2 q = vGroundXZ / 0.5; vec2 f = fract(q); float h = fract(sin(dot(floor(q), vec2(12.9898, 78.233))) * 43758.5453);
 col = vec3(0.86, 0.80, 0.72) * (0.92 + 0.1 * h) * mix(0.78, 1.0, smoothstep(0.0, 0.08, min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y))));
+// (1.10.438 C2 ① 「돌바닥이 밤에도 환하고 평평해 떠 보임」: a darker edging along its outer side -- it sits in the ground, not on it; ④ the sand drifted
+// over its last half metre, more in some places)
+col *= mix(1.0, 0.8, smoothstep(3.3, 3.78, ao));
+col = mix(col, diffuseColor.rgb, smoothstep(3.25, 3.85, ao) * clamp(0.35 + 0.8 * jag2, 0.0, 0.7));
 }
+// (① at night the pale walk and kerb dimmer than the asphalt -- under the moon they shone over the grass; lamps' pools light them again)
+col *= mix(1.0, ao < 2.3 ? 0.86 : 0.62, uNight);
 diffuseColor.rgb = mix(diffuseColor.rgb, col, rc);
 }
 }
@@ -429,7 +441,7 @@ diffuseColor.rgb = mix(diffuseColor.rgb, col, rc);
       Object.assign(shader.uniforms, { tGrains: { value: groundTex.grains } /* (1.10.358: grass, soil and sand in one -- phones' 16 texture units) */, tEdge: { value: groundTex.edge }, uGrain: grainOn, uCheap: cheapOn,
         ...(maps && !path ? { tGrassPaint: { value: groundTex.grassPaint }, tSandPaint: { value: groundTex.sandPaint }, tSoilPaint: { value: groundTex.soilPaint }, tSnowPaint: { value: groundTex.snowPaint }, tMottle: { value: groundTex.mottle }, uPaint: paintOn } : {}),
         uPathBox: { value: box }, uTown: { value: new THREE.Color(TIER_COLOR.town) }, uWalk: { value: new THREE.Color(TIER_COLOR.walk) }, uTrail: { value: new THREE.Color(TIER_COLOR.trail) },
-        ...(maps ? { tPlaza: { value: plazaTile }, uPlazaC: { value: own ? new THREE.Vector4(0, 0, 0, 0) : plazaBox }, tPathA: { value: M.pathA }, tPathB: { value: M.pathB }, tRoad: { value: M.road }, uCross: { value: CROSS_V }, tCoverA: { value: M.coverA }, tCoverB: { value: M.coverB }, tShore: { value: M.shore }, uShoreTime: shoreTime, uShallowSea: seaShallow } : {}),
+        ...(maps ? { tPlaza: { value: plazaTile }, uPlazaC: { value: own ? new THREE.Vector4(0, 0, 0, 0) : plazaBox }, tPathA: { value: M.pathA }, tPathB: { value: M.pathB }, tRoad: { value: M.road }, uCross: { value: CROSS_V }, tCoverA: { value: M.coverA }, tCoverB: { value: M.coverB }, tShore: { value: M.shore }, uShoreTime: shoreTime, uShallowSea: seaShallow, uNight: groundNight } : {}),
         uForest: { value: new THREE.Color(0x6f8a4c) }, uEarth: { value: new THREE.Color(0x9c8a74) }, uGravel: { value: new THREE.Color(0xd6cbb2) }, uRock: { value: new THREE.Color(0xb7ad9e) },
         uSand: { value: new THREE.Color(0xf1dfae) }, uWet: { value: new THREE.Color(0xd8c48f) }, uClover: { value: new THREE.Color(0x7fb35a) }, uRain: rainOn });
       shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>
@@ -441,7 +453,7 @@ uniform sampler2D tGrains;
 #define SOIL(uv) vec3(texture2D(tGrains, (uv)).g)
 #define SAND(uv) vec3(texture2D(tGrains, (uv) * 0.125).b)
  uniform sampler2D tEdge; uniform float uGrain; uniform float uCheap; varying vec2 vGround; varying vec2 vGroundXZ; varying float vWorldY;
-uniform vec3 uPathBox; uniform vec3 uTown; uniform vec3 uWalk; uniform vec3 uTrail;${maps ? ' uniform sampler2D tPlaza; uniform vec4 uPlazaC; uniform sampler2D tPathA; uniform sampler2D tPathB; uniform sampler2D tRoad; uniform vec4 uCross[' + CROSS_N + ']; uniform sampler2D tCoverA; uniform sampler2D tCoverB; uniform sampler2D tShore; uniform float uShoreTime; uniform vec3 uShallowSea;' : ''}
+uniform vec3 uPathBox; uniform vec3 uTown; uniform vec3 uWalk; uniform vec3 uTrail;${maps ? ' uniform sampler2D tPlaza; uniform vec4 uPlazaC; uniform sampler2D tPathA; uniform sampler2D tPathB; uniform sampler2D tRoad; uniform vec4 uCross[' + CROSS_N + ']; uniform sampler2D tCoverA; uniform sampler2D tCoverB; uniform sampler2D tShore; uniform float uShoreTime; uniform vec3 uShallowSea; uniform float uNight;' : ''}
 uniform vec3 uForest; uniform vec3 uEarth; uniform vec3 uGravel; uniform vec3 uRock; uniform vec3 uSand; uniform vec3 uWet; uniform vec3 uClover; uniform float uRain;${maps && !path ? ' uniform sampler2D tGrassPaint; uniform sampler2D tSandPaint; uniform sampler2D tSoilPaint; uniform sampler2D tSnowPaint; uniform sampler2D tMottle; uniform float uPaint;' : ''}`).replace('#include <color_fragment>', `#include <color_fragment>
 vec2 gw = vGround; float gWet = 0.0; float gSnow = 0.0; // (the grass and the sand share, for the grains: the vertex's, or the cover map's; how wet: 파도)${paintCover(path)}
 if (uGrain > 0.0) {
@@ -557,18 +569,19 @@ diffuseColor.rgb *= 1.0 - 0.26 * uRain; gWet = max(gWet, 0.6 * uRain); // (땅·
   if (maps) {
     sea.material = keep(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35, transparent: true })); // (its own: mat() hands out shared ones)
     sea.material.onBeforeCompile = (shader) => {
-      Object.assign(shader.uniforms, { tShore: { value: maps.shore }, uPathBox: { value: new THREE.Vector3(-SIZE / 2, -SIZE / 2, SIZE) }, uShallowSea: seaShallow, uDeepSea: seaDeep, uGlow: seaGlow, uSunDir: sunDir, uShoreTime: shoreTime, uSelfLit: seaSelf, uLines: seaLines, uRipple: seaRipple, uClear: seaClear, tNoise: { value: groundTex.grass },
+      Object.assign(shader.uniforms, { tShore: { value: maps.shore }, uPathBox: { value: new THREE.Vector3(-SIZE / 2, -SIZE / 2, SIZE) }, uShallowSea: seaShallow, uDeepSea: seaDeep, uGlow: seaGlow, uSunDir: sunDir, uShoreTime: shoreTime, uSelfLit: seaSelf, uLines: seaLines, uRipple: seaRipple, uNight: groundNight, uClear: seaClear, tNoise: { value: groundTex.grass },
         ...(maps2 ? { tShore2: { value: maps2.shore }, uPathBox2: { value: new THREE.Vector3(G2.x0, G2.z0, G2.size) } } : {}) });
       shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nvarying vec2 vSeaXZ;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvSeaXZ = (modelMatrix * vec4(transformed, 1.0)).xz;');
-      shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `#include <common>${maps2 ? '\nuniform sampler2D tShore2; uniform vec3 uPathBox2;' : ''}\nuniform sampler2D tShore; uniform vec3 uPathBox; uniform vec3 uShallowSea; uniform vec3 uDeepSea; uniform vec3 uGlow; uniform vec3 uSunDir; uniform float uShoreTime; uniform float uSelfLit; uniform float uLines; uniform float uRipple; uniform float uClear; uniform sampler2D tNoise; varying vec2 vSeaXZ;`)
+      shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `#include <common>${maps2 ? '\nuniform sampler2D tShore2; uniform vec3 uPathBox2;' : ''}\nuniform sampler2D tShore; uniform vec3 uPathBox; uniform vec3 uShallowSea; uniform vec3 uDeepSea; uniform vec3 uGlow; uniform vec3 uSunDir; uniform float uShoreTime; uniform float uSelfLit; uniform float uLines; uniform float uRipple; uniform float uClear; uniform float uNight; uniform sampler2D tNoise; varying vec2 vSeaXZ;`)
         .replace('#include <color_fragment>', `#include <color_fragment>
 vec2 suv = (vSeaXZ - uPathBox.xy) / uPathBox.z; vec3 sh = (suv.x > 0.0 && suv.x < 1.0 && suv.y > 0.0 && suv.y < 1.0) ? texture2D(tShore, suv).rgb : vec3(0.0, 1.0, 0.0);
 ${maps2 ? `vec2 suv2 = (vSeaXZ - uPathBox2.xy) / uPathBox2.z; if (!(suv.x > 0.0 && suv.x < 1.0 && suv.y > 0.0 && suv.y < 1.0) && suv2.x > 0.0 && suv2.x < 1.0 && suv2.y > 0.0 && suv2.y < 1.0) sh = texture2D(tShore2, suv2).rgb; // (N1 새 섬's shore, past the ground's square)` : ''}
 float sd = (sh.r * 2.0 - 1.0) * ${SHORE_RANGE.toFixed(1)}; float shallow = 1.0 - smoothstep(0.0, 0.7, sh.g); // (0..2.1 m)
 diffuseColor.rgb = mix(uDeepSea, uShallowSea, shallow); diffuseColor.a = mix(1.0, uClear, shallow);
 float ln = texture2D(tNoise, vSeaXZ / 7.0 + vec2(uShoreTime * 0.004, 0.0)).r / 0.611; float ln2 = texture2D(tNoise, vSeaXZ / 2.9).r / 0.611; // (검토 2차 6: broken, of changing width, fewer, fainter further out)
-float lines = pow(0.5 + 0.5 * sin(sd * 1.3 + uShoreTime * 1.5 + 0.8 * sin(vSeaXZ.x * 0.11 + vSeaXZ.y * 0.07)), mix(7.0, 18.0, clamp(ln2 - 0.6, 0.0, 1.0))) * smoothstep(0.95, 1.2, ln) * pow(smoothstep(-9.0, -1.5, sd), 1.5) * (1.0 - smoothstep(-1.2, 0.0, sd)) * uLines;
-diffuseColor.rgb += 0.16 * lines * vec3(0.9, 1.0, 1.0);`)
+float lines = pow(0.5 + 0.5 * sin(sd * 1.3 + uShoreTime * 1.5 + 0.8 * sin(vSeaXZ.x * 0.11 + vSeaXZ.y * 0.07)), mix(7.0, 18.0, clamp(ln2 - 0.6, 0.0, 1.0))) * smoothstep(0.7, 1.15, ln) /* (1.10.438 C2 ⑤: on more of the shore, still broken -- was 0.95 ~ 1.2, a few patches cut short) */ * pow(smoothstep(-9.0, -1.5, sd), 1.5) * (1.0 - smoothstep(-1.2, 0.0, sd)) * uLines;
+diffuseColor.rgb += 0.16 * lines * vec3(0.9, 1.0, 1.0);
+totalEmissiveRadiance += lines * uNight * vec3(0.5, 0.62, 0.8) * 0.15; // (1.10.438 밤 만 파도: the shallow lines lit at night -- the bay's light there, not on the name tags)`)
         .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
 { vec2 p = vSeaXZ; float t = uShoreTime;
 vec2 slope = uRipple * 0.035 * vec2(cos(p.x * 0.9 + p.y * 0.4 + t * 1.1), cos(p.y * 1.1 - p.x * 0.3 + t * 0.9)) + uRipple * 0.02 * vec2(cos(p.x * 2.3 - p.y * 1.7 - t * 1.7), cos(p.y * 2.6 + p.x * 1.2 + t * 1.4));
@@ -580,8 +593,8 @@ totalEmissiveRadiance += uGlow * pow(max(dot(r, s), 0.0), 60.0) * 1.4 + diffuseC
     sea.material.customProgramCacheKey = () => 'sea-shore';
   }
   // the time of day's sea (plaza-scene: when the light changes) -- and the sun it follows
-  const SEA_PHASE = { morning: [0x4aa8d2, 0x78d6cc, 0xffe2b8], day: [0x3aa0d0, 0x6fd8d0, 0xfff2d0], evening: [0x334180, 0x1f7480, 0xff8a3c, 0.3, 0.45], /* (검토 3차 2: a step lighter, the shallows a deep teal -- more of its own light, so the warm dusk does not turn it olive) */ night: [0x101b3a, 0x1b4352, 0x9fb8ff, 0.15, 0.3] };
-  function setSeaPhase(phase, sun) { const c = SEA_PHASE[phase] || SEA_PHASE.day; seaDeep.value.set(c[0]); seaShallow.value.set(c[1]); seaGlow.value.set(c[2]); seaSelf.value = c[3] || 0; seaLinesOn = c[4] ?? 1; seaClear.value = phase === 'evening' || phase === 'night' ? 0.78 : 0.45; /* (the sand under it lit by the dusk read olive) */ seaSun = sun || null; }
+  const SEA_PHASE = { morning: [0x4aa8d2, 0x78d6cc, 0xffe2b8], day: [0x3aa0d0, 0x6fd8d0, 0xfff2d0], evening: [0x334180, 0x1f7480, 0xff8a3c, 0.3, 0.45], /* (검토 3차 2: a step lighter, the shallows a deep teal -- more of its own light, so the warm dusk does not turn it olive) */ night: [0x101b3a, 0x1b4352, 0x9fb8ff, 0.15, 0.5] /* (438 밤 만 파도: its lines 0.3 -> 0.5) */ };
+  function setSeaPhase(phase, sun) { const c = SEA_PHASE[phase] || SEA_PHASE.day; seaDeep.value.set(c[0]); seaShallow.value.set(c[1]); seaGlow.value.set(c[2]); seaSelf.value = c[3] || 0; seaLinesOn = c[4] ?? 1; seaClear.value = phase === 'evening' || phase === 'night' ? 0.78 : 0.45; /* (the sand under it lit by the dusk read olive) */ seaSun = sun || null; groundNight.value = phase === 'night' ? 1 : phase === 'evening' ? 0.5 : 0; }
   const pond = new THREE.Mesh(keep(new THREE.CircleGeometry(POND.r + 0.6, 40)), pondWater);
   pond.rotation.x = -Math.PI / 2; pond.position.set(POND.x, land(POND.x, POND.z) - 0.45, POND.z); scene.add(pond);
   const ribbon = (pts, width, yOf, material, lift = 0) => { // a flat strip along a line, following the ground
