@@ -64,7 +64,7 @@ test('출석 도장 격자: 칸은 minmax(0,1fr) -- 큰 도장(7일 개근)이 �
 });
 
 test('164 둘째 밤 빛: 가로등마다 밤에만 부드러운 빛 웅덩이(땅 높이), 분수 물결 테는 밤에 조금 밝게', () => {
-  assert.match(scene, /PROPS\.lamps\.forEach\(\(l, i\) => lampPools\.setMatrixAt\(i, new THREE\.Matrix4\(\)\.makeTranslation\(l\.x, heightAt\(l\.x, l\.z\) \+ 0\.06, l\.z\)\)\)/);
+  assert.match(scene, /poolAt\.forEach\(\(l, i\) => lampPools\.setMatrixAt\(i, new THREE\.Matrix4\(\)\.makeTranslation\(l\.x, heightAt\(l\.x, l\.z\) \+ 0\.06, l\.z\)\)\)/); /* (1.10.438 C2 ②: every lamp's -- the roads' and 물가 거리's too, shore-walk-438) */
   assert.match(scene, /lampPools\.visible = Boolean\(night\) && mySpace === 'island';/); assert.match(scene, /map: poolTex, transparent: true, opacity: 0\.32, depthWrite: false, blending: THREE\.AdditiveBlending/);
   assert.match(scene, /\* \(night \? 1\.4 : 1\)\)/);
   const at = scene.indexOf('const lampPools'); assert.ok(at > 0 && !scene.slice(scene.indexOf('const poolTex'), at).includes('textures.push'), 'no use of the later-declared textures list there');

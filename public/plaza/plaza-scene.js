@@ -662,8 +662,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     for (const cell of propBatch('prop.lamp', lampSpots, look)) lamps.push(cell.procedural[look.children.indexOf(bulb)]); } // (the stand-in bulbs: lit at night, orange in October)
   /* (1.10.423 다듬기 164 「밤 빛」: a soft pool of light on the ground under each lamp at night -- as the 관공서 yard's, one batch for all) */
   const poolTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); const r = g.createRadialGradient(32, 32, 0, 32, 32, 32); r.addColorStop(0, '#ffffff'); r.addColorStop(0.45, '#8a8a8a'); r.addColorStop(1, '#000000'); g.fillStyle = r; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })(); /* (soft: bright under the lamp, gone at its edge; 64 px, one for the scene's life) */
-  const lampPools = new THREE.InstancedMesh(new THREE.CircleGeometry(2.8, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd9a0, map: poolTex, transparent: true, opacity: 0.32, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), Math.max(1, PROPS.lamps.length));
-  PROPS.lamps.forEach((l, i) => lampPools.setMatrixAt(i, new THREE.Matrix4().makeTranslation(l.x, heightAt(l.x, l.z) + 0.06, l.z))); lampPools.count = PROPS.lamps.length;
+  /* (1.10.438 C2 ② 문제 기록 c057bfa1 「가로등이 길가가 아니라 잔디 안쪽이라 길 위에 빛이 없음」: the walks' and the taxi road's lamps (island nature
+     lampSpots: 4.45 m from a road's middle, just off its walk) and 물가 거리's too -- a pool of 2.8 m reaches over the walk to the near lane) */
+  const poolAt = [...PROPS.lamps, ...(globalThis.IslandTerrain.nature?.().lampSpots || []), ...(globalThis.IslandTerrain.WATERFRONT?.lamps || [])];
+  const lampPools = new THREE.InstancedMesh(new THREE.CircleGeometry(2.8, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd9a0, map: poolTex, transparent: true, opacity: 0.32, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), Math.max(1, poolAt.length));
+  poolAt.forEach((l, i) => lampPools.setMatrixAt(i, new THREE.Matrix4().makeTranslation(l.x, heightAt(l.x, l.z) + 0.06, l.z))); lampPools.count = poolAt.length;
   lampPools.computeBoundingSphere(); lampPools.visible = false; lampPools.renderOrder = 1; lampPools.castShadow = false; lampPools.receiveShadow = false; scene.add(lampPools);
   const flowerColors = [0xff9ec7, 0xffe27a, 0xffffff, 0xc4a5ff, 0xff8f8f];
   for (const bed of PROPS.beds) { // beds along the plaza rim, between the walks and channels

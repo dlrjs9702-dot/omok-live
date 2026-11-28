@@ -505,8 +505,7 @@
     const r = D.R_BAY + 3.4; const step = (4.2 / r) * (180 / Math.PI);
     for (let a = 236, k = 0; a <= 304; a += step, k += 1) {
       if (Math.abs(a - 270) < 5) continue; // (the way down to the dock)
-      const [x, z] = bayAt(a, r); const yaw = -(rad(a) + Math.PI / 2); // (its length along the shore)
-      rails.push({ x, z, yaw });
+      const [x, z] = bayAt(a, r); // (1.10.438: the rails off this arc -- railRun, below)
       // (묶음 5 배치 점검: off the walk (r 99.4-102.6) -- the lamps on its land side, the benches beyond them facing the water)
       // (T1: where the taxi road runs by the water, the lamp on its land-side walk's outer edge and the bench behind it -- out
       // from the bay till clear of the road)
@@ -514,8 +513,38 @@
       if (k % 3 === 1) { const [lx, lz] = outward(103.1, 0.55, byStopPlace); lamps.push({ x: lx, z: lz, r: 0.3 }); } /* (412: and clear of a stop's sign and mark, either side) */
       if (k % 6 === 3) { const [bx, bz] = outward(104.6, 1.3); benches.push({ x: bx, z: bz, yaw: Math.atan2(-bx, D.BAY_Z - bz), r: 0.9 }); } // (a bench's +Z, its front, toward the water)
     }
+    rails.push(...railRun());
     return { rails, lamps, benches };
   })();
+  /* 1.10.438 C2 ③ (문제 기록 c057bfa1, 결정 99): the rails stood on the old 물가 거리 arc -- since the taxi road moved inland (T1) and L2 came (411) 1 ~ 3 m
+     out on the sand off the walk, and ended at x ±55. Now along the bay roads' sea-side walk edge (RAIL.out from the middle, the walk's outer
+     edge 3.9 + 0.3), a piece every RAIL.step along it, both ways from the dock's T -- east on ROUTE to x 68, west on L2 to x -90 (the west shore
+     where the beach is narrow) -- where the sea is near (its edge within RAIL.sea m); open at the T's mouth, where a walk comes down to the beach,
+     a stop's sign and mark, a bridge. Each piece along the road there (its yaw: the model's length on +x) */
+  function railRun() {
+    const out = []; if (!TX) return out; const RAIL = { out: ROAD.half + 0.3, step: 4.2, sea: 8 };
+    const stem = TX.TEES?.[0]?.stem; const segD = (x, z, [ax, az], [bx, bz]) => { const dx = bx - ax; const dz = bz - az; const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1))); return Math.hypot(x - ax - dx * t, z - az - dz * t); };
+    for (const [road, keep] of [[TX.ROUTE, (x) => x <= 68], [TX.ROADS?.[2], (x) => x >= -90]]) {
+      if (!road) continue; let next = RAIL.step / 2; let run = 0;
+      for (let i = 1; i < road.length; i += 1) {
+        const [ax, az] = road[i - 1]; const [bx, bz] = road[i]; const L = Math.hypot(bx - ax, bz - az); if (!L) continue; const tx = (bx - ax) / L; const tz = (bz - az) / L;
+        const mx = (ax + bx) / 2; const mz = (az + bz) / 2; const s = D.coastDist(mx + tz * RAIL.out, mz - tx * RAIL.out) < D.coastDist(mx - tz * RAIL.out, mz + tx * RAIL.out) ? 1 : -1; /* (the sea's side: its edge nearer) */
+        for (; next <= run + L; next += RAIL.step) {
+          const u = next - run; const x = ax + tx * u + tz * RAIL.out * s; const z = az + tz * u - tx * RAIL.out * s; const ends = [[x - tx * 2.1, z - tz * 2.1], [x, z], [x + tx * 2.1, z + tz * 2.1]];
+          if (z < -10 || z > 70 || !keep(x)) continue; /* (the shore road -- not the stem down from 대청마당, nor the 윤슬다리 roads round the north) */
+          if (D.coastDist(x, z) > RAIL.sea) continue; /* (no sea near) */
+          if (stem && ends.some(([ex, ez]) => segD(ex, ez, stem[0], stem[1]) < 4.6)) continue; /* (the T's mouth -- the way down to the dock) */
+          if (walkCurves.some((w) => w.pts.some(([px, pz]) => roadDist(px, pz) > RAIL.out + 0.4 && ends.some(([ex, ez]) => Math.hypot(px - ex, pz - ez) < w.w / 2 + 0.8)))) continue; /* (a walk down to the beach comes through; a crossing comes up to the rail, as on the old arc -- 411 `rail`) */
+          if (ends.some(([ex, ez]) => byStopPlace(ex, ez) || onBridge(ex, ez))) continue;
+          /* (a straight piece on a bend: its ends into the walk on the bend's inside -- out toward the sea till its circles clear the walk) */
+          let px = x; let pz = z; for (let k = 0; k < 15 && [-1.6, -0.55, 0.55, 1.6].some((d) => roadDist(px + tx * d, pz + tz * d) < ROAD.half + 0.35); k += 1) { px += tz * s * 0.1; pz -= tx * s * 0.1; }
+          out.push({ x: px, z: pz, yaw: Math.atan2(-tz, tx) });
+        }
+        run += L;
+      }
+    }
+    return out;
+  }
   // what one walks round at the structures (the scene's collision and the islanders' route grid alike): 초승등대, the
   // stairs' walls (the open side and the stone under the steps), each niche's foot, 툇마루섬's board, 물가 거리's railing,
   // lamps and benches

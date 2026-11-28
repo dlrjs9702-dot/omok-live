@@ -13,6 +13,16 @@
 
 - 서버 `server.js`, 화면 `public/index.html`·`public/app.js`·`public/styles.css`, 게임 로직 `lib/games/`, 영구 저장 `lib/access-store.js`·`lib/announcement-store.js`·`lib/match-records.js`, 자동 공지 `lib/release-announcements.js`, 테스트 `test/`. 초기 `README.md`는 현재 기능의 기준 문서가 아니다.
 
+## v1.10.438 C2 해안 산책로 + 밤 만 파도 (문제 기록 c057bfa1, 사용자 결정 99 · 100)
+
+- ① 인도: 밤에 인도 · 연석 0.62배, 차선 0.86배(island.js 도로 셰이더 `uNight`) + 바깥 끝 0.5 m 어두운 테두리(땅에 박힌 듯).
+- ② 가로등 바닥 빛: 밤 바닥 빛(plaza-scene lampPools)을 대청마당 가로등만이 아니라 길가 가로등(nature lampSpots, 차도 가운데에서 4.45 m) · 물가 거리 가로등에도 — 반지름 2.8 m라 인도와 가까운 차선까지.
+- ③ 물가 난간(dalmaru-island `railRun`): 옛 물가 거리 원호(x ±55, 차로가 옮겨 가며 모래 위 1~3 m)에서 바다 쪽 인도 끝선(길 가운데 4.2 m)으로, 부두 T자에서 동쪽 x 67 · 서쪽 x -90까지 4.2 m마다. 비우는 곳: 부두 입구, 모래사장으로 내려가는 산책길, 정류장 표지 · 탑승 표시, 다리. 굽이 안쪽에서는 조각이 인도에서 벗어날 때까지 바다 쪽으로.
+- ④ 인도 바깥 끝을 소음으로 흐트러뜨리고(±0.2 m), 마지막 0.6 m에 모래 번짐.
+- ⑤ 바닷가 지도(tools/maps/shore.js): 인공 물가(B 64)를 난간 4 m 원 · 차로+1 m에서 실제 인도 · 난간 자리(0.35 m)로 줄이고, 그 옆 모래는 2.5 m에 걸쳐 B 204 → 255(파도가 서서히). 바다 물결 줄 소음 문턱 0.95~1.2 → 0.7~1.15.
+- 다듬기 「밤 만 파도」: 밤에 물가 거품 · 얇은 물막과 얕은 물결 줄에 은은한 빛(바다 · 땅 셰이더 `uNight`), 밤 물결 0.3 → 0.5.
+- 시험: 유닛 shore-walk-438, e2e dalmaru-walk · island-assets · dex-tabs · island-boat(PC · 폰). 전후 사진 notes img/c2-20261128.
+
 ## v1.10.437 C 화면 · 광장 작은 것 (notes docs/issue-plan-20261128.md 3번 묶음)
 
 - a5c63780 재료 사기: 칸 한 개를 두 줄로(이름 · 값 / 개수 칸 · 1 · 5 · 10개 · 사기), 개수 칸 넓이 고정(3.4em, 손가락 화면 3.8em), 버튼 글자 안 꺾임 — 850 px · 폰 모두 칸 넘침 0.
@@ -30,12 +40,3 @@
 - f62f225a-3 기울기: 차 앞뒤 1.3 m · 옆 0.75 m 땅 높이로 앞뒤 · 옆 기울기(0.35 rad까지) — 별마루다리 아치에서 ±0.15 rad.
 - 다듬기 「택시 비스듬히」: 서 있는 차를 문 쪽으로 25° 돌려 그림(그림만; 서는 자리 · 문 · 탑승 표시 · 운행은 그대로), 탈 때 곧게, 서면 다시.
 - 시험: 유닛 `taxi-road-436`, e2e island-taxi-stops · island-taxi-yield · bicycle · island-boat · dalmaru-walk(PC · 폰).
-
-## v1.10.435 A 배·부두 (notes docs/issue-plan-20261128.md 1번 묶음)
-
-- 7f7ee860 승무원 없음: 배 모델은 그대로, 선장 캐릭터 4명 뺌(무인 운영).
-- 9fc80a32 걸어 타기: 탄 자리에서 발판 → 배 옆문 → 가운데 통로 → 자리 앞 → 앉기(3.36 m/s). 문 안부터는 배 기준 좌표라 배가 떠나도 같이 감. 문 전에 배가 떠나면 바로 앉음. 서버(island-boat `walkMsOf`)가 걸어 올 시간만큼 배를 붙잡음(혼자 · 다 찬 배 · 줄 선 사람, 시험 속도 배율과 무관).
-- 95bff217 모자: 배 문을 지나면 모자 넣기(택시와 같은 `assets.hat`), 내리면 다시.
-- 3faca5e1 펫: 주인이 앉으면 배 뒤 갑판(자리별 칸)에 앉아 함께 감 — 배를 그린 뒤 자리 잡아 한 프레임 늦지 않음.
-- 1b9f6edf 부두 앞 T자: 칠만 T자(island-paths buildRoadMap `TEES`) — 곧은 물가 길 · 줄기 끝 · 입구(B MOUTH)는 선 없음 · 건널목 줄기에 반듯이(0.59,-14.4). L2를 반대 방향으로 칠해(`PAINT_FLIP`) 노란 선 지렁이 없앰. 차 길 · 정류장 · 요금은 434 그대로. T자 아래 땅 둔덕 · 비움도 T자로(dalmaru-island).
-- 시험: 유닛 `boat-dock-435`, e2e island-boat(걸어 타기 · 모자) · dalmaru-walk · island-taxi-stops · island-taxi-yield · island-pets(PC · 폰).
