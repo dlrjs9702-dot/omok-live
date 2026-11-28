@@ -121,6 +121,9 @@ export function taxiScene({ scene, assets, mark = null, tag = null }) { /* (294 
     quad(white, W.lineN, W.x1 - i, W.z1 - i - w, W.z1 - i, 0.004); /* (the bench's side, past the road's east edge) */
     group.add(g); return g;
   })();
+  /* (1.10.439 ④ 폰 실측: what stands still -- the stops' roofs and signs, the road stops' signs, the marks, the lanes and their night pools,
+     대청마당's taxi way -- its places worked out once, not every frame; a model put in one later keeps its own) */
+  for (const o of [...stops.map((st) => st.sign.parent), ...roadSigns.map((r) => r.g), ...marks, ...markGlows, ...lanes, ...(plazaWay ? [plazaWay] : [])]) o.traverse((c) => { c.updateMatrix(); c.matrixAutoUpdate = false; });
   const moving = new Map(); // (1.10.391 N4-a) car id -> its record: the four cars, standing in their places or out on a ride
   let night = false;
   // each frame: `rides` [{ key, ride }] I know of and `fleet` { cars } the server's (391: two a stop -- standing in a place, or out on a

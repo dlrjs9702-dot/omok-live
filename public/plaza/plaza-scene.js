@@ -101,6 +101,11 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
      16,000 things under it work out their place again each frame (a fifth of a phone's frame, three's updateMatrixWorld · multiplyMatrices). Now
      only what moved, and what is under it) */
   scene.matrixAutoUpdate = false;
+  /* (439: and a top-level thing hidden -- 새 섬 from the main island (4,600 things), a season's decor off, what farCull hid -- not walked for its place
+     each frame (three walks every child whatever its flags); worked out once when first met, and again in full when it shows. Its own update kept
+     (a camera's inverse, a skinned mesh's bind)) */
+  scene.addEventListener('childadded', ({ child }) => { if (child.userData.mwWrapped) return; child.userData.mwWrapped = true; const own = child.updateMatrixWorld;
+    child.updateMatrixWorld = function (force) { const u = this.userData; if (!this.visible && u.mwOnce) { u.mwHid = true; return; } const f = force || u.mwHid === true; u.mwHid = false; u.mwOnce = true; own.call(this, f); }; });
   scene.background = new THREE.Color(0xbfe6ff);
   scene.fog = new THREE.Fog(0xd7efff, 70, 175); // far enough that the climbing tower reads from the plaza
   // v1.10.29: the camera reaches VIEW_FAR so the far scenery at sea (haze, no fog: asset-loader) shows over the
@@ -6777,9 +6782,6 @@ function buildPlaza(host, { facilities, onInteract, onNear, blocked, startAt }, 
     step(dt);
     if (now - coverCheckedAt > 250) { coverCheckedAt = now; covered = windowCovers(); }
     if (covered && now - drawnAt < 500) return;
-    /* (1.10.439 ④ 폰 실측: a top-level thing hidden -- 새 섬 from the main island (4,600 things), a season's decor off, what farCull hid -- not walked
-       for its place each frame; its places worked out at once when it shows again. Hidden it is not drawn, nor its shadow) */
-    for (const o of scene.children) { const v = o.visible; if (o.matrixWorldAutoUpdate !== v) { o.matrixWorldAutoUpdate = v; if (v) o.updateMatrixWorld(true); } }
     const postWant = Boolean(pilot) && quality === 2 && !pilotPhone && !pilotSoftware && !photoMode && mySpace === 'island'; /* (v1.10.276 그래픽 시범 ③: PC 「높음」; G3: the whole island outside, not only by the patch) */
     if (!pilot?.draw(renderer, scene, camera, postWant, dt)) renderer.render(scene, camera); drawnAt = now; draws += 1;
     { const ms = performance.now() - t0; frameJsMs = frameJsMs == null ? ms : frameJsMs * 0.95 + ms * 0.05; jsRing[jsAt++ % jsRing.length] = ms; } /* (313 ㅁ; v1.10.316: the last 240 frames kept too -- their median and p95) */

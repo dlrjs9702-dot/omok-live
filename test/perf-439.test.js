@@ -11,7 +11,7 @@ const read = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
 test('439 장면: 장면은 스스로 다시 계산하지 않음 · 숨은 맨 위 물체는 훑지 않고 보일 때 한 번에', () => {
   const s = read('public/plaza/plaza-scene.js');
   assert.match(s, /const scene = new THREE\.Scene\(\);[\s\S]{0,600}scene\.matrixAutoUpdate = false;/);
-  assert.match(s, /for \(const o of scene\.children\) \{ const v = o\.visible; if \(o\.matrixWorldAutoUpdate !== v\) \{ o\.matrixWorldAutoUpdate = v; if \(v\) o\.updateMatrixWorld\(true\); \} \}/);
+  assert.match(s, /scene\.addEventListener\('childadded', \(\{ child \}\) => \{/); assert.match(s, /if \(!this\.visible && u\.mwOnce\) \{ u\.mwHid = true; return; \} const f = force \|\| u\.mwHid === true; u\.mwHid = false; u\.mwOnce = true; own\.call\(this, f\);/);
   assert.match(s, /b\.matrixWorldNeedsUpdate = true;/); assert.match(s, /k\.matrixWorldNeedsUpdate = true;/);
 });
 
